@@ -43,6 +43,7 @@ const (
 )
 
 func (a *App) CreateUserWithToken(c *request.Context, user *model.User, token *model.Token) (*model.User, *model.AppError) {
+	fmt.Println("\n ***** user.go 46-ln CreateUserWithToken")
 	if err := a.IsUserSignUpAllowed(); err != nil {
 		return nil, err
 	}
@@ -99,7 +100,7 @@ func (a *App) CreateUserWithToken(c *request.Context, user *model.User, token *m
 
 	a.AddDirectChannels(team.Id, ruser)
 
-	if token.Type == TokenTypeGuestInvitation {
+	if token.Type == TokenTypeGuestInvitation || (token.Type == TokenTypeTeamInvitation && len(channels) > 0) {
 		for _, channel := range channels {
 			_, err := a.AddChannelMember(c, ruser.Id, channel, ChannelMemberOpts{})
 			if err != nil {

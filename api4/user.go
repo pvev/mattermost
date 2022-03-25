@@ -105,6 +105,7 @@ func (api *API) InitUser() {
 }
 
 func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
+	fmt.Println("\n ***** user.go api4 107-ln createUser")
 	var user model.User
 	if jsonErr := json.NewDecoder(r.Body).Decode(&user); jsonErr != nil {
 		c.SetInvalidParam("user")

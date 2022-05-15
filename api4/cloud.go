@@ -41,7 +41,7 @@ func (api *API) InitCloud() {
 	api.BaseRoutes.Cloud.Handle("/subscription", api.APISessionRequired(changeSubscription)).Methods("PUT")
 
 	// GET /api/v4/cloud/request-trial
-	api.BaseRoutes.Cloud.Handle("/request-trial", api.APISessionRequired(requestTrial)).Methods("PUT")
+	api.BaseRoutes.Cloud.Handle("/request-trial", api.APISessionRequired(requestCloudTrial)).Methods("PUT")
 
 	// POST /api/v4/cloud/webhook
 	api.BaseRoutes.Cloud.Handle("/webhook", api.CloudAPIKeyRequired(handleCWSWebhook)).Methods("POST")
@@ -123,32 +123,35 @@ func changeSubscription(c *Context, w http.ResponseWriter, r *http.Request) {
 	w.Write(json)
 }
 
-func requestTrial(c *Context, w http.ResponseWriter, r *http.Request) {
+func requestCloudTrial(c *Context, w http.ResponseWriter, r *http.Request) {
 	if c.App.Channels().License() == nil || !*c.App.Channels().License().Features.Cloud {
-		c.Err = model.NewAppError("Api4.requestTrial", "api.cloud.license_error", nil, "", http.StatusInternalServerError)
+		c.Err = model.NewAppError("Api4.requestCloudTrial", "api.cloud.license_error", nil, "", http.StatusInternalServerError)
 		return
 	}
 
 	if !c.App.SessionHasPermissionTo(*c.AppContext.Session(), model.PermissionSysconsoleWriteBilling) {
+		fmt.Printf("\n\n\n **** Permission issue: \n\n %#v \n\n\n permiso: %s \n\n", *c.AppContext.Session(), model.PermissionSysconsoleWriteBilling)
 		c.SetPermissionError(model.PermissionSysconsoleWriteBilling)
 		return
 	}
 
+	fmt.Printf("\n\n GetCloudLimits:: ->>> sesion: %#v, \n\n", c.App.Cloud())
+
 	currentSubscription, appErr := c.App.Cloud().GetSubscription(c.AppContext.Session().UserId)
 	if appErr != nil {
-		c.Err = model.NewAppError("Api4.requestTrial", "api.cloud.app_error", nil, appErr.Error(), http.StatusInternalServerError)
+		c.Err = model.NewAppError("Api4.requestCloudTrial", "api.cloud.app_error", nil, appErr.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	changedSub, err := c.App.Cloud().RequestTrial(c.AppContext.Session().UserId, currentSubscription.ID)
+	changedSub, err := c.App.Cloud().RequestCloudTrial(c.AppContext.Session().UserId, currentSubscription.ID)
 	if err != nil {
-		c.Err = model.NewAppError("Api4.requestTrial", "api.cloud.app_error", nil, err.Error(), http.StatusInternalServerError)
+		c.Err = model.NewAppError("Api4.requestCloudTrial", "api.cloud.app_error", nil, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	json, err := json.Marshal(changedSub)
 	if err != nil {
-		c.Err = model.NewAppError("Api4.requestTrial", "api.cloud.app_error", nil, err.Error(), http.StatusInternalServerError)
+		c.Err = model.NewAppError("Api4.requestCloudTrial", "api.cloud.app_error", nil, err.Error(), http.StatusInternalServerError)
 		return
 	}
 

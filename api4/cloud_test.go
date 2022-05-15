@@ -141,3 +141,49 @@ func Test_getCloudLimits(t *testing.T) {
 		require.Equal(t, *mockLimits.Messages.History, *limits.Messages.History)
 	})
 }
+
+func Test_requestTrial(t *testing.T) {
+	t.Run("cloudFree feature flag OFF returns error", func(t *testing.T) {
+		th := Setup(t).InitBasic()
+		defer th.TearDown()
+
+		os.Setenv("MM_FEATUREFLAGS_CLOUDFREE", "true")
+		defer os.Unsetenv("MM_FEATUREFLAGS_CLOUDFREE")
+		th.App.ReloadConfig()
+
+		th.Client.Login(th.BasicUser.Email, th.BasicUser.Password)
+
+		th.App.Srv().SetLicense(model.NewTestLicense("cloud"))
+
+		cloud := mocks.CloudInterface{}
+
+		subscription := &model.Subscription{
+			ID:         "MySubscriptionID",
+			CustomerID: "MyCustomer",
+			ProductID:  "SomeProductId",
+			AddOns:     []string{},
+			StartAt:    1000000000,
+			EndAt:      2000000000,
+			CreateAt:   1000000000,
+			Seats:      10,
+			DNS:        "some.dns.server",
+			IsPaidTier: "false",
+		}
+
+		cloud.Mock.On("GetSubscription", mock.Anything).Return(subscription, nil)
+		cloud.Mock.On("RequestCloudTrial", mock.Anything, mock.Anything).Return(subscription, nil)
+
+		cloudImpl := th.App.Srv().Cloud
+		defer func() {
+			th.App.Srv().Cloud = cloudImpl
+		}()
+		th.App.Srv().Cloud = &cloud
+
+		subscriptionChanged, r, err := th.SystemAdminClient.RequestCloudTrial()
+		t.Logf("\n\nresp %#v, \n\n r: %v\n\n, err: %v\n\n", subscriptionChanged, r, err)
+
+		// require.Error(t, err)
+		// require.Nil(t, subscriptionChanged)
+		// require.Equal(t, http.StatusInternalServerError, r.StatusCode, "Expected 500 Internal Server Error")
+	})
+}

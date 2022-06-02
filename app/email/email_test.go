@@ -234,7 +234,36 @@ func TestSendCloudTrialEndedEmail(t *testing.T) {
 	emailTo := "testclouduser@example.com"
 	emailToUsername := strings.Split(emailTo, "@")[0]
 
-	t.Run("SendCloudTrialEndedEmail", func(t *testing.T) {
+	// t.Run("SendCloudTrialEndedEmail", func(t *testing.T) {
+	// 	verifyMailbox := func(t *testing.T) {
+	// 		t.Helper()
+
+	// 		var resultsMailbox mail.JSONMessageHeaderInbucket
+	// 		err2 := mail.RetryInbucket(5, func() error {
+	// 			var err error
+	// 			resultsMailbox, err = mail.GetMailBox(emailTo)
+	// 			return err
+	// 		})
+	// 		if err2 != nil {
+	// 			t.Skipf("No email was received, maybe due load on the server: %v", err2)
+	// 		}
+
+	// 		require.Len(t, resultsMailbox, 1)
+	// 		require.Contains(t, resultsMailbox[0].To[0], emailTo, "Wrong To: recipient")
+	// 		resultsEmail, err := mail.GetMessageFromMailbox(emailTo, resultsMailbox[0].ID)
+	// 		require.NoError(t, err, "Could not get message from mailbox")
+	// 		require.Contains(t, resultsEmail.Body.Text, "Your free 14-day trial of Mattermost has ended", "Wrong received message %s", resultsEmail.Body.Text)
+	// 	}
+	// 	mail.DeleteMailBox(emailTo)
+
+	// 	err := th.service.SendCloudTrialEndedEmail(emailTo, emailToUsername, "June 23, 2200", th.BasicUser.Locale)
+	// 	require.NoError(t, err)
+
+	// 	verifyMailbox(t)
+	// })
+
+	t.Run("SendCloudTrialEndedEmailCloudFreeEnabled", func(t *testing.T) {
+
 		verifyMailbox := func(t *testing.T) {
 			t.Helper()
 
@@ -252,7 +281,7 @@ func TestSendCloudTrialEndedEmail(t *testing.T) {
 			require.Contains(t, resultsMailbox[0].To[0], emailTo, "Wrong To: recipient")
 			resultsEmail, err := mail.GetMessageFromMailbox(emailTo, resultsMailbox[0].ID)
 			require.NoError(t, err, "Could not get message from mailbox")
-			require.Contains(t, resultsEmail.Body.Text, "Your free 14-day trial of Mattermost has ended", "Wrong received message %s", resultsEmail.Body.Text)
+			require.Contains(t, resultsEmail.Body.Text, "Your free 30-days trial of Mattermost has ended", "Wrong received message %s", resultsEmail.Body.Text)
 		}
 		mail.DeleteMailBox(emailTo)
 

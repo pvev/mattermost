@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/mattermost/mattermost-server/v6/app"
 	"github.com/mattermost/mattermost-server/v6/app/users"
 	"github.com/mattermost/mattermost-server/v6/config"
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -22,6 +23,7 @@ import (
 )
 
 type TestHelper struct {
+	App         *app.App
 	service     *Service
 	configStore *config.Store
 	store       store.Store
@@ -91,7 +93,7 @@ func setupTestHelper(s store.Store, tb testing.TB) *TestHelper {
 
 	licenseFn := func() *model.License { return model.NewTestLicense() }
 
-	us, err := users.New(users.ServiceConfig{
+	us, err := app.users.New(app.users.ServiceConfig{
 		UserStore:    s.User(),
 		SessionStore: s.Session(),
 		OAuthStore:   s.OAuth(),

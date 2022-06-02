@@ -260,9 +260,17 @@ func (es *Service) SendCloudTrialEndWarningEmail(userEmail, name, trialEndDate, 
 	T := i18n.GetUserTranslations(locale)
 	subject := T("api.templates.cloud_trial_ending_email.subject")
 
+	fmt.Printf("\n\n *** me llaman \n\n ")
+
+	days := "14-day"
+	fmt.Printf("\n\n *** el config: %#v \n\n", es.config().FeatureFlags)
+	if es.config().FeatureFlags != nil && es.config().FeatureFlags.CloudFree {
+		days = "30-day"
+	}
+
 	data := es.NewEmailTemplateData(locale)
-	data.Props["Title"] = T("api.templates.cloud_trial_ending_email.title")
-	data.Props["SubTitle"] = T("api.templates.cloud_trial_ending_email.subtitle", map[string]interface{}{"Name": name, "TrialEnd": trialEndDate})
+	data.Props["Title"] = T("api.templates.cloud_trial_ending_email.title", map[string]interface{}{"Days": days})
+	data.Props["SubTitle"] = T("api.templates.cloud_trial_ending_email.subtitle", map[string]interface{}{"Name": name, "TrialEnd": trialEndDate, "Days": days})
 	data.Props["SiteURL"] = siteURL
 	data.Props["ButtonURL"] = fmt.Sprintf("%s/admin_console/billing/subscription?action=show_purchase_modal", siteURL)
 	data.Props["Button"] = T("api.templates.cloud_trial_ending_email.add_payment_method")
@@ -288,9 +296,17 @@ func (es *Service) SendCloudTrialEndedEmail(userEmail, name, locale, siteURL str
 	t := time.Now()
 	todayDate := fmt.Sprintf("%s %d, %d", t.Month(), t.Day(), t.Year())
 
+	fmt.Printf("\n\n *** me llaman \n\n ")
+
+	days := "14-day"
+	fmt.Printf("\n\n *** el config: %#v \n\n", es.config().FeatureFlags)
+	if es.config().FeatureFlags != nil && es.config().FeatureFlags.CloudFree {
+		days = "30-day"
+	}
+
 	data := es.NewEmailTemplateData(locale)
-	data.Props["Title"] = T("api.templates.cloud_trial_ended_email.title")
-	data.Props["SubTitle"] = T("api.templates.cloud_trial_ended_email.subtitle", map[string]interface{}{"Name": name, "TodayDate": todayDate})
+	data.Props["Title"] = T("api.templates.cloud_trial_ended_email.title", map[string]interface{}{"Days": days})
+	data.Props["SubTitle"] = T("api.templates.cloud_trial_ended_email.subtitle", map[string]interface{}{"Name": name, "TodayDate": todayDate, "Days": days})
 	data.Props["SiteURL"] = siteURL
 	data.Props["ButtonURL"] = fmt.Sprintf("%s/admin_console/billing/subscription", siteURL)
 	data.Props["Button"] = T("api.templates.cloud_trial_ended_email.start_subscription")
@@ -314,8 +330,14 @@ func (es *Service) SendCloudWelcomeEmail(userEmail, locale, teamInviteID, workSp
 	T := i18n.GetUserTranslations(locale)
 	subject := T("api.templates.cloud_welcome_email.subject")
 
+	days := "14"
+
+	if es.config().FeatureFlags != nil && es.config().FeatureFlags.CloudFree {
+		days = "30"
+	}
+
 	data := es.NewEmailTemplateData(locale)
-	data.Props["Title"] = T("api.templates.cloud_welcome_email.title", map[string]interface{}{"WorkSpace": workSpaceName})
+	data.Props["Title"] = T("api.templates.cloud_welcome_email.title", map[string]interface{}{"WorkSpace": workSpaceName, "Days": days})
 	data.Props["SubTitle"] = T("api.templates.cloud_welcome_email.subtitle")
 	data.Props["SubTitleInfo"] = T("api.templates.cloud_welcome_email.subtitle_info")
 	data.Props["Info"] = T("api.templates.cloud_welcome_email.info")

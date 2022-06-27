@@ -323,6 +323,32 @@ func Test_validateBusinessEmail(t *testing.T) {
 	})
 }
 
+func Test_validateWorkspaceBusinessEmail(t *testing.T) {
+	t.Run("validate the email used to create the workspace", func(t *testing.T) {
+		th := Setup(t).InitBasic()
+		defer th.TearDown()
+
+		th.Client.Login(th.BasicUser.Email, th.BasicUser.Password)
+
+		th.App.Srv().SetLicense(model.NewTestLicense("cloud"))
+
+		// cloud := mocks.CloudInterface{}
+
+		// resp := httptest.NewRecorder()
+
+		// cloud.Mock.On("ValidateBusinessEmail", mock.Anything).Return(resp, nil)
+
+		// cloudImpl := th.App.Srv().Cloud
+		// defer func() {
+		// 	th.App.Srv().Cloud = cloudImpl
+		// }()
+		// th.App.Srv().Cloud = &cloud
+
+		_, err := th.Client.ValidateWorkspaceBusinessEmail()
+		require.Error(t, err)
+	})
+}
+
 func TestGetCloudProducts(t *testing.T) {
 	cloudProducts := []*model.Product{
 		{

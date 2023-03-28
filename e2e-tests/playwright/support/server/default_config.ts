@@ -63,8 +63,8 @@ const onPremServerConfig = (): Partial<TestAdminConfig> => {
     };
 };
 
-// Should be based only from the generated default config from ./server via "make config-reset"
-// Based on v7.10 server
+// Should be based only from the generated default config from mattermost-server via "make config-reset"
+// Based on v7.9 server
 const defaultServerConfig: AdminConfig = {
     ServiceSettings: {
         SiteURL: '',
@@ -623,7 +623,7 @@ const defaultServerConfig: AdminConfig = {
                 Enable: true,
             },
             focalboard: {
-                Enable: true,
+                Enable: false,
             },
             playbooks: {
                 Enable: true,
@@ -672,7 +672,6 @@ const defaultServerConfig: AdminConfig = {
         BoardsDataRetention: false,
         NormalizeLdapDNs: false,
         EnableInactivityCheckJob: true,
-        UseCaseOnboarding: true,
         GraphQL: false,
         InsightsEnabled: true,
         CommandPalette: false,
@@ -681,6 +680,7 @@ const defaultServerConfig: AdminConfig = {
         PostPriority: true,
         WysiwygEditor: false,
         PeopleProduct: false,
+        AnnualSubscription: false,
         ReduceOnBoardingTaskList: false,
         OnboardingAutoShowLinkedBoard: false,
         ThreadsEverywhere: false,

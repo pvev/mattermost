@@ -198,10 +198,23 @@ export const suitePluginIds = {
      */
     focalboard: 'focalboard',
 
+    /**
+     * @info This constant value only acts as the term used to refer to the installed integrations in a workspace.
+     */
+    integrations: 'integrations',
+
     apps: 'com.mattermost.apps',
     calls: 'com.mattermost.calls',
     nps: 'com.mattermost.nps',
     channelExport: 'com.mattermost.plugin-channel-export',
+};
+
+export const integrationIds = {
+    github: 'github',
+    gitlab: 'gitlab',
+    zoom: 'zoom',
+    jira: 'jira',
+    todo: 'todo',
 };
 
 export const ActionTypes = keyMirror({

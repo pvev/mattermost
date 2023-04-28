@@ -266,6 +266,17 @@
     }
 }
 
+@mixin button-as-link {
+    @include link;
+    background: transparent;
+
+    &:hover:not(.disabled) {
+        border: none;
+        background: none;
+        color: var(--button-bg);
+    }
+}
+
 @mixin icon-button {
     display: flex;
     align-items: center;

@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {FormattedDate, FormattedMessage} from 'react-intl';
+import {FormattedDate, FormattedMessage, injectIntl, IntlShape, WrappedComponentProps} from 'react-intl';
 
 import React from 'react';
 
@@ -28,8 +28,9 @@ import * as Utils from 'utils/utils';
 
 import AddMembersButton from './add_members_button';
 import PluggableIntroButtons from './pluggable_intro_buttons';
+import {ChannelFromTemplateIntro} from './channel_from_template_intro_message';
 
-type Props = {
+type Props = WrappedComponentProps & {
     currentUserId: string;
     channel: Channel;
     fullWidth: boolean;
@@ -48,13 +49,15 @@ type Props = {
     };
 }
 
-export default class ChannelIntroMessage extends React.PureComponent<Props> {
+class ChannelIntroMessage extends React.PureComponent<Props> {
     componentDidMount() {
         if (!this.props.stats?.total_users_count) {
             this.props.actions.getTotalUsersStats();
         }
     }
     render() {
+        const {intl} = this.props;
+
         const {
             currentUserId,
             channel,
@@ -85,10 +88,54 @@ export default class ChannelIntroMessage extends React.PureComponent<Props> {
         } else if (channel.name === Constants.OFFTOPIC_CHANNEL) {
             return createOffTopicIntroMessage(channel, centeredIntro, stats, usersLimit);
         } else if (channel.type === Constants.OPEN_CHANNEL || channel.type === Constants.PRIVATE_CHANNEL) {
+            if (true) {
+                return createIntroMessageToChannelFromTemplate(channel, stats, usersLimit, intl);
+            }
             return createStandardIntroMessage(channel, centeredIntro, stats, usersLimit, locale, creatorName);
         }
         return null;
     }
+}
+
+export default injectIntl(ChannelIntroMessage);
+
+function createIntroMessageToChannelFromTemplate(channel: Channel, stats: any, usersLimit: number, intl: IntlShape) {
+    const totalUsers = stats.total_users_count;
+
+    const mockData = {
+        boards: [
+            {name: 'Board 1', id: 'board_1'},
+            {name: 'Board 2', id: 'board_2'},
+            {name: 'Board 3', id: 'board_3'},
+        ],
+        playbooks: [
+            {name: 'Playbook 1', id: 'playbook_1'},
+            {name: 'Playbook 2', id: 'playbook_2'},
+        ],
+        integrations: [
+            {id: 'jira', name: 'Jira', installed: true},
+            {id: 'zoom', name: 'Zoom', installed: false},
+            {id: 'github', name: 'GitHub', installed: true},
+            {id: 'todo', name: 'Todo', installed: false},
+            {id: 'gitlab', name: 'Gitlab', installed: true},
+        ],
+    };
+    const channelInviteButton = (
+        <AddMembersButton
+            totalUsers={totalUsers}
+            usersLimit={usersLimit}
+            channel={channel}
+            customText={intl.formatMessage({id: 'channel_from_template.add_members', defaultMessage: 'Invite teammates'})}
+            onlyButton={true}
+        />
+    );
+    return (
+        <ChannelFromTemplateIntro
+            templateItems={mockData}
+            channel={channel}
+            channelInvite={channelInviteButton}
+        />
+    );
 }
 
 function createGMIntroMessage(channel: Channel, centeredIntro: string, profiles: UserProfileRedux[], currentUserId: string) {

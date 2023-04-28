@@ -1,0 +1,83 @@
+@import 'utils/mixins';
+
+.ChannelFromTemplateIntro {
+    display: flex;
+    flex-direction: column;
+    padding: 32px;
+    gap: 8px;
+    min-height: 348px;
+    background: rgba(var(--button-bg-rgb), 0.08);
+    border-radius: 12px;
+    margin: 16px 19px 16px 24px;
+
+    &__header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 24px;
+
+        &--image {
+            margin-right: 16px;
+            border-radius: 32px;
+            width: 64px;
+            height: 64px;
+            background-color: rgba(var(--center-channel-color-rgb), 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        &--text {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        &--textTtitle {
+            font-weight: 600;
+            font-size: 25px;
+            line-height: 30px;
+            color: var(--center-channel-text);
+            margin: 0;
+        }
+
+        &--textSubtitle {
+            font-weight: 400;
+            font-size: 14px;
+            line-height: 20px;
+            color: rgba(var(--center-channel-text-rgb), 0.72);
+            margin: 0;
+
+            .AddMembersButton {
+                display: inline-block;
+
+                .titleAndButton {
+                    margin-left: 0 !important;
+                    padding: 0;
+                    button {
+                        @include button-as-link;
+                        padding: 0;
+                        font-size: 14px;
+                        font-weight: 400;
+                        &:hover {
+                            text-decoration: none !important;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    &__body {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+
+        .TemplateList {
+            margin-right: 24px;
+            margin-top: 24px;
+
+            &:last-child {
+                margin-right: 0;
+            }
+        }
+    }
+}

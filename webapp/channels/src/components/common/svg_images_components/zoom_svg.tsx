@@ -3,10 +3,15 @@
 
 import React from 'react';
 
-export default () => (
+type SvgProps = {
+    width: number;
+    height: number;
+};
+
+const ZoomSvg = (props: SvgProps) => (
     <svg
-        width='41'
-        height='41'
+        width={props.width ? props.width.toString() : '40'}
+        height={props.height ? props.height.toString() : '41'}
         viewBox='0 0 41 41'
         fill='none'
         xmlns='http://www.w3.org/2000/svg'
@@ -39,3 +44,5 @@ export default () => (
         </defs>
     </svg>
 );
+
+export default ZoomSvg;

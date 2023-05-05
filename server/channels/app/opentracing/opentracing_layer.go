@@ -4083,7 +4083,7 @@ func (a *OpenTracingAppLayer) ExecuteCommand(c request.CTX, args *model.CommandA
 	return resultVar0, resultVar1
 }
 
-func (a *OpenTracingAppLayer) ExecuteWorkTemplate(c *request.Context, wtcr *worktemplates.ExecutionRequest, installPlugins bool) (*app.WorkTemplateExecutionResult, *model.AppError) {
+func (a *OpenTracingAppLayer) ExecuteWorkTemplate(c *request.Context, wtcr *worktemplates.ExecutionRequest, installPlugins bool) (*model.WorkTemplateExecutionResult, *model.AppError) {
 	origCtx := a.ctx
 	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.ExecuteWorkTemplate")
 
@@ -16592,6 +16592,28 @@ func (a *OpenTracingAppLayer) SetTeamIconFromMultiPartFile(teamID string, file m
 	return resultVar0
 }
 
+func (a *OpenTracingAppLayer) SetWorkTemplateResult(channelId string, workTemplateResult *model.WorkTemplateResult) *model.AppError {
+	origCtx := a.ctx
+	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.SetWorkTemplateResult")
+
+	a.ctx = newCtx
+	a.app.Srv().Store().SetContext(newCtx)
+	defer func() {
+		a.app.Srv().Store().SetContext(origCtx)
+		a.ctx = origCtx
+	}()
+
+	defer span.Finish()
+	resultVar0 := a.app.SetWorkTemplateResult(channelId, workTemplateResult)
+
+	if resultVar0 != nil {
+		span.LogFields(spanlog.Error(resultVar0))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0
+}
+
 func (a *OpenTracingAppLayer) SlackImport(c *request.Context, fileData multipart.File, fileSize int64, teamID string) (*model.AppError, *bytes.Buffer) {
 	origCtx := a.ctx
 	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.SlackImport")
@@ -16649,6 +16671,28 @@ func (a *OpenTracingAppLayer) SoftDeleteTeam(teamID string) *model.AppError {
 
 	defer span.Finish()
 	resultVar0 := a.app.SoftDeleteTeam(teamID)
+
+	if resultVar0 != nil {
+		span.LogFields(spanlog.Error(resultVar0))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0
+}
+
+func (a *OpenTracingAppLayer) StoreWorkTemplateResults(channelId string, workTemplateResult *model.WorkTemplateResult) *model.AppError {
+	origCtx := a.ctx
+	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.StoreWorkTemplateResults")
+
+	a.ctx = newCtx
+	a.app.Srv().Store().SetContext(newCtx)
+	defer func() {
+		a.app.Srv().Store().SetContext(origCtx)
+		a.ctx = origCtx
+	}()
+
+	defer span.Finish()
+	resultVar0 := a.app.StoreWorkTemplateResults(channelId, workTemplateResult)
 
 	if resultVar0 != nil {
 		span.LogFields(spanlog.Error(resultVar0))

@@ -368,6 +368,8 @@ type AppIface interface {
 	// UpdateBotOwner changes a bot's owner to the given value.
 	UpdateBotOwner(botUserId, newOwnerId string) (*model.Bot, *model.AppError)
 	// UpdateChannel updates a given channel by its Id. It also publishes the CHANNEL_UPDATED event.
+	SetWorkTemplateResult(channelId string, workTemplateResult *model.WorkTemplateResult) *model.AppError
+	// UpdateChannel updates a given channel by its Id. It also publishes the CHANNEL_UPDATED event.
 	UpdateChannel(c request.CTX, channel *model.Channel) (*model.Channel, *model.AppError)
 	// UpdateChannelScheme saves the new SchemeId of the channel passed.
 	UpdateChannelScheme(c request.CTX, channel *model.Channel) (*model.Channel, *model.AppError)
@@ -561,7 +563,7 @@ type AppIface interface {
 	DownloadFromURL(downloadURL string) ([]byte, error)
 	EnableUserAccessToken(token *model.UserAccessToken) *model.AppError
 	EnvironmentConfig(filter func(reflect.StructField) bool) map[string]any
-	ExecuteWorkTemplate(c *request.Context, wtcr *worktemplates.ExecutionRequest, installPlugins bool) (*WorkTemplateExecutionResult, *model.AppError)
+	ExecuteWorkTemplate(c *request.Context, wtcr *worktemplates.ExecutionRequest, installPlugins bool) (*model.WorkTemplateExecutionResult, *model.AppError)
 	ExportPermissions(w io.Writer) error
 	ExtractContentFromFileInfo(fileInfo *model.FileInfo) error
 	FetchSamlMetadataFromIdp(url string) ([]byte, *model.AppError)
@@ -1095,6 +1097,7 @@ type AppIface interface {
 	SoftDeleteAllTeamsExcept(teamID string) *model.AppError
 	SoftDeleteTeam(teamID string) *model.AppError
 	Srv() *Server
+	StoreWorkTemplateResults(channelId string, workTemplateResult *model.WorkTemplateResult) *model.AppError
 	SubmitInteractiveDialog(c *request.Context, request model.SubmitDialogRequest) (*model.SubmitDialogResponse, *model.AppError)
 	SwitchEmailToLdap(email, password, code, ldapLoginId, ldapPassword string) (string, *model.AppError)
 	SwitchEmailToOAuth(w http.ResponseWriter, r *http.Request, email, password, code, service string) (string, *model.AppError)

@@ -296,6 +296,8 @@ type ChannelStore interface {
 	// GroupSyncedChannelCount returns the count of non-deleted group-constrained channels.
 	GroupSyncedChannelCount() (int64, error)
 
+	SetWorkTemplateResult(channelId string, workTemplateResult *model.WorkTemplateResult) error
+
 	SetShared(channelId string, shared bool) error
 	// GetTeamForChannel returns the team for a given channelID.
 	GetTeamForChannel(channelID string) (*model.Team, error)

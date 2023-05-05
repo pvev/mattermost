@@ -499,6 +499,14 @@ func (a *App) handleCreationEvent(c request.CTX, userID, otherUserID string, cha
 	a.Publish(message)
 }
 
+func (a *App) StoreWorkTemplateResults(channelId string, workTemplateResult *model.WorkTemplateResult) *model.AppError {
+	err := a.SetWorkTemplateResult(channelId, workTemplateResult)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (a *App) createDirectChannel(c request.CTX, userID string, otherUserID string, channelOptions ...model.ChannelOption) (*model.Channel, *model.AppError) {
 	users, err := a.Srv().Store().User().GetMany(context.Background(), []string{userID, otherUserID})
 	if err != nil {
@@ -746,6 +754,27 @@ func (a *App) UpdateChannel(c request.CTX, channel *model.Channel) (*model.Chann
 	a.Publish(messageWs)
 
 	return channel, nil
+}
+
+// UpdateChannel updates a given channel by its Id. It also publishes the CHANNEL_UPDATED event.
+func (a *App) SetWorkTemplateResult(channelId string, workTemplateResult *model.WorkTemplateResult) *model.AppError {
+	fmt.Printf("\n\n\n ******* update channel  %#v \n\n %#v \n\n\n", channelId, workTemplateResult)
+
+	err := a.Srv().Store().Channel().SetWorkTemplateResult(channelId, workTemplateResult)
+	if err != nil {
+		var appErr *model.AppError
+		var invErr *store.ErrInvalidInput
+		switch {
+		case errors.As(err, &invErr):
+			return model.NewAppError("UpdateChannel", "app.channel.update.bad_id", nil, "", http.StatusBadRequest).Wrap(err)
+		case errors.As(err, &appErr):
+			return appErr
+		default:
+			return model.NewAppError("UpdateChannel", "app.channel.update_channel.internal_error", nil, "", http.StatusInternalServerError).Wrap(err)
+		}
+	}
+
+	return nil
 }
 
 // CreateChannelScheme creates a new Scheme of scope channel and assigns it to the channel.

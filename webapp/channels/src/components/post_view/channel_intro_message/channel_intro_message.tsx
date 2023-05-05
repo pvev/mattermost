@@ -88,6 +88,7 @@ class ChannelIntroMessage extends React.PureComponent<Props> {
         } else if (channel.name === Constants.OFFTOPIC_CHANNEL) {
             return createOffTopicIntroMessage(channel, centeredIntro, stats, usersLimit);
         } else if (channel.type === Constants.OPEN_CHANNEL || channel.type === Constants.PRIVATE_CHANNEL) {
+            debugger;
             if (true) {
                 return createIntroMessageToChannelFromTemplate(channel, stats, usersLimit, intl);
             }

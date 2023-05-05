@@ -48,6 +48,7 @@ export type Channel = {
     shared?: boolean;
     props?: Record<string, any>;
     policy_id?: string | null;
+    worktemplateresult?: string;
 };
 
 export type ServerChannel = Channel & {

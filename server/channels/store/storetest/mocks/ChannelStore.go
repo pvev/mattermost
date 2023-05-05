@@ -2459,6 +2459,20 @@ func (_m *ChannelStore) SetShared(channelId string, shared bool) error {
 	return r0
 }
 
+// SetWorkTemplateResult provides a mock function with given fields: channelId, workTemplateResult
+func (_m *ChannelStore) SetWorkTemplateResult(channelId string, workTemplateResult *model.WorkTemplateResult) error {
+	ret := _m.Called(channelId, workTemplateResult)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, *model.WorkTemplateResult) error); ok {
+		r0 = rf(channelId, workTemplateResult)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Update provides a mock function with given fields: channel
 func (_m *ChannelStore) Update(channel *model.Channel) (*model.Channel, error) {
 	ret := _m.Called(channel)

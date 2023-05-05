@@ -3,6 +3,12 @@
 
 package model
 
+import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
+)
+
 const (
 	// used to assign the work template id to newly created channels
 	WorkTemplateIDChannelProp = "work_template_id"
@@ -83,4 +89,44 @@ type WorkTemplateContent struct {
 type WorkTemplateExecutionResult struct {
 	ChannelWithPlaybookIDs []string `json:"channel_with_playbook_ids"`
 	ChannelIDs             []string `json:"channel_ids"`
+}
+
+// TODO: store more information about each item, like for plugins, the state or whatever
+type WorkTemplateResult struct {
+	Playbooks    []string `json:"playbooks,omitempty"`
+	Boards       []string `json:"boards,omitempty"`
+	Integrations []string `json:"integrations,omitempty"`
+}
+
+func (m *WorkTemplateResult) Scan(value any) error {
+	if value == nil {
+		return nil
+	}
+
+	buf, ok := value.([]byte)
+	if ok {
+		return json.Unmarshal(buf, m)
+	}
+
+	str, ok := value.(string)
+	if ok {
+		return json.Unmarshal([]byte(str), m)
+	}
+
+	return errors.New("received value is neither a byte slice nor string")
+}
+
+// Value converts StringInterface to database value
+func (si *WorkTemplateResult) Value() (driver.Value, error) {
+	j, err := json.Marshal(si)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(j) > maxPropSizeBytes {
+		return nil, ErrMaxPropSizeExceeded
+	}
+
+	// non utf8 characters are not supported https://mattermost.atlassian.net/browse/MM-41066
+	return string(j), err
 }

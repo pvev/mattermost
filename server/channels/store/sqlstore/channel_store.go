@@ -4285,6 +4285,31 @@ func (s SqlChannelStore) GroupSyncedChannelCount() (int64, error) {
 	return count, nil
 }
 
+func (s SqlChannelStore) SetWorkTemplateResult(channelId string, workTemplateResult *model.WorkTemplateResult) error {
+	squery, args, err := s.getQueryBuilder().
+		Update("Channels").
+		Set("WorkTemplateResult", workTemplateResult).
+		Where(sq.Eq{"Id": channelId}).
+		ToSql()
+	if err != nil {
+		return errors.Wrap(err, "channel_set_worktemplateresult_tosql")
+	}
+
+	result, err := s.GetMasterX().Exec(squery, args...)
+	if err != nil {
+		return errors.Wrap(err, "failed to update `WorkTemplateResult` for Channels")
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return errors.Wrap(err, "failed to determine rows affected")
+	}
+	if count == 0 {
+		return fmt.Errorf("id not found: %s", channelId)
+	}
+	return nil
+}
+
 // SetShared sets the Shared flag true/false
 func (s SqlChannelStore) SetShared(channelId string, shared bool) error {
 	squery, args, err := s.getQueryBuilder().

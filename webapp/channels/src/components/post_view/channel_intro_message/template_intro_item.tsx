@@ -19,6 +19,9 @@ interface Props {
     integrationInstalled?: boolean | undefined;
 }
 
+const ICON_SIZE = 18;
+const INTEGRATION_ICON_SIZE = 24;
+
 const TemplateItem = ({svgImage, title, itemType, integrationInstalled}: Props) => {
     const {formatMessage} = useIntl();
 
@@ -27,13 +30,12 @@ const TemplateItem = ({svgImage, title, itemType, integrationInstalled}: Props) 
     }
 
     const isIntegration = itemType === ITEMS.integrations;
+    const iconSize = isIntegration ? INTEGRATION_ICON_SIZE : ICON_SIZE;
 
     return (
         <div className='TemplateItem'>
             <div className='TemplateItem__image'>
-                <picture>
-                    {React.createElement(svgImage, {width: 18, height: 18})}
-                </picture>
+                {React.createElement(svgImage, {width: iconSize, height: iconSize})}
             </div>
             <div className='TemplateItem__title'>{title}</div>
             {isIntegration && (

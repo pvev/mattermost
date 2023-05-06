@@ -34,6 +34,11 @@
     }
 
     &__button {
-        @include secondary-button;
+        @include tertiary-button;
+        font-weight: 600;
+        font-size: 11px;
+        line-height: 16px;
+        padding: 4px 10px;
+        height: 24px;
     }
 }

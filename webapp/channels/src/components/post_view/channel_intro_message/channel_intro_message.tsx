@@ -89,7 +89,7 @@ class ChannelIntroMessage extends React.PureComponent<Props> {
             return createOffTopicIntroMessage(channel, centeredIntro, stats, usersLimit);
         } else if (channel.type === Constants.OPEN_CHANNEL || channel.type === Constants.PRIVATE_CHANNEL) {
             if (channel.worktemplateresult) {
-                return createIntroMessageToChannelFromTemplate(channel, stats, usersLimit, intl);
+                return createIntroMessageToChannelFromTemplate(channel, stats, usersLimit, intl, creatorName, locale);
             }
             return createStandardIntroMessage(channel, centeredIntro, stats, usersLimit, locale, creatorName);
         }
@@ -99,8 +99,17 @@ class ChannelIntroMessage extends React.PureComponent<Props> {
 
 export default injectIntl(ChannelIntroMessage);
 
-function createIntroMessageToChannelFromTemplate(channel: Channel, stats: any, usersLimit: number, intl: IntlShape) {
+function createIntroMessageToChannelFromTemplate(channel: Channel, stats: any, usersLimit: number, intl: IntlShape, creatorName: string, locale: string) {
     const totalUsers = stats.total_users_count;
+
+    const creationDate = (
+        <FormattedDate
+            value={channel.create_at}
+            month={getMonthLong(locale)}
+            day='2-digit'
+            year='numeric'
+        />
+    );
 
     const mockData = {
         boards: [
@@ -134,6 +143,9 @@ function createIntroMessageToChannelFromTemplate(channel: Channel, stats: any, u
             templateItems={mockData}
             channel={channel}
             channelInvite={channelInviteButton}
+            creatorName={creatorName}
+            createdAt={creationDate}
+            isPrivate={channel.type === Constants.PRIVATE_CHANNEL}
         />
     );
 }

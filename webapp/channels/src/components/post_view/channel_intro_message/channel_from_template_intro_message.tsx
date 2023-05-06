@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage, useIntl} from 'react-intl';
 import TemplateList from './template_intro_list';
 
 import Wrench from 'components/common/svg_images_components/wrench_svg';
@@ -21,6 +21,9 @@ type ChannelFromTemplateIntroProps = {
     };
     channel: Channel;
     channelInvite: JSX.Element;
+    creatorName?: string;
+    createdAt: JSX.Element;
+    isPrivate: boolean;
 };
 
 export const ITEMS = Object.freeze({
@@ -37,8 +40,29 @@ export const INTEGRATIONS = Object.freeze({
     todo: integrationIds.todo,
 });
 
-export const ChannelFromTemplateIntro = ({templateItems, channel, channelInvite}: ChannelFromTemplateIntroProps) => {
+export const ChannelFromTemplateIntro = ({
+    templateItems,
+    channel,
+    channelInvite,
+    creatorName,
+    createdAt,
+    isPrivate,
+}: ChannelFromTemplateIntroProps) => {
     const {boards, playbooks, integrations} = templateItems;
+    const {formatMessage} = useIntl();
+
+    const publicOrPrivate = isPrivate ? formatMessage({id: 'channel_from_template.private', defaultMessage: 'Private'}) : formatMessage({id: 'channel_from_template.public', defaultMessage: 'Public'});
+    const createdBy = creatorName ? `by ${creatorName} ` : '';
+
+    const subtitleStart = formatMessage({
+        id: 'channel_from_template.subtitleStart',
+        defaultMessage: '{publicOrPrivate} channel created {createdBy} on {createdAt}. '}, {publicOrPrivate, createdBy, createdAt},
+    );
+
+    const subtitleEnd = formatMessage({
+        id: 'channel_from_template.subtitleEnd',
+        defaultMessage: '{channelInvite} to message, meet, and screen share within fully secure, searchable channels.'}, {channelInvite},
+    );
 
     return (
         <div className='ChannelFromTemplateIntro'>
@@ -60,11 +84,9 @@ export const ChannelFromTemplateIntro = ({templateItems, channel, channelInvite}
                         />
                     </h2>
                     <p className='ChannelFromTemplateIntro__header--textSubtitle'>
-                        <FormattedMessage
-                            id='channel_from_template.subtitle'
-                            defaultMessage='{channelInvite} to message, meet, and screen share within fully secure, searchable channels.'
-                            values={{channelInvite}}
-                        />
+                        <i className='icon icon-globe'/>
+                        {subtitleStart}
+                        {subtitleEnd}
                     </p>
                 </div>
             </div>

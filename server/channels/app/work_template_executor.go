@@ -23,7 +23,7 @@ import (
 )
 
 type WorkTemplateExecutor interface {
-	CreatePlaybook(c *request.Context, wtcr *worktemplates.ExecutionRequest, playbook *model.WorkTemplatePlaybook, channel model.WorkTemplateChannel) (string, error)
+	CreatePlaybook(c *request.Context, wtcr *worktemplates.ExecutionRequest, playbook *model.WorkTemplatePlaybook, channel model.WorkTemplateChannel) (*playbookRunCreateResponse, error)
 	CreateChannel(c *request.Context, wtcr *worktemplates.ExecutionRequest, cChannel *model.WorkTemplateChannel) (string, error)
 	CreateBoard(c *request.Context, wtcr *worktemplates.ExecutionRequest, cBoard *model.WorkTemplateBoard, linkToChannelID string) (string, error)
 	InstallPlugin(c *request.Context, wtcr *worktemplates.ExecutionRequest, cIntegration *model.WorkTemplateIntegration, sendToChannelID string) error
@@ -37,7 +37,7 @@ func (e *appWorkTemplateExecutor) CreatePlaybook(
 	c *request.Context,
 	wtcr *worktemplates.ExecutionRequest,
 	playbook *model.WorkTemplatePlaybook,
-	channel model.WorkTemplateChannel) (string, error) {
+	channel model.WorkTemplateChannel) (*playbookRunCreateResponse, error) {
 	// determine playbook name
 	name := playbook.Name
 	if wtcr.Name != "" {
@@ -47,7 +47,7 @@ func (e *appWorkTemplateExecutor) CreatePlaybook(
 	// get the correct playbook pbTemplate
 	pbTemplate, err := wtcr.FindPlaybookTemplate(playbook.Template)
 	if err != nil {
-		return "", fmt.Errorf("unable to find playbook template: %w", err)
+		return nil, fmt.Errorf("unable to find playbook template: %w", err)
 	}
 
 	pbTemplate.TeamID = wtcr.TeamID
@@ -56,19 +56,19 @@ func (e *appWorkTemplateExecutor) CreatePlaybook(
 	pbTemplate.CreatePublicPlaybookRun = wtcr.Visibility == model.WorkTemplateVisibilityPublic
 	data, err := json.Marshal(pbTemplate)
 	if err != nil {
-		return "", fmt.Errorf("unable to marshal playbook template: %w", err)
+		return nil, fmt.Errorf("unable to marshal playbook template: %w", err)
 	}
 
 	resp, appErr := e.app.doPluginRequest(c, http.MethodPost, "/plugins/playbooks/api/v0/playbooks", nil, data)
 	if appErr != nil {
-		return "", fmt.Errorf("unable to create playbook: %w", appErr)
+		return nil, fmt.Errorf("unable to create playbook: %w", appErr)
 	}
 	defer resp.Body.Close()
 
 	pbcResp := playbookCreateResponse{}
 	err = json.NewDecoder(resp.Body).Decode(&pbcResp)
 	if err != nil {
-		return "", fmt.Errorf("unable to decode playbook create response: %w", err)
+		return nil, fmt.Errorf("unable to decode playbook create response: %w", err)
 	}
 
 	runName := channel.Name
@@ -82,26 +82,26 @@ func (e *appWorkTemplateExecutor) CreatePlaybook(
 		PlaybookID:  pbcResp.ID,
 	})
 	if err != nil {
-		return "", fmt.Errorf("unable to marshal playbook run create request: %w", err)
+		return nil, fmt.Errorf("unable to marshal playbook run create request: %w", err)
 	}
 	resp, appErr = e.app.doPluginRequest(c, http.MethodPost, "/plugins/playbooks/api/v0/runs", nil, data)
 	if appErr != nil {
-		return "", fmt.Errorf("unable to create playbook run: %w", appErr)
+		return nil, fmt.Errorf("unable to create playbook run: %w", appErr)
 	}
 	defer resp.Body.Close()
 	pbrResp := playbookRunCreateResponse{}
 	err = json.NewDecoder(resp.Body).Decode(&pbrResp)
 	if err != nil {
-		return "", fmt.Errorf("unable to decode playbook run create response: %w", err)
+		return nil, fmt.Errorf("unable to decode playbook run create response: %w", err)
 	}
 
 	// using pbrResp.ChannelID, update the channel to add metadata
 	dbChannel, err := e.app.Srv().Store().Channel().Get(pbrResp.ChannelID, false)
 	if err != nil {
-		return "", fmt.Errorf("unable to find channel: %w", err)
+		return nil, fmt.Errorf("unable to find channel: %w", err)
 	}
 	if dbChannel == nil {
-		return "", fmt.Errorf("channel not found")
+		return nil, fmt.Errorf("channel not found")
 	}
 	dbChannel.AddProp(model.WorkTemplateIDChannelProp, wtcr.WorkTemplate.ID)
 	_, err = e.app.Srv().Store().Channel().Update(dbChannel)
@@ -109,7 +109,7 @@ func (e *appWorkTemplateExecutor) CreatePlaybook(
 		e.app.Srv().Log().Error("Failed to update playbook channel metadata", mlog.Err(err))
 	}
 
-	return pbrResp.ChannelID, nil
+	return &pbrResp, nil
 }
 
 func (e *appWorkTemplateExecutor) CreateChannel(

@@ -52,7 +52,7 @@ func (a *App) GetWorkTemplates(category string, featureFlags map[string]string, 
 	return enabledTemplates, nil
 }
 
-func (a *App) ExecuteWorkTemplate(c *request.Context, wtcr *worktemplates.ExecutionRequest, installPlugins bool) (*model.WorkTemplateExecutionResult, *model.AppError) {
+func (a *App) ExecuteWorkTemplate(c *request.Context, wtcr *worktemplates.ExecutionRequest, installPlugins bool) (*model.WorkTemplateChannelsExecutionResult, *model.AppError) {
 	e := &appWorkTemplateExecutor{app: a}
 	return a.executeWorkTemplate(c, wtcr, e, installPlugins)
 }
@@ -62,8 +62,8 @@ func (a *App) executeWorkTemplate(
 	wtcr *worktemplates.ExecutionRequest,
 	e WorkTemplateExecutor,
 	installPlugins bool,
-) (*model.WorkTemplateExecutionResult, *model.AppError) {
-	res := &model.WorkTemplateExecutionResult{
+) (*model.WorkTemplateChannelsExecutionResult, *model.AppError) {
+	res := &model.WorkTemplateChannelsExecutionResult{
 		ChannelWithPlaybookIDs: []string{},
 		ChannelIDs:             []string{},
 	}
@@ -95,11 +95,7 @@ func (a *App) executeWorkTemplate(
 		}
 	}
 
-	workTemplateResult := &model.WorkTemplateResult{
-		Playbooks:    []string{},
-		Boards:       []string{},
-		Integrations: []string{},
-	}
+	workTemplateResult := &model.WorkTemplateResult{}
 
 	firstChannelId := ""
 	channelIDByWorkTemplateID := map[string]string{}
@@ -118,18 +114,22 @@ func (a *App) executeWorkTemplate(
 			return res, model.NewAppError("ExecuteWorkTemplate", "app.worktemplates.execute_work_template.playbooks.find_channel_error", nil, "no associated channel found for playbook", http.StatusInternalServerError)
 		}
 
-		workTemplateResult.Playbooks = append(workTemplateResult.Playbooks, cPlaybook.ID)
-
-		channelID, err := e.CreatePlaybook(c, wtcr, cPlaybook, *associatedChannel)
+		pbRunCreateResponse, err := e.CreatePlaybook(c, wtcr, cPlaybook, *associatedChannel)
 		if err != nil {
 			return res, model.NewAppError("ExecuteWorkTemplate", "app.worktemplates.execute_work_template.playbooks.create_error", nil, "", http.StatusInternalServerError).Wrap(err)
 		}
 
 		if firstChannelId == "" {
-			firstChannelId = channelID
+			firstChannelId = pbRunCreateResponse.ChannelID
 		}
-		res.ChannelWithPlaybookIDs = append(res.ChannelWithPlaybookIDs, channelID)
-		channelIDByWorkTemplateID[associatedChannel.ID] = channelID
+		res.ChannelWithPlaybookIDs = append(res.ChannelWithPlaybookIDs, pbRunCreateResponse.ChannelID)
+		channelIDByWorkTemplateID[associatedChannel.ID] = pbRunCreateResponse.ChannelID
+
+		tmpPlaybook := model.PlaybookData{
+			Id:   pbRunCreateResponse.ID,
+			Name: cPlaybook.Name,
+		}
+		workTemplateResult.Playbooks = append(workTemplateResult.Playbooks, tmpPlaybook)
 	}
 
 	// loop through all channels
@@ -165,7 +165,11 @@ func (a *App) executeWorkTemplate(
 		if err != nil {
 			return res, model.NewAppError("ExecuteWorkTemplate", "app.worktemplates.execute_work_template.boards.create_error", nil, "", http.StatusInternalServerError).Wrap(err)
 		}
-		workTemplateResult.Boards = append(workTemplateResult.Boards, boardId)
+		tmpBoard := model.BoardData{
+			Id:   boardId,
+			Name: cBoard.Name,
+		}
+		workTemplateResult.Boards = append(workTemplateResult.Boards, tmpBoard)
 	}
 
 	if installPlugins {

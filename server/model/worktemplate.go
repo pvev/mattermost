@@ -86,16 +86,26 @@ type WorkTemplateContent struct {
 	Integration *WorkTemplateIntegration `json:"integration,omitempty"`
 }
 
-type WorkTemplateExecutionResult struct {
+type WorkTemplateChannelsExecutionResult struct {
 	ChannelWithPlaybookIDs []string `json:"channel_with_playbook_ids"`
 	ChannelIDs             []string `json:"channel_ids"`
 }
 
 // TODO: store more information about each item, like for plugins, the state or whatever
+
+type PlaybookData struct {
+	Id   string
+	Name string
+}
+
+type BoardData struct {
+	Id   string
+	Name string
+}
 type WorkTemplateResult struct {
-	Playbooks    []string `json:"playbooks,omitempty"`
-	Boards       []string `json:"boards,omitempty"`
-	Integrations []string `json:"integrations,omitempty"`
+	Playbooks    []PlaybookData `json:"playbooks,omitempty"`
+	Boards       []BoardData    `json:"boards,omitempty"`
+	Integrations []string       `json:"integrations,omitempty"`
 }
 
 func (m *WorkTemplateResult) Scan(value any) error {

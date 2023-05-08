@@ -209,12 +209,12 @@ export const suitePluginIds = {
     channelExport: 'com.mattermost.plugin-channel-export',
 };
 
-export const integrationIds = {
-    github: 'github',
-    gitlab: 'gitlab',
-    zoom: 'zoom',
-    jira: 'jira',
-    todo: 'todo',
+export const integrationsMap = {
+    github: {id: 'github', displayName: 'Github'},
+    gitlab: {id: 'gitlab', displayName: 'Gitlab'},
+    zoom: {id: 'zoom', displayName: 'Zoom'},
+    jira: {id: 'jira', displayName: 'Jira'},
+    todo: {id: 'todo', displayName: 'Todo'},
 };
 
 export const ActionTypes = keyMirror({

@@ -7,18 +7,14 @@ import TemplateList from './template_intro_list';
 
 import Wrench from 'components/common/svg_images_components/wrench_svg';
 
-import {Channel} from '@mattermost/types/channels';
+import {Channel, WTResult} from '@mattermost/types/channels';
 
-import {integrationIds, suitePluginIds} from 'utils/constants';
+import {suitePluginIds} from 'utils/constants';
 
 import './channel_from_template_intro_message.scss';
 
 type ChannelFromTemplateIntroProps = {
-    templateItems: {
-        boards: Array<{name: string; id: string}>;
-        playbooks: Array<{name: string; id: string}>;
-        integrations: Array<{name: string; id: string; installed: boolean}>;
-    };
+    templateItems: WTResult;
     channel: Channel;
     channelInvite: JSX.Element;
     creatorName?: string;
@@ -30,14 +26,6 @@ export const ITEMS = Object.freeze({
     playbooks: suitePluginIds.playbooks,
     boards: suitePluginIds.boards,
     integrations: suitePluginIds.integrations,
-});
-
-export const INTEGRATIONS = Object.freeze({
-    github: integrationIds.github,
-    gitlab: integrationIds.gitlab,
-    zoom: integrationIds.zoom,
-    jira: integrationIds.jira,
-    todo: integrationIds.todo,
 });
 
 export const ChannelFromTemplateIntro = ({
@@ -91,15 +79,21 @@ export const ChannelFromTemplateIntro = ({
                 </div>
             </div>
             <div className='ChannelFromTemplateIntro__body'>
-                <TemplateList
-                    listItems={{type: ITEMS.boards, items: boards}}
-                />
-                <TemplateList
-                    listItems={{type: ITEMS.playbooks, items: playbooks}}
-                />
-                <TemplateList
-                    listItems={{type: ITEMS.integrations, items: integrations}}
-                />
+                {boards &&
+                    <TemplateList
+                        listItems={{type: ITEMS.boards, items: boards}}
+                    />
+                }
+                {playbooks &&
+                    <TemplateList
+                        listItems={{type: ITEMS.playbooks, items: playbooks}}
+                    />
+                }
+                {integrations &&
+                    <TemplateList
+                        listItems={{type: ITEMS.integrations, items: integrations}}
+                    />
+                }
             </div>
         </div>
     );

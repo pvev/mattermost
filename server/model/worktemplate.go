@@ -91,21 +91,14 @@ type WorkTemplateChannelsExecutionResult struct {
 	ChannelIDs             []string `json:"channel_ids"`
 }
 
-// TODO: store more information about each item, like for plugins, the state or whatever
-
-type PlaybookData struct {
-	Id   string
-	Name string
-}
-
-type BoardData struct {
-	Id   string
-	Name string
+type WorkTemplateResultData struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
 }
 type WorkTemplateResult struct {
-	Playbooks    []PlaybookData `json:"playbooks,omitempty"`
-	Boards       []BoardData    `json:"boards,omitempty"`
-	Integrations []string       `json:"integrations,omitempty"`
+	Playbooks    []WorkTemplateResultData `json:"playbooks,omitempty"`
+	Boards       []WorkTemplateResultData `json:"boards,omitempty"`
+	Integrations []string                 `json:"integrations,omitempty"`
 }
 
 func (m *WorkTemplateResult) Scan(value any) error {

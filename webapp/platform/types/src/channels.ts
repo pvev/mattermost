@@ -27,6 +27,21 @@ export type ChannelNotifyProps = {
     ignore_channel_mentions: 'default' | 'off' | 'on';
 };
 
+export type WorkTemplateResult = {
+    playbooks?: WTRData[];
+    boards?: WTRData[];
+    integrations?: string[];
+}
+
+// Work Template Result Data
+export interface WTRData {
+    id: string;
+    name: string;
+    installed?: boolean;
+}
+
+export type WTResult = Omit<WorkTemplateResult, 'integrations'> & { integrations?: WTRData[] | undefined };
+
 export type Channel = {
     id: string;
     create_at: number;
@@ -48,7 +63,7 @@ export type Channel = {
     shared?: boolean;
     props?: Record<string, any>;
     policy_id?: string | null;
-    worktemplateresult?: string;
+    worktemplateresult?: WorkTemplateResult;
 };
 
 export type ServerChannel = Channel & {

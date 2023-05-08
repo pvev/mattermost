@@ -4,6 +4,8 @@
 import React from 'react';
 import {useIntl} from 'react-intl';
 
+import {WTRData} from '@mattermost/types/channels';
+
 import GithubSVG from 'components/common/svg_images_components/github_svg';
 import GitlabSVG from 'components/common/svg_images_components/gitlab_svg';
 import JiraSVG from 'components/common/svg_images_components/jira_svg';
@@ -12,14 +14,16 @@ import TodoSVG from 'components/common/svg_images_components/todo_svg';
 import BoardsSVG from 'components/common/svg_images_components/boards_svg';
 import PlaybooksSVG from 'components/common/svg_images_components/playbooks_svg';
 
+import {integrationsMap} from 'utils/constants';
+
 import TemplateItem from './template_intro_item';
-import {INTEGRATIONS, ITEMS} from './channel_from_template_intro_message';
+import {ITEMS} from './channel_from_template_intro_message';
 import './template_intro_list.scss';
 
 interface Props {
     listItems: {
         type: string;
-        items: Array<{name: string; id: string; installed?: boolean}>;
+        items: WTRData[];
     };
 }
 
@@ -50,11 +54,11 @@ const TemplateList = ({listItems}: Props) => {
     };
 
     const integrationImageMap: Record<string, (props: SvgProps) => JSX.Element> = {
-        [INTEGRATIONS.github]: GithubSVG,
-        [INTEGRATIONS.gitlab]: GitlabSVG,
-        [INTEGRATIONS.zoom]: ZoomSVG,
-        [INTEGRATIONS.todo]: TodoSVG,
-        [INTEGRATIONS.jira]: JiraSVG,
+        [integrationsMap.github.id]: GithubSVG,
+        [integrationsMap.gitlab.id]: GitlabSVG,
+        [integrationsMap.zoom.id]: ZoomSVG,
+        [integrationsMap.todo.id]: TodoSVG,
+        [integrationsMap.jira.id]: JiraSVG,
     };
 
     const {image, title, description, listIcon} = itemTypeToData[listItems.type];

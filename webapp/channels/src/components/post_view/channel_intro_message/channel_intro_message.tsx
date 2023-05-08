@@ -9,9 +9,9 @@ import {Permissions} from 'mattermost-redux/constants';
 
 import {UserProfile as UserProfileRedux} from '@mattermost/types/users';
 
-import {Channel} from '@mattermost/types/channels';
+import {Channel, WTResult} from '@mattermost/types/channels';
 
-import {Constants, ModalIdentifiers} from 'utils/constants';
+import {Constants, integrationsMap, ModalIdentifiers} from 'utils/constants';
 import EditChannelHeaderModal from 'components/edit_channel_header_modal';
 import LocalizedIcon from 'components/localized_icon';
 import ProfilePicture from 'components/profile_picture';
@@ -111,24 +111,18 @@ function createIntroMessageToChannelFromTemplate(channel: Channel, stats: any, u
         />
     );
 
-    const mockData = {
-        boards: [
-            {name: 'Board 1', id: 'board_1'},
-            {name: 'Board 2', id: 'board_2'},
-            {name: 'Board 3', id: 'board_3'},
-        ],
-        playbooks: [
-            {name: 'Playbook 1', id: 'playbook_1'},
-            {name: 'Playbook 2', id: 'playbook_2'},
-        ],
-        integrations: [
-            {id: 'jira', name: 'Jira', installed: true},
-            {id: 'zoom', name: 'Zoom', installed: false},
-            {id: 'github', name: 'GitHub', installed: true},
-            {id: 'todo', name: 'Todo', installed: false},
-            {id: 'gitlab', name: 'Gitlab', installed: true},
-        ],
-    };
+    const isInstalled = (id: string) => Boolean(id);
+
+    const wteResult: WTResult = {};
+    wteResult.boards = channel.worktemplateresult?.boards;
+    wteResult.playbooks = channel.worktemplateresult?.playbooks;
+
+    wteResult.integrations = channel.worktemplateresult?.integrations!.map((id: string) => ({
+        id,
+        name: integrationsMap[id as keyof typeof integrationsMap].displayName || id,
+        installed: isInstalled(id),
+    }));
+
     const channelInviteButton = (
         <AddMembersButton
             totalUsers={totalUsers}
@@ -140,7 +134,7 @@ function createIntroMessageToChannelFromTemplate(channel: Channel, stats: any, u
     );
     return (
         <ChannelFromTemplateIntro
-            templateItems={mockData}
+            templateItems={wteResult}
             channel={channel}
             channelInvite={channelInviteButton}
             creatorName={creatorName}

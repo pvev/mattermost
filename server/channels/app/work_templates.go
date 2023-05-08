@@ -125,7 +125,7 @@ func (a *App) executeWorkTemplate(
 		res.ChannelWithPlaybookIDs = append(res.ChannelWithPlaybookIDs, pbRunCreateResponse.ChannelID)
 		channelIDByWorkTemplateID[associatedChannel.ID] = pbRunCreateResponse.ChannelID
 
-		tmpPlaybook := model.PlaybookData{
+		tmpPlaybook := model.WorkTemplateResultData{
 			Id:   pbRunCreateResponse.ID,
 			Name: cPlaybook.Name,
 		}
@@ -165,7 +165,7 @@ func (a *App) executeWorkTemplate(
 		if err != nil {
 			return res, model.NewAppError("ExecuteWorkTemplate", "app.worktemplates.execute_work_template.boards.create_error", nil, "", http.StatusInternalServerError).Wrap(err)
 		}
-		tmpBoard := model.BoardData{
+		tmpBoard := model.WorkTemplateResultData{
 			Id:   boardId,
 			Name: cBoard.Name,
 		}

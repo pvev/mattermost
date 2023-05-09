@@ -31,14 +31,23 @@
         font-size: 12px;
         line-height: 16px;
         color: var(--center-channel-text);
+        a {
+            color: inherit;
+            &:hover {
+                color: inherit;
+                text-decoration: none;
+            }
+        }
     }
 
     &__button {
         @include tertiary-button;
-        font-weight: 600;
+        font-weight: 600 !important;
         font-size: 11px;
         line-height: 16px;
         padding: 4px 10px;
         height: 24px;
+        min-width: 74px;
+        min-height: 24px;
     }
 }

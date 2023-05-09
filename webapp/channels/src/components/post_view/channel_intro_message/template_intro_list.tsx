@@ -83,7 +83,8 @@ const TemplateList = ({listItems}: Props) => {
                             svgImage={type === ITEMS.integrations ? integrationImageMap[item.id] : image}
                             title={item.name}
                             itemType={type}
-                            integrationInstalled={type === ITEMS.integrations ? item.installed : undefined}
+                            installedVersion={item.installedVersion}
+                            redirectLink={item.link}
                         />
                     </div>
                 ))}

@@ -37,7 +37,8 @@ export type WorkTemplateResult = {
 export interface WTRData {
     id: string;
     name: string;
-    installed?: boolean;
+    link?: string;
+    installedVersion?: string;
 }
 
 export type WTResult = Omit<WorkTemplateResult, 'integrations'> & { integrations?: WTRData[] | undefined };

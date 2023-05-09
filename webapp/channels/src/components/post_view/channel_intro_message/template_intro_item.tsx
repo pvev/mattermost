@@ -2,7 +2,8 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {useIntl} from 'react-intl';
+
+import {MarketPlaceItemButton} from 'components/plugin_marketplace/marketplace_item/marketplace_item_button';
 
 import {ITEMS} from './channel_from_template_intro_message';
 
@@ -16,15 +17,20 @@ interface Props {
     svgImage: (props: SvgProps) => JSX.Element;
     title: string;
     itemType: string;
-    integrationInstalled?: boolean | undefined;
+    installedVersion?: string;
+    redirectLink?: string;
 }
 
 const ICON_SIZE = 18;
 const INTEGRATION_ICON_SIZE = 24;
 
-const TemplateItem = ({svgImage, title, itemType, integrationInstalled}: Props) => {
-    const {formatMessage} = useIntl();
-
+const TemplateItem = ({
+    svgImage,
+    title,
+    itemType,
+    installedVersion,
+    redirectLink,
+}: Props) => {
     if (!Object.values(ITEMS).includes(itemType)) {
         return null;
     }
@@ -37,13 +43,19 @@ const TemplateItem = ({svgImage, title, itemType, integrationInstalled}: Props) 
             <div className='TemplateItem__image'>
                 {React.createElement(svgImage, {width: iconSize, height: iconSize})}
             </div>
-            <div className='TemplateItem__title'>{title}</div>
+            <div className='TemplateItem__title'>
+                {isIntegration ? title : (
+                    <a href={redirectLink}>
+                        {title}
+                    </a>
+                )}
+            </div>
             {isIntegration && (
-                <button
-                    className='TemplateItem__button'
-                >
-                    {integrationInstalled ? formatMessage({id: 'channel_from_template.items.configure', defaultMessage: 'Configure'}) : formatMessage({id: 'channel_from_template.items.install', defaultMessage: 'Install'})}
-                </button>
+                <MarketPlaceItemButton
+                    pluginId={title.toLowerCase()}
+                    installedVersion={installedVersion}
+                    extraClass={'TemplateItem__button'}
+                />
             )}
         </div>
     );

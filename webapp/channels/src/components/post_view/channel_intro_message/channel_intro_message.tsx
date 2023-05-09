@@ -10,6 +10,8 @@ import {Permissions} from 'mattermost-redux/constants';
 import {UserProfile as UserProfileRedux} from '@mattermost/types/users';
 
 import {Channel, WTResult} from '@mattermost/types/channels';
+import {ClientPluginManifest} from '@mattermost/types/plugins';
+import {IDMappedObjects} from '@mattermost/types/utilities';
 
 import {Constants, integrationsMap, ModalIdentifiers} from 'utils/constants';
 import EditChannelHeaderModal from 'components/edit_channel_header_modal';
@@ -25,6 +27,7 @@ import AddGroupsToTeamModal from 'components/add_groups_to_team_modal';
 
 import {getMonthLong, t} from 'utils/i18n';
 import * as Utils from 'utils/utils';
+import {getSiteURL} from 'utils/url';
 
 import AddMembersButton from './add_members_button';
 import PluggableIntroButtons from './pluggable_intro_buttons';
@@ -44,6 +47,7 @@ type Props = WrappedComponentProps & {
     teammateName?: string;
     stats: any;
     usersLimit: number;
+    pluginsList: IDMappedObjects<ClientPluginManifest>;
     actions: {
         getTotalUsersStats: () => any;
     };
@@ -72,6 +76,7 @@ class ChannelIntroMessage extends React.PureComponent<Props> {
             teammateName,
             stats,
             usersLimit,
+            pluginsList,
         } = this.props;
 
         let centeredIntro = '';
@@ -89,7 +94,7 @@ class ChannelIntroMessage extends React.PureComponent<Props> {
             return createOffTopicIntroMessage(channel, centeredIntro, stats, usersLimit);
         } else if (channel.type === Constants.OPEN_CHANNEL || channel.type === Constants.PRIVATE_CHANNEL) {
             if (channel.worktemplateresult) {
-                return createIntroMessageToChannelFromTemplate(channel, stats, usersLimit, intl, creatorName, locale);
+                return createIntroMessageToChannelFromTemplate(channel, stats, usersLimit, intl, creatorName, locale, pluginsList);
             }
             return createStandardIntroMessage(channel, centeredIntro, stats, usersLimit, locale, creatorName);
         }
@@ -99,10 +104,18 @@ class ChannelIntroMessage extends React.PureComponent<Props> {
 
 export default injectIntl(ChannelIntroMessage);
 
-function createIntroMessageToChannelFromTemplate(channel: Channel, stats: any, usersLimit: number, intl: IntlShape, creatorName: string, locale: string) {
+function createIntroMessageToChannelFromTemplate(
+    channel: Channel,
+    stats: any,
+    usersLimit: number,
+    intl: IntlShape,
+    creatorName: string,
+    locale: string,
+    pluginsList: IDMappedObjects<ClientPluginManifest>,
+) {
     const totalUsers = stats.total_users_count;
 
-    const creationDate = (
+    const channelCreationDate = (
         <FormattedDate
             value={channel.create_at}
             month={getMonthLong(locale)}
@@ -111,16 +124,23 @@ function createIntroMessageToChannelFromTemplate(channel: Channel, stats: any, u
         />
     );
 
-    const isInstalled = (id: string) => Boolean(id);
-
     const wteResult: WTResult = {};
-    wteResult.boards = channel.worktemplateresult?.boards;
-    wteResult.playbooks = channel.worktemplateresult?.playbooks;
+    const siteUrl = getSiteURL();
+    const teamId = channel.team_id;
+
+    wteResult.boards = channel.worktemplateresult?.boards!.map((board: any) => {
+        const link = siteUrl + `/boards/team/${teamId}/${board.id}`;
+        return {...board, link};
+    });
+    wteResult.playbooks = channel.worktemplateresult?.playbooks!.map((playbook: any) => {
+        const link = siteUrl + `/playbooks/runs/${playbook.id}`;
+        return {...playbook, link};
+    });
 
     wteResult.integrations = channel.worktemplateresult?.integrations!.map((id: string) => ({
         id,
         name: integrationsMap[id as keyof typeof integrationsMap].displayName || id,
-        installed: isInstalled(id),
+        installedVersion: pluginsList[id]?.version ?? '',
     }));
 
     const channelInviteButton = (
@@ -138,7 +158,7 @@ function createIntroMessageToChannelFromTemplate(channel: Channel, stats: any, u
             channel={channel}
             channelInvite={channelInviteButton}
             creatorName={creatorName}
-            createdAt={creationDate}
+            createdAt={channelCreationDate}
             isPrivate={channel.type === Constants.PRIVATE_CHANNEL}
         />
     );

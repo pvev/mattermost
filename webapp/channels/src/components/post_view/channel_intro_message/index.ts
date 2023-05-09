@@ -31,6 +31,7 @@ function mapStateToProps(state: GlobalState) {
     const channel = getCurrentChannel(state) || {};
     const teammate = getDirectTeammate(state, channel.id);
     const creator = getUser(state, channel.creator_id);
+    const pluginsList = state.plugins.plugins;
 
     const usersLimit = 10;
 
@@ -50,6 +51,7 @@ function mapStateToProps(state: GlobalState) {
         teammateName: getDisplayNameByUser(state, teammate),
         stats,
         usersLimit,
+        pluginsList,
     };
 }
 

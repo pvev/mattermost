@@ -9,7 +9,7 @@ import {Permissions} from 'mattermost-redux/constants';
 
 import {UserProfile as UserProfileRedux} from '@mattermost/types/users';
 
-import {Channel, WTResult} from '@mattermost/types/channels';
+import {Channel, WTRData, WTResult} from '@mattermost/types/channels';
 import {ClientPluginManifest} from '@mattermost/types/plugins';
 import {IDMappedObjects} from '@mattermost/types/utilities';
 
@@ -128,20 +128,25 @@ function createIntroMessageToChannelFromTemplate(
     const siteUrl = getSiteURL();
     const teamId = channel.team_id;
 
-    wteResult.boards = channel.worktemplateresult?.boards!.map((board: any) => {
-        const link = siteUrl + `/boards/team/${teamId}/${board.id}`;
-        return {...board, link};
-    });
-    wteResult.playbooks = channel.worktemplateresult?.playbooks!.map((playbook: any) => {
-        const link = siteUrl + `/playbooks/runs/${playbook.id}`;
-        return {...playbook, link};
-    });
-
-    wteResult.integrations = channel.worktemplateresult?.integrations!.map((id: string) => ({
-        id,
-        name: integrationsMap[id as keyof typeof integrationsMap].displayName || id,
-        installedVersion: pluginsList[id]?.version ?? '',
-    }));
+    if (channel.worktemplateresult?.boards) {
+        wteResult.boards = channel.worktemplateresult.boards.map((board: WTRData) => {
+            const link = siteUrl + `/boards/team/${teamId}/${board.id}`;
+            return {...board, link};
+        });
+    }
+    if (channel.worktemplateresult?.playbooks) {
+        wteResult.playbooks = channel.worktemplateresult.playbooks.map((playbook: WTRData) => {
+            const link = siteUrl + `/playbooks/runs/${playbook.id}`;
+            return {...playbook, link};
+        });
+    }
+    if (channel.worktemplateresult?.integrations) {
+        wteResult.integrations = channel.worktemplateresult.integrations.map((id: string) => ({
+            id,
+            name: integrationsMap[id as keyof typeof integrationsMap].displayName || id,
+            installedVersion: pluginsList[id]?.version ?? '',
+        }));
+    }
 
     const channelInviteButton = (
         <AddMembersButton

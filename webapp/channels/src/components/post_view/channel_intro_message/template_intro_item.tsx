@@ -3,7 +3,7 @@
 
 import React from 'react';
 
-import {MarketPlaceItemButton} from 'components/plugin_marketplace/marketplace_item/marketplace_item_button';
+import {MarketPlacePluginButton} from 'components/plugin_marketplace/marketplace_item/marketplace_item_button';
 
 import {ITEMS} from './channel_from_template_intro_message';
 
@@ -51,7 +51,7 @@ const TemplateItem = ({
                 )}
             </div>
             {isIntegration && (
-                <MarketPlaceItemButton
+                <MarketPlacePluginButton
                     pluginId={title.toLowerCase()}
                     installedVersion={installedVersion}
                     extraClass={'TemplateItem__button'}

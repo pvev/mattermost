@@ -101,7 +101,7 @@ export function filterListing(filter: string): ActionFunc {
 //
 // On success, it also requests the current state of the plugins to reflect the newly installed plugin.
 export function installPlugin(id: string) {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc): Promise<void> => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc): Promise<{data: boolean}> => {
         dispatch({
             type: ActionTypes.INSTALLING_MARKETPLACE_ITEM,
             id,
@@ -116,7 +116,7 @@ export function installPlugin(id: string) {
                 id,
                 error: 'Unknown plugin: ' + id,
             });
-            return;
+            return {data: true};
         }
 
         try {
@@ -127,7 +127,7 @@ export function installPlugin(id: string) {
                 id,
                 error: error.message,
             });
-            return;
+            return {data: false};
         }
 
         await dispatch(fetchListing());
@@ -135,6 +135,7 @@ export function installPlugin(id: string) {
             type: ActionTypes.INSTALLING_MARKETPLACE_ITEM_SUCCEEDED,
             id,
         });
+        return {data: true};
     };
 }
 

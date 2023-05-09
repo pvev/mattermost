@@ -86,7 +86,7 @@ const AddMembersButton = ({
 };
 
 type LessThanUserLimitProps = {
-    setHeader: React.ReactNode;
+    setHeader?: React.ReactNode;
     pluginButtons: React.ReactNode;
     classNames?: string;
     customText?: React.ReactNode;

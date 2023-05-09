@@ -7,18 +7,15 @@ import semver from 'semver';
 
 import {FormattedMessage} from 'react-intl';
 
-import {Link} from 'react-router-dom';
-
 import type {MarketplaceLabel} from '@mattermost/types/marketplace';
 import {PluginStatusRedux} from '@mattermost/types/plugins';
 
 import MarketplaceItem from '../marketplace_item';
+import {MarketPlacePluginButton} from '../marketplace_item_button';
 
 import FormattedMarkdownMessage from 'components/formatted_markdown_message';
 import ConfirmModal from 'components/confirm_modal';
-import LoadingWrapper from 'components/widgets/loading/loading_wrapper';
 
-import {localizeMessage} from 'utils/utils';
 import ExternalLink from 'components/external_link';
 
 type UpdateVersionProps = {
@@ -287,55 +284,11 @@ export default class MarketplaceItemPlugin extends React.PureComponent <Marketpl
     };
 
     getItemButton(): JSX.Element {
-        if (this.props.installedVersion !== '' && !this.props.installing && !this.props.error) {
-            return (
-                <Link
-                    to={'/admin_console/plugins/plugin_' + this.props.id}
-                >
-                    <button
-                        onClick={this.onConfigure}
-                        className='plugin-configure'
-                    >
-                        <FormattedMessage
-                            id='marketplace_modal.list.configure'
-                            defaultMessage='Configure'
-                        />
-                    </button>
-                </Link>
-            );
-        }
-
-        let actionButton: JSX.Element;
-        if (this.props.error) {
-            actionButton = (
-                <FormattedMessage
-                    id='marketplace_modal.list.try_again'
-                    defaultMessage='Try Again'
-                />
-            );
-        } else {
-            actionButton = (
-                <FormattedMessage
-                    id='marketplace_modal.list.install'
-                    defaultMessage='Install'
-                />
-            );
-        }
-
         return (
-            <button
-                onClick={this.onInstall}
-                className='plugin-install always-show-enabled'
-                disabled={this.props.installing}
-            >
-                <LoadingWrapper
-                    loading={this.props.installing}
-                    text={localizeMessage('marketplace_modal.installing', 'Installing...')}
-                >
-                    {actionButton}
-                </LoadingWrapper>
-
-            </button>
+            <MarketPlacePluginButton
+                pluginId={this.props.id}
+                installedVersion={this.props.installedVersion}
+            />
         );
     }
 

@@ -28,7 +28,7 @@ type Props = {
     extraClass?: string;
 }
 
-export const MarketPlaceItemButton = ({pluginId, installedVersion, extraClass}: Props): JSX.Element => {
+export const MarketPlacePluginButton = ({pluginId, installedVersion, extraClass}: Props): JSX.Element => {
     const dispatch = useDispatch<DispatchFunc>();
 
     const installing = useSelector((state: GlobalState) => getInstalling(state, pluginId));
@@ -55,9 +55,9 @@ export const MarketPlaceItemButton = ({pluginId, installedVersion, extraClass}: 
         }
     };
 
-    const onInstall = (): void => {
+    const onInstall = async () => {
         trackMarketPlaceEvent('ui_marketplace_download', true, '1');
-        installPlugin(pluginId);
+        dispatch(installPlugin(pluginId));
     };
 
     const onConfigure = (): void => {

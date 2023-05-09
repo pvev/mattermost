@@ -2,14 +2,14 @@
 
 .ChannelFromTemplateIntro {
     display: flex;
+    max-width: 1030px;
+    min-height: 348px;
     flex-direction: column;
     padding: 32px;
-    gap: 8px;
-    min-height: 348px;
-    max-width: 1030px;
+    margin: 16px 19px 24px 24px;
     background: rgba(var(--button-bg-rgb), 0.08);
     border-radius: 12px;
-    margin: 16px 19px 24px 24px;
+    gap: 8px;
 
     &__header {
         display: flex;
@@ -17,14 +17,14 @@
         margin-bottom: 10px;
 
         &--image {
-            margin-right: 16px;
-            border-radius: 32px;
+            display: flex;
             width: 64px;
             height: 64px;
-            background-color: rgba(var(--center-channel-color-rgb), 0.08);
-            display: flex;
             align-items: center;
             justify-content: center;
+            margin-right: 16px;
+            background-color: rgba(var(--center-channel-color-rgb), 0.08);
+            border-radius: 32px;
         }
 
         &--text {
@@ -34,36 +34,40 @@
         }
 
         &--textTitle {
-            font-weight: 600;
-            font-size: 25px;
-            color: var(--center-channel-text);
             margin: 0;
+            color: var(--center-channel-text);
+            font-size: 25px;
+            font-weight: 600;
         }
 
         &--textSubtitle {
-            font-weight: 400;
-            font-size: 14px;
-            line-height: 20px;
-            color: rgba(var(--center-channel-text-rgb), 0.72);
             margin: 0;
+            color: rgba(var(--center-channel-text-rgb), 0.72);
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 20px;
 
             i {
-                font-size: 14px;
-                color: rgba(var(--center-channel-text-rgb), 0.64);
                 margin-left: -5px;
+                color: rgba(var(--center-channel-text-rgb), 0.64);
+                font-size: 14px;
             }
 
             .AddMembersButton {
                 display: inline-block;
 
-                .titleAndButton, .MoreThanUserLimit {
-                    margin-left: 0 !important;
+                .titleAndButton,
+                .MoreThanUserLimit {
                     padding: 0;
+                    margin-left: 0 !important;
+
                     button {
                         @include button-as-link;
+
                         padding: 0;
                         font-size: 14px;
                         font-weight: 400;
+
                         &:hover {
                             text-decoration: none !important;
                         }
@@ -79,8 +83,8 @@
         flex-wrap: wrap;
 
         .TemplateList {
-            margin-right: 24px;
             margin-top: 24px;
+            margin-right: 24px;
 
             &:last-child {
                 margin-right: 0;

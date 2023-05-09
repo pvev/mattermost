@@ -1,50 +1,50 @@
 .TemplateList {
-  display: flex;
-  flex-direction: column;
-  max-width: 280px;
-
-  &__Header {
     display: flex;
-    align-items: center;
-    margin-bottom: 16px;
+    max-width: 280px;
+    flex-direction: column;
 
-    &--image {
-        width: 32px;
-        height: 32px;
-        border-radius: 16px;
-        background-color: rgba(var(--center-channel-color-rgb), 0.08);
-        margin-right: 8px;
+    &__Header {
         display: flex;
-        justify-content: center;
         align-items: center;
-        i {
-            width: 18px;
-            height: 18px;
-            color: rgba(var(--center-channel-color-rgb), 0.64);
-        }
-      }
-      
-      &--title {
-          font-weight: 600;
-          font-size: 16px;
-          line-height: 24px;
-          display: flex;
-          align-items: center;
-          color: rgba(var(--center-channel-color-rgb), 0.72);
-      }
-  }
-  
-  &__Description{
-      font-weight: 400;
-      font-size: 12px;
-      line-height: 16px;
-      display: flex;
-      align-items: center;
-      color: rgba(var(--center-channel-color-rgb), 0.72);
-  }
-  
-  .TemplateItem {
-      margin-top: 12px;
-  }
-}
+        margin-bottom: 16px;
 
+        &--image {
+            display: flex;
+            width: 32px;
+            height: 32px;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+            background-color: rgba(var(--center-channel-color-rgb), 0.08);
+            border-radius: 16px;
+
+            i {
+                width: 18px;
+                height: 18px;
+                color: rgba(var(--center-channel-color-rgb), 0.64);
+            }
+        }
+
+        &--title {
+            display: flex;
+            align-items: center;
+            color: rgba(var(--center-channel-color-rgb), 0.72);
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 24px;
+        }
+    }
+
+    &__Description {
+        display: flex;
+        align-items: center;
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+        font-size: 12px;
+        font-weight: 400;
+        line-height: 16px;
+    }
+
+    .TemplateItem {
+        margin-top: 12px;
+    }
+}

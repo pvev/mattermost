@@ -2,37 +2,39 @@
 
 .TemplateItem {
     display: flex;
-    flex-direction: row;
-    align-items: center;
-    padding: 12px;
     width: 280px;
     height: 40px;
-    background: var(--center-channel-bg);
-    box-shadow: 0px 2px 3px rgba(0, 0, 0, 0.08);
-    border-radius: 8px;
     flex: none;
-    order: 1;
-    align-self: stretch;
+    flex-direction: row;
     flex-grow: 0;
+    align-items: center;
+    align-self: stretch;
+    order: 1;
+    padding: 12px;
+    background: var(--center-channel-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.08);
 
     &__image {
-        margin-right: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
+        margin-right: 8px;
     }
 
     &__title {
         width: 232px;
         height: 16px;
+        color: var(--center-channel-text);
         font-family: 'Open Sans';
+        font-size: 12px;
         font-style: normal;
         font-weight: 600;
-        font-size: 12px;
         line-height: 16px;
-        color: var(--center-channel-text);
+
         a {
             color: inherit;
+
             &:hover {
                 color: inherit;
                 text-decoration: none;
@@ -42,13 +44,14 @@
 
     &__button {
         @include tertiary-button;
-        font-weight: 600 !important;
-        font-size: 11px;
-        line-height: 16px;
-        padding: 4px 10px;
-        height: 24px;
+
         min-width: 74px;
+        height: 24px;
         min-height: 24px;
         justify-content: center;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 600 !important;
+        line-height: 16px;
     }
 }

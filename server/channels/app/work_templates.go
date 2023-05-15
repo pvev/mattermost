@@ -95,7 +95,9 @@ func (a *App) executeWorkTemplate(
 		}
 	}
 
-	workTemplateResult := &model.WorkTemplateResult{}
+	workTemplateResult := model.WorkTemplateResult{}
+	boards := workTemplateResult.Boards
+	playbooks := workTemplateResult.Playbooks
 
 	firstChannelId := ""
 	channelIDByWorkTemplateID := map[string]string{}
@@ -129,8 +131,10 @@ func (a *App) executeWorkTemplate(
 			Id:   pbRunCreateResponse.ID,
 			Name: cPlaybook.Name,
 		}
-		workTemplateResult.Playbooks = append(workTemplateResult.Playbooks, tmpPlaybook)
+		playbooks = append(playbooks, tmpPlaybook)
 	}
+
+	workTemplateResult.Playbooks = playbooks
 
 	// loop through all channels
 	for _, channelContent := range contentByType["channel"] {
@@ -169,8 +173,10 @@ func (a *App) executeWorkTemplate(
 			Id:   boardId,
 			Name: cBoard.Name,
 		}
-		workTemplateResult.Boards = append(workTemplateResult.Boards, tmpBoard)
+		boards = append(boards, tmpBoard)
 	}
+
+	workTemplateResult.Boards = boards
 
 	if installPlugins {
 		for _, integrationContent := range contentByType["integration"] {
@@ -188,7 +194,7 @@ func (a *App) executeWorkTemplate(
 		a.Publish(message)
 
 		//update the channel with the result of the execution
-		a.StoreWorkTemplateResults(ch, workTemplateResult)
+		a.StoreWorkTemplateResults(ch, &workTemplateResult)
 	}
 	for _, ch := range res.ChannelIDs {
 		message := model.NewWebSocketEvent(model.WebsocketEventChannelCreated, "", "", c.Session().UserId, nil, "")
@@ -197,7 +203,7 @@ func (a *App) executeWorkTemplate(
 		a.Publish(message)
 
 		//update the channel with the result of the execution
-		a.StoreWorkTemplateResults(ch, workTemplateResult)
+		a.StoreWorkTemplateResults(ch, &workTemplateResult)
 
 	}
 

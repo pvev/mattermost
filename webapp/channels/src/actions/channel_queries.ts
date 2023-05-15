@@ -56,6 +56,7 @@ const channelsFragment = `
         shared
         props
         policy_id: policyId
+        worktemplateresult: workTemplateResult
     }
 `;
 

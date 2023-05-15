@@ -66,6 +66,7 @@ type Channel {
 	props: StringInterface!
 	policyId: String
 	cursor: String
+	workTemplateResult: WorkTemplateResult
 }
 
 type ChannelMember {
@@ -219,4 +220,15 @@ type Session {
 	expiredNotify: Boolean!
 	props: StringMap!
 	local: Boolean!
+}
+
+type WorkTemplateResultData {
+    Id: String
+    Name: String
+}
+
+type WorkTemplateResult {
+    Playbooks: [WorkTemplateResultData]
+    Boards: [WorkTemplateResultData]
+    Integrations: [String]        
 }

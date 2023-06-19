@@ -87,6 +87,8 @@ export default class ChannelMembers extends React.PureComponent<Props, State> {
             setUserGridSearch(''),
             setUserGridFilters({}),
             getChannelStats(channelId),
+
+            // TODO PABLO: review this one well
             loadProfilesAndReloadChannelMembers(0, PROFILE_CHUNK_SIZE * 2, channelId, '', {active: true}),
         ]).then(() => this.setStateLoading(false));
     }

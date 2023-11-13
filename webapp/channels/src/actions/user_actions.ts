@@ -435,7 +435,7 @@ export function autoResetStatus() {
         const {currentUserId} = getState().entities.users;
         const {data: userStatus} = await (UserActions.getStatus(currentUserId)(doDispatch, doGetState) as Promise<{data: UserStatus}>);
 
-        if (userStatus.status === UserStatuses.OUT_OF_OFFICE || !userStatus.manual) {
+        if (userStatus?.status === UserStatuses.OUT_OF_OFFICE || !userStatus?.manual) {
             return {data: userStatus};
         }
 

@@ -108,12 +108,12 @@ export default class ResetStatusModal extends React.PureComponent<Props, State> 
         this.props.actions.autoResetStatus().then(
             (result: {data: UserStatus}) => {
                 const status = result.data;
-                const statusIsManual = status.manual;
+                const statusIsManual = status?.manual;
                 const autoResetPrefNotSet = this.props.autoResetPref === '';
 
                 this.setState({
                     currentUserStatus: status, // Set in state until status refactor where we store 'manual' field in redux
-                    show: Boolean(status.status === UserStatuses.OUT_OF_OFFICE || (statusIsManual && autoResetPrefNotSet)),
+                    show: Boolean(status?.status === UserStatuses.OUT_OF_OFFICE || (statusIsManual && autoResetPrefNotSet)),
                 });
             },
         );
@@ -169,7 +169,7 @@ export default class ResetStatusModal extends React.PureComponent<Props, State> 
     };
 
     public render(): JSX.Element {
-        const userStatus = this.state.currentUserStatus.status || '';
+        const userStatus = this.state.currentUserStatus?.status || '';
         const userStatusId = 'modal.manual_status.title_' + userStatus;
         const manualStatusTitle = (
             <FormattedMessage

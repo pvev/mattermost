@@ -6,6 +6,7 @@ package platform
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -349,9 +350,13 @@ func (ps *PlatformService) SetStatusAwayIfNeeded(userID string, manual bool) {
 // SetStatusDoNotDisturbTimed takes endtime in unix epoch format in UTC
 // and sets status of given userId to dnd which will be restored back after endtime
 func (ps *PlatformService) SetStatusDoNotDisturbTimed(userId string, endtime int64) {
+	fmt.Printf("\n\n****** the config jueputa %#v \n\n*******", *ps.Config().ServiceSettings.EnableUserStatuses)
 	if !*ps.Config().ServiceSettings.EnableUserStatuses {
+		fmt.Printf("\n\n****** the config jueputa %#v \n\n*******", *ps.Config().ServiceSettings.EnableUserStatuses)
 		return
 	}
+
+	fmt.Printf("\n\n****** the config jueputa si pasa el hpta %#v \n\n*******", *ps.Config().ServiceSettings.EnableUserStatuses)
 
 	status, err := ps.GetStatus(userId)
 

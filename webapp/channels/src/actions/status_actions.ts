@@ -3,7 +3,9 @@
 
 import type {UserProfile} from '@mattermost/types/users';
 
+import {getConfig as getAdminConfig} from 'mattermost-redux/actions/admin';
 import {getStatusesByIds} from 'mattermost-redux/actions/users';
+import {getConfig} from 'mattermost-redux/selectors/entities/admin';
 import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getPostsInCurrentChannel} from 'mattermost-redux/selectors/entities/posts';
 import {getDirectShowPreferences} from 'mattermost-redux/selectors/entities/preferences';
@@ -17,9 +19,18 @@ import {Constants} from 'utils/constants';
 import type {GlobalState} from 'types/store';
 
 export function loadStatusesForChannelAndSidebar(): ActionFunc {
-    return (dispatch: DispatchFunc, getState: GetStateFunc) => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         const state = getState();
         const statusesToLoad: Record<string, true> = {};
+        const config = getConfig(state);
+        let adminConfig = config;
+        if (!Object.keys(config).length) {
+            const {data} = await dispatch(getAdminConfig());
+            adminConfig = data;
+        }
+        if (!adminConfig.ServiceSettings?.EnableUserStatuses) {
+            return {data: false};
+        }
 
         const channelId = getCurrentChannelId(state);
         const postsInChannel = getPostsInCurrentChannel(state);
@@ -49,8 +60,18 @@ export function loadStatusesForChannelAndSidebar(): ActionFunc {
     };
 }
 
-export function loadStatusesForProfilesList(users: UserProfile[] | null) {
-    return (dispatch: DispatchFunc) => {
+export function loadStatusesForProfilesList(users: UserProfile[] | null): ActionFunc {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const state = getState();
+        const config = getConfig(state);
+        let adminConfig = config;
+        if (!Object.keys(config).length) {
+            const {data} = await dispatch(getAdminConfig());
+            adminConfig = data;
+        }
+        if (!adminConfig.ServiceSettings?.EnableUserStatuses) {
+            return {data: false};
+        }
         if (users == null) {
             return {data: false};
         }
@@ -67,7 +88,17 @@ export function loadStatusesForProfilesList(users: UserProfile[] | null) {
 }
 
 export function loadStatusesForProfilesMap(users: Record<string, UserProfile> | null) {
-    return (dispatch: DispatchFunc) => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const state = getState();
+        const config = getConfig(state);
+        let adminConfig = config;
+        if (!Object.keys(config).length) {
+            const {data} = await dispatch(getAdminConfig());
+            adminConfig = data;
+        }
+        if (!adminConfig.ServiceSettings?.EnableUserStatuses) {
+            return {data: false};
+        }
         if (users == null) {
             return {data: false};
         }
@@ -98,8 +129,19 @@ export function loadStatusesByIds(userIds: string[]) {
 }
 
 export function loadProfilesMissingStatus(users: UserProfile[]) {
-    return (dispatch: DispatchFunc, getState: GetStateFunc) => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         const state = getState();
+        const config = getConfig(state);
+        let adminConfig = config;
+        if (!Object.keys(config).length) {
+            const {data} = await dispatch(getAdminConfig());
+            adminConfig = data;
+        }
+
+        if (!adminConfig.ServiceSettings?.EnableUserStatuses) {
+            return {data: false};
+        }
+
         const statuses = state.entities.users.statuses;
 
         const missingStatusByIds = users.
@@ -119,7 +161,18 @@ export function loadProfilesMissingStatus(users: UserProfile[]) {
 let intervalId: NodeJS.Timeout;
 
 export function startPeriodicStatusUpdates() {
-    return (dispatch: DispatchFunc) => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const state = getState();
+        const config = getConfig(state);
+        let adminConfig = config;
+        if (!Object.keys(config).length) {
+            const {data} = await dispatch(getAdminConfig());
+            adminConfig = data;
+        }
+
+        if (!adminConfig.ServiceSettings?.EnableUserStatuses) {
+            return;
+        }
         clearInterval(intervalId);
 
         intervalId = setInterval(

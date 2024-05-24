@@ -1376,6 +1376,114 @@ func TestLogSettingsIsValid(t *testing.T) {
 	}
 }
 
+func TestShouldSanitize(t *testing.T) {
+	rules := Rule{
+		Contains:   []string{"password", "secret", "key", "keyid"},
+		StartsWith: []string{"key", "password"},
+		EndsWith:   []string{"key", "keyid", "id"},
+	}
+
+	tests := map[string]struct {
+		Key         string
+		ExpectMatch bool
+	}{
+		"contains password":      {Key: "userPassword", ExpectMatch: true},
+		"contains secret":        {Key: "clientSecret", ExpectMatch: true},
+		"starts with key":        {Key: "keyName", ExpectMatch: true},
+		"ends with id":           {Key: "clientId", ExpectMatch: true},
+		"does not match":         {Key: "username", ExpectMatch: false},
+		"case insensitive match": {Key: "SeCrEtKeY", ExpectMatch: true},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, test.ExpectMatch, shouldSanitize(test.Key, rules))
+		})
+	}
+}
+
+func TestSanitizeMap(t *testing.T) {
+	rules := Rule{
+		Contains:   []string{"password", "secret", "key", "keyid"},
+		StartsWith: []string{"key", "password"},
+		EndsWith:   []string{"key", "keyid", "id"},
+	}
+
+	tests := map[string]struct {
+		Config    map[string]interface{}
+		Expect    map[string]interface{}
+		ExpectErr bool
+	}{
+		"sanitize simple map": {
+			Config: map[string]interface{}{
+				"userPassword": "mypassword",
+				"username":     "user1",
+			},
+			Expect: map[string]interface{}{
+				"userPassword": FakeSetting,
+				"username":     "user1",
+			},
+			ExpectErr: false,
+		},
+		"sanitize nested map": {
+			Config: map[string]interface{}{
+				"userPassword": "mypassword",
+				"nested": map[string]interface{}{
+					"clientSecret": "mysecret",
+					"clientId":     "myclientid",
+				},
+			},
+			Expect: map[string]interface{}{
+				"userPassword": FakeSetting,
+				"nested": map[string]interface{}{
+					"clientSecret": FakeSetting,
+					"clientId":     FakeSetting,
+				},
+			},
+			ExpectErr: false,
+		},
+		"sanitize array of maps": {
+			Config: map[string]interface{}{
+				"userPassword": "mypassword",
+				"services": []interface{}{
+					map[string]interface{}{
+						"apiKey": "myapikey",
+						"name":   "service1",
+					},
+					map[string]interface{}{
+						"keyName": "mykeyname",
+					},
+				},
+			},
+			Expect: map[string]interface{}{
+				"userPassword": FakeSetting,
+				"services": []interface{}{
+					map[string]interface{}{
+						"apiKey": FakeSetting,
+						"name":   "service1",
+					},
+					map[string]interface{}{
+						"keyName": FakeSetting,
+					},
+				},
+			},
+			ExpectErr: false,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			err := sanitizeMap(test.Config, rules)
+			if test.ExpectErr {
+				assert.NotNil(t, err)
+			} else {
+				assert.Nil(t, err)
+				assert.Equal(t, test.Expect, test.Config)
+			}
+		})
+	}
+}
+
 func TestConfigSanitize(t *testing.T) {
 	c := Config{}
 	c.SetDefaults()
@@ -1385,6 +1493,7 @@ func TestConfigSanitize(t *testing.T) {
 	*c.EmailSettings.SMTPPassword = "baz"
 	*c.GitLabSettings.Secret = "bingo"
 	*c.OpenIdSettings.Secret = "secret"
+	*c.SqlSettings.AtRestEncryptKey = "foo"
 	c.SqlSettings.DataSourceReplicas = []string{"stuff"}
 	c.SqlSettings.DataSourceSearchReplicas = []string{"stuff"}
 	c.SqlSettings.ReplicaLagSettings = []*ReplicaLagSettings{{

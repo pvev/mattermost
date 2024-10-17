@@ -153,6 +153,24 @@ export function setDraftsTourTipPreference(initializationState: Record<string, b
     };
 }
 
+export function setGlobalScheduledPost(key: string, value: PostDraft|null, isRemote: boolean): ActionFunc {
+    return (dispatch) => {
+        dispatch(setGlobalItem(key, value));
+        dispatch(setGlobalScheduledPostSource(key, isRemote));
+        return {data: true};
+    };
+}
+
+export function setGlobalScheduledPostSource(key: string, isRemote: boolean) {
+    return {
+        type: ActionTypes.SET_DRAFT_SOURCE,
+        data: {
+            key,
+            isRemote,
+        },
+    };
+}
+
 export function setGlobalDraft(key: string, value: PostDraft|null, isRemote: boolean): ActionFunc {
     return (dispatch) => {
         dispatch(setGlobalItem(key, value));

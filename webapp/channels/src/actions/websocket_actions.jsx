@@ -46,6 +46,7 @@ import {
     receivedNewPost,
     receivedPost,
 } from 'mattermost-redux/actions/posts';
+import {ScheduledPostTypes} from 'mattermost-redux/action_types';
 import {loadRolesIfNeeded} from 'mattermost-redux/actions/roles';
 import {batchFetchStatusesProfilesGroupsFromPosts} from 'mattermost-redux/actions/status_profile_polling';
 import * as TeamActions from 'mattermost-redux/actions/teams';
@@ -607,6 +608,9 @@ export function handleEvent(msg) {
         break;
     case SocketEvents.DRAFT_DELETED:
         dispatch(handleDeleteDraftEvent(msg));
+        break;
+    case SocketEvents.SCHEDULED_POST_URL_CREATED:
+        dispatch(handleUpsertScheduledPostEvent(msg));
         break;
     case SocketEvents.PERSISTENT_NOTIFICATION_TRIGGERED:
         dispatch(handlePersistentNotification(msg));
@@ -1744,6 +1748,20 @@ function handleUpsertDraftEvent(msg) {
         value.show = true;
 
         doDispatch(setGlobalDraft(key, value, true));
+    };
+}
+
+function handleUpsertScheduledPostEvent(msg) {
+    return async (doDispatch) => {
+        const scheduledPost = JSON.parse(msg.data.scheduledPost);
+
+        doDispatch({
+            type: ScheduledPostTypes.SINGLE_SCHEDULED_POST_RECEIVED,
+            data: {
+                scheduledPost,
+                teamId: 'o7jbbmx35tft7yiqmrkgdh9p8e',
+            },
+        });
     };
 }
 

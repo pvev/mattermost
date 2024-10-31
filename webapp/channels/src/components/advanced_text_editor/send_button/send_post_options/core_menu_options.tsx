@@ -7,6 +7,7 @@ import {FormattedMessage} from 'react-intl';
 
 import useTimePostBoxIndicator from 'components/advanced_text_editor/use_post_box_indicator';
 import * as Menu from 'components/menu';
+import type {Props as MenuItemProps} from 'components/menu/menu_item';
 import Timestamp from 'components/timestamp';
 
 type Props = {
@@ -18,8 +19,8 @@ function CoreMenuOptions({handleOnSelect, channelId}: Props) {
     const {
         userCurrentTimezone,
         teammateTimezone,
-        timestamp,
         teammateDisplayName,
+        isDM,
     } = useTimePostBoxIndicator(channelId);
 
     const today = moment().tz(userCurrentTimezone);
@@ -36,31 +37,38 @@ function CoreMenuOptions({handleOnSelect, channelId}: Props) {
         />
     );
 
-    const dmTeammateTimezone = (
-        <FormattedMessage
-            id='create_post_button.option.schedule_message.options.remote_user_hour'
-            defaultMessage='{time} {user} time'
-            values={{
-                user: (
-                    <span className='userDisplayName'>
-                        {teammateDisplayName}
-                    </span>
-                ),
-                time: (
-                    <Timestamp
-                        useRelative={false}
-                        value={timestamp}
-                        useDate={false}
-                        userTimezone={teammateTimezone}
-                        useTime={{
-                            hour: 'numeric',
-                            minute: 'numeric',
-                        }}
-                    />
-                ),
-            }}
-        />
-    );
+    const extraProps: Partial<MenuItemProps> = {};
+
+    if (isDM) {
+        function getScheduledTimeInTeammateTimezone(userCurrentTimestamp: number, teammateTimezoneString: string): string {
+            const scheduledTimeUTC = moment.utc(userCurrentTimestamp);
+
+            const teammateScheduledTime = scheduledTimeUTC.clone().tz(teammateTimezoneString);
+
+            const formattedTime = teammateScheduledTime.format('h:mm A');
+
+            return formattedTime;
+        }
+
+        const teammateTimezoneString = teammateTimezone.useAutomaticTimezone ? teammateTimezone.automaticTimezone : teammateTimezone.manualTimezone || 'UTC';
+
+        const dmTeammateTimezone = (
+            <FormattedMessage
+                id='create_post_button.option.schedule_message.options.teammate_user_hour'
+                defaultMessage="{time} {user}'s time"
+                values={{
+                    user: (
+                        <span className='userDisplayName'>
+                            {teammateDisplayName}
+                        </span>
+                    ),
+                    time: getScheduledTimeInTeammateTimezone(tomorrow9amTime, teammateTimezoneString),
+                }}
+            />
+        );
+
+        extraProps.trailingElements = dmTeammateTimezone;
+    }
 
     const tomorrowClickHandler = useCallback((e) => handleOnSelect(e, tomorrow9amTime), [handleOnSelect, tomorrow9amTime]);
 
@@ -75,7 +83,8 @@ function CoreMenuOptions({handleOnSelect, channelId}: Props) {
                     values={{'9amTime': timeComponent}}
                 />
             }
-            trailingElements={dmTeammateTimezone}
+            className='core-menu-options'
+            {...extraProps}
         />
     );
 
@@ -98,7 +107,8 @@ function CoreMenuOptions({handleOnSelect, channelId}: Props) {
                     values={{'9amTime': timeComponent}}
                 />
             }
-            trailingElements={dmTeammateTimezone}
+            className='core-menu-options'
+            {...extraProps}
         />
     );
 
@@ -115,7 +125,8 @@ function CoreMenuOptions({handleOnSelect, channelId}: Props) {
                     }}
                 />
             }
-            trailingElements={dmTeammateTimezone}
+            className='core-menu-options'
+            {...extraProps}
         />
     );
 
@@ -144,9 +155,9 @@ function CoreMenuOptions({handleOnSelect, channelId}: Props) {
     }
 
     return (
-        <React.Fragment>
+        <>
             {options}
-        </React.Fragment>
+        </>
     );
 }
 

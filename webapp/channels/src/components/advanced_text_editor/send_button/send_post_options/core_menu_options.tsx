@@ -6,9 +6,14 @@ import React, {memo, useCallback} from 'react';
 import {FormattedMessage} from 'react-intl';
 
 import useTimePostBoxIndicator from 'components/advanced_text_editor/use_post_box_indicator';
+import {get as getPreference} from 'mattermost-redux/selectors/entities/preferences';
+
 import * as Menu from 'components/menu';
 import type {Props as MenuItemProps} from 'components/menu/menu_item';
 import Timestamp from 'components/timestamp';
+import {useSelector} from 'react-redux';
+import type {GlobalState} from '@mattermost/types/store';
+import {scheduledPosts} from 'utils/constants';
 
 type Props = {
     handleOnSelect: (e: React.FormEvent, scheduledAt: number) => void;
@@ -19,9 +24,65 @@ function CoreMenuOptions({handleOnSelect, channelId}: Props) {
     const {
         userCurrentTimezone,
         teammateTimezone,
+        currentUserTimesStamp,
         teammateDisplayName,
         isDM,
     } = useTimePostBoxIndicator(channelId);
+
+    const recentlyUsedCustomDate = useSelector((state: GlobalState) => getPreference(state, scheduledPosts.SCHEDULED_POSTS, scheduledPosts.RECENTLY_USED_CUSTOM_TIME));
+    const recentlyUsedCustomDateVal = JSON.parse(recentlyUsedCustomDate);
+
+
+    function isWithinLast30Days(timestamp: number, timeZone = 'UTC') {
+        if (!timestamp || isNaN(timestamp)) {
+            return false;
+        }
+        const usedDate = DateTime.fromMillis(timestamp).setZone(timeZone);
+        const now = DateTime.now().setZone(timeZone);
+        const thirtyDaysAgo = now.minus({ days: 30 });
+    
+        return usedDate >= thirtyDaysAgo && usedDate <= now;
+    }
+
+    let recentCustomTime = null;
+    if (isWithinLast30Days(recentlyUsedCustomDateVal.update_at, userCurrentTimezone)) {
+        const handleRecentlyUsedCustomTime = useCallback((e) => handleOnSelect(e, tomorrow9amTime), [handleOnSelect, recentlyUsedCustomDateVal.timestamp]);
+
+        const timestamp = (
+            <Timestamp
+                value={recentlyUsedCustomDateVal.timestamp}
+                timeZone={userCurrentTimezone}
+                useRelative={false}
+                useDate={{ weekday: 'long' }}
+                useTime={{ hour: 'numeric', minute: 'numeric' }}
+            />
+        );
+
+        recentCustomTime = (
+            <>
+                <Menu.Item
+                    key={'scheduling_time_tomorrow_9_am'}
+                    onClick={handleRecentlyUsedCustomTime}
+                    labels={
+                        <FormattedMessage
+                            id='create_post_button.option.schedule_message.options.recently_used_custom_time_value'
+                            defaultMessage='{customTime}'
+                            values={{weekday: 'Wednesday', customTime: timestamp}}
+                        />
+                    }
+                    className='core-menu-options'
+                    trailingElements={(
+                        <FormattedMessage
+                            id='create_post_button.option.schedule_message.options.recently_used_custom_time'
+                            defaultMessage='Recently used custom time'
+                        />
+                    )}
+                />
+                <Menu.Separator/>
+            </>
+        );
+    }
+
 
     const now = DateTime.now().setZone(userCurrentTimezone);
     const tomorrow9amTime = DateTime.now().
@@ -162,7 +223,7 @@ function CoreMenuOptions({handleOnSelect, channelId}: Props) {
 
     return (
         <div className='options'>
-            {options}
+            {recentCustomTime ? [...options, recentCustomTime] : recentCustomTime}
         </div>
     );
 }

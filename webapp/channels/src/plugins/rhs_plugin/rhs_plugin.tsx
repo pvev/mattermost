@@ -7,7 +7,7 @@ import SearchResultsHeader from 'components/search_results_header';
 
 import Pluggable from 'plugins/pluggable';
 
-export type Props = {
+type Props = {
     showPluggable: boolean;
     pluggableId: string;
     title: React.ReactNode;

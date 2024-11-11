@@ -34,7 +34,7 @@ export type OwnProps = {
     activeTab?: string;
 }
 
-export type Props = OwnProps & {
+type Props = OwnProps & {
     onExited: () => void;
     intl: IntlShape;
     actions: {

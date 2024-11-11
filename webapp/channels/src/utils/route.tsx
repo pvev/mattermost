@@ -8,7 +8,7 @@ import {isGuest} from 'mattermost-redux/utils/user_utils';
 
 import {ErrorPageTypes} from 'utils/constants';
 
-export const notFoundParams = {
+const notFoundParams = {
     type: ErrorPageTypes.PAGE_NOT_FOUND,
 };
 

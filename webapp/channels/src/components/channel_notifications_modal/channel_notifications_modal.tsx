@@ -452,7 +452,7 @@ export function getInitialValuesOfChannelNotifyProps<KeyInNotifyProps>(defaultVa
     return value;
 }
 
-export function getInitialValuesOfIgnoreChannelMentions(
+function getInitialValuesOfIgnoreChannelMentions(
     markUnread: ChannelMembership['notify_props']['mark_unread'],
     ignoreChannelMentions: ChannelMembership['notify_props']['ignore_channel_mentions'],
     userNotifyPropForChannel: UserNotifyProps['channel'],

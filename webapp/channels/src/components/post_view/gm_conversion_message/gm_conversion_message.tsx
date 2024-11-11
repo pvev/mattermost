@@ -14,7 +14,7 @@ import {renderUsername} from 'components/post_markdown/system_message_helpers';
 
 import type {GlobalState} from 'types/store';
 
-export type Props = {
+type Props = {
     post: Post;
 }
 function GMConversionMessage(props: Props): JSX.Element {

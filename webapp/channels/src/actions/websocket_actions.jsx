@@ -1159,7 +1159,7 @@ export function handleUserRemovedEvent(msg) {
     }
 }
 
-export async function handleUserUpdatedEvent(msg) {
+async function handleUserUpdatedEvent(msg) {
     // This websocket event is sent to all non-guest users on the server, so be careful requesting data from the server
     // in response to it. That can overwhelm the server if every connected user makes such a request at the same time.
     // See https://mattermost.atlassian.net/browse/MM-40050 for more information.
@@ -1547,7 +1547,7 @@ function handleSidebarCategoryOrderUpdated(msg) {
     return receivedCategoryOrder(msg.broadcast.team_id, msg.data.order);
 }
 
-export function handleUserActivationStatusChange() {
+function handleUserActivationStatusChange() {
     return (doDispatch, doGetState) => {
         const state = doGetState();
         const license = getLicense(state);

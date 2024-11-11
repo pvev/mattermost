@@ -7,11 +7,11 @@ import type {IDMappedObjects} from '@mattermost/types/utilities';
 
 import {createSelector} from 'mattermost-redux/selectors/create_selector';
 
-export function getAllJobs(state: GlobalState): IDMappedObjects<Job> {
+function getAllJobs(state: GlobalState): IDMappedObjects<Job> {
     return state.entities.jobs.jobs;
 }
 
-export function getJobsByType(state: GlobalState): JobsByType {
+function getJobsByType(state: GlobalState): JobsByType {
     return state.entities.jobs.jobsByTypeList;
 }
 

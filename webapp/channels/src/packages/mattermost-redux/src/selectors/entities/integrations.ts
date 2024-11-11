@@ -63,7 +63,7 @@ export const getAppsBotIDs: (state: GlobalState) => string[] = createSelector(
     },
 );
 
-export function getSystemCommands(state: GlobalState) {
+function getSystemCommands(state: GlobalState) {
     return state.entities.integrations.systemCommands;
 }
 

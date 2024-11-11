@@ -19,7 +19,7 @@ export const getExpandSeatsLink: (state: GlobalState) => (licenseId: string) => 
     },
 );
 
-export const getCloudDelinquentInvoices = createSelector(
+const getCloudDelinquentInvoices = createSelector(
     'getCloudDelinquentInvoices',
     (state: GlobalState) => state.entities.cloud.invoices as Record<string, Invoice>,
     (invoices: Record<string, Invoice>) => {
@@ -31,7 +31,7 @@ export const getCloudDelinquentInvoices = createSelector(
     },
 );
 
-export const isCloudDelinquencyGreaterThan90Days = createSelector(
+const isCloudDelinquencyGreaterThan90Days = createSelector(
     'isCloudDelinquencyGreaterThan90Days',
     (state: GlobalState) => state.entities.cloud.subscription as Subscription,
     (subscription: Subscription) => {
@@ -44,4 +44,4 @@ export const isCloudDelinquencyGreaterThan90Days = createSelector(
     },
 );
 
-export const isCwsMockMode = (state: GlobalState) => getConfig(state)?.CWSMock === 'true';
+const isCwsMockMode = (state: GlobalState) => getConfig(state)?.CWSMock === 'true';

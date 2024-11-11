@@ -42,5 +42,5 @@ export function mapStateToProps(state: GlobalState, ownProps: Props) {
 
 export default connect(mapStateToProps)(Timestamp);
 
-export {default as SemanticTime} from './semantic_time';
+;
 export {RelativeRanges};

@@ -5,17 +5,17 @@ import {WindowSizes} from 'utils/constants';
 
 import type {GlobalState} from 'types/store';
 
-export function getIsDesktopView(state: GlobalState): boolean {
+function getIsDesktopView(state: GlobalState): boolean {
     const windowSize = state.views.browser.windowSize;
     return windowSize === WindowSizes.DESKTOP_VIEW;
 }
 
-export function getIsSmallDesktopView(state: GlobalState): boolean {
+function getIsSmallDesktopView(state: GlobalState): boolean {
     const windowSize = state.views.browser.windowSize;
     return windowSize === WindowSizes.SMALL_DESKTOP_VIEW;
 }
 
-export function getIsTabletView(state: GlobalState): boolean {
+function getIsTabletView(state: GlobalState): boolean {
     const windowSize = state.views.browser.windowSize;
     return windowSize === WindowSizes.TABLET_VIEW;
 }

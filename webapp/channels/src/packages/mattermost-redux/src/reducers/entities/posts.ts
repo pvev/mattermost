@@ -1237,7 +1237,7 @@ export function reactions(state: RelationOneToOne<Post, Record<string, Reaction>
     }
 }
 
-export function acknowledgements(state: RelationOneToOne<Post, Record<UserProfile['id'], number>> = {}, action: AnyAction) {
+function acknowledgements(state: RelationOneToOne<Post, Record<UserProfile['id'], number>> = {}, action: AnyAction) {
     switch (action.type) {
     case PostTypes.CREATE_ACK_POST_SUCCESS: {
         const ack = action.data as PostAcknowledgement;

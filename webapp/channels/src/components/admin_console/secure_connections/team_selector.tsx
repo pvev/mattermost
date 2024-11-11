@@ -10,7 +10,7 @@ import type {IDMappedObjects} from '@mattermost/types/utilities';
 
 import DropdownInput from 'components/dropdown_input';
 
-export type Props = {
+type Props = {
     value: string;
     teamsById: IDMappedObjects<Team>;
     onChange: (teamId: string) => void;

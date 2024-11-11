@@ -150,7 +150,7 @@ export function sendMembersInvites(teamId: string, users: UserProfile[], emails:
     };
 }
 
-export async function sendGuestInviteForUser(
+async function sendGuestInviteForUser(
     dispatch: DispatchFunc,
     user: UserProfile,
     teamId: string,

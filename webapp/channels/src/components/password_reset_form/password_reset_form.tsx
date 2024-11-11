@@ -10,7 +10,7 @@ import type {ActionResult} from 'mattermost-redux/types/actions';
 
 import Constants from 'utils/constants';
 
-export interface Props {
+interface Props {
     location: {search: string};
     actions: {
         resetUserPassword: (token: string, newPassword: string) => Promise<ActionResult>;

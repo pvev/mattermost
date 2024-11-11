@@ -82,7 +82,7 @@ type State = {
     pickerExtended: boolean;
 }
 
-export class EmojiPickerSkin extends React.PureComponent<Props, State> {
+class EmojiPickerSkin extends React.PureComponent<Props, State> {
     constructor(props: Props) {
         super(props);
 

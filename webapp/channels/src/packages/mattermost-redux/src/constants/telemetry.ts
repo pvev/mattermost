@@ -2,8 +2,8 @@
 // See LICENSE.txt for license information.
 
 // SKUs
-export const TrackProfessionalSKU = 'professional';
-export const TrackEnterpriseSKU = 'enterprise';
+const TrackProfessionalSKU = 'professional';
+const TrackEnterpriseSKU = 'enterprise';
 
 // Features
 export const TrackGroupsFeature = 'custom_groups';
@@ -15,7 +15,7 @@ export const TrackInviteGroupEvent = 'invite_group_to_channel__add_member';
 export const TrackPassiveKeywordsEvent = 'update_passive_keywords';
 
 // Categories
-export const TrackActionCategory = 'action';
+const TrackActionCategory = 'action';
 export const TrackMiscCategory = 'miscellaneous';
 
 // Properties

@@ -8,7 +8,7 @@ import type {Product} from '@mattermost/types/cloud';
 
 import {HostedCustomerTypes} from 'mattermost-redux/action_types';
 
-export interface SelfHostedProducts {
+interface SelfHostedProducts {
     products: Record<string, Product>;
     productsLoaded: boolean;
 }
@@ -46,7 +46,7 @@ export interface ErrorsReducer {
 }
 
 const emptyErrors = {};
-export function errors(state: ErrorsReducer = emptyErrors, action: AnyAction) {
+function errors(state: ErrorsReducer = emptyErrors, action: AnyAction) {
     switch (action.type) {
     case HostedCustomerTypes.SELF_HOSTED_PRODUCTS_FAILED: {
         return {...state, products: true};

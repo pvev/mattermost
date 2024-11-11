@@ -3,11 +3,11 @@
 
 import type {GlobalState} from 'types/store';
 
-export function showPreviewOnCreateComment(state: GlobalState) {
+function showPreviewOnCreateComment(state: GlobalState) {
     return state.views.textbox.shouldShowPreviewOnCreateComment;
 }
 
-export function showPreviewOnCreatePost(state: GlobalState) {
+function showPreviewOnCreatePost(state: GlobalState) {
     return state.views.textbox.shouldShowPreviewOnCreatePost;
 }
 

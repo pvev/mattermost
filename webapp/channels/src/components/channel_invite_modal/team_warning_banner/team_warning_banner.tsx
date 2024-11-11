@@ -17,7 +17,7 @@ import WithTooltip from 'components/with_tooltip';
 
 type UserProfileValue = Value & UserProfile;
 
-export type Props = {
+type Props = {
     teamId: string;
     users: UserProfileValue[];
     guests: UserProfileValue[];

@@ -10,22 +10,18 @@ export type MarketplaceLabel = {
     url?: string;
 }
 
-export enum HostingType {
+enum HostingType {
     OnPrem = 'on-prem',
     Cloud = 'cloud',
 }
 
 export enum AuthorType {
     Mattermost = 'mattermost',
-    Partner = 'partner',
-    Community = 'community',
-}
+    }
 
 export enum ReleaseStage {
     Production = 'production',
-    Beta = 'beta',
-    Experimental = 'experimental',
-}
+    }
 
 interface MarketplaceBaseItem {
     labels?: MarketplaceLabel[];

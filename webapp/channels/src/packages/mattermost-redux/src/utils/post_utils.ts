@@ -44,11 +44,11 @@ export function isUserActivityPost(postType: PostType): boolean {
     return Posts.USER_ACTIVITY_POST_TYPES.includes(postType);
 }
 
-export function isPostOwner(userId: UserProfile['id'], post: Post) {
+function isPostOwner(userId: UserProfile['id'], post: Post) {
     return userId === post.user_id;
 }
 
-export function isEdited(post: Post): boolean {
+function isEdited(post: Post): boolean {
     return post.edit_at > 0;
 }
 
@@ -72,7 +72,7 @@ export function canEditPost(state: GlobalState, config: any, license: any, teamI
     return canEdit;
 }
 
-export function getLastCreateAt(postsArray: Post[]): number {
+function getLastCreateAt(postsArray: Post[]): number {
     const createAt = postsArray.map((p) => p.create_at);
 
     if (createAt.length) {
@@ -180,7 +180,7 @@ export function isPostCommentMention({post, currentUser, threadRepliedToByCurren
     return isCommentMention;
 }
 
-export function fromAutoResponder(post: Post): boolean {
+function fromAutoResponder(post: Post): boolean {
     return Boolean(post.type && (post.type === Posts.SYSTEM_AUTO_RESPONDER));
 }
 

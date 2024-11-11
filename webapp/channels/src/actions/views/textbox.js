@@ -3,14 +3,14 @@
 
 import {ActionTypes} from 'utils/constants';
 
-export function setShowPreviewOnCreateComment(showPreview) {
+function setShowPreviewOnCreateComment(showPreview) {
     return {
         type: ActionTypes.SET_SHOW_PREVIEW_ON_CREATE_COMMENT,
         showPreview,
     };
 }
 
-export function setShowPreviewOnCreatePost(showPreview) {
+function setShowPreviewOnCreatePost(showPreview) {
     return {
         type: ActionTypes.SET_SHOW_PREVIEW_ON_CREATE_POST,
         showPreview,

@@ -12,7 +12,7 @@ import type {Category, Categories} from '../types';
 export const RECENT = 'recent';
 export const SEARCH_RESULTS = 'searchResults';
 export const SMILEY_EMOTION = 'smileys-emotion';
-export const CUSTOM = 'custom';
+const CUSTOM = 'custom';
 
 const emojiCategories = {
     recent: {
@@ -114,7 +114,7 @@ const emojiCategories = {
 } satisfies Record<EmojiCategory, Category>;
 
 export const RECENT_EMOJI_CATEGORY: Pick<Categories, 'recent'> = {recent: emojiCategories.recent};
-export const SEARCH_EMOJI_CATEGORY: Pick<Categories, typeof SEARCH_RESULTS> = {searchResults: emojiCategories.searchResults};
+const SEARCH_EMOJI_CATEGORY: Pick<Categories, typeof SEARCH_RESULTS> = {searchResults: emojiCategories.searchResults};
 
 export const CATEGORIES: Categories = Emoji.CategoryNames.
     filter((category) => !(category === 'recent' || category === 'searchResults')).

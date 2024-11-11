@@ -18,7 +18,7 @@ import {
 import {getTeamMemberships, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
-export {getMySystemPermissions, getMySystemRoles, getRoles, haveISystemPermission};
+export {  getRoles, haveISystemPermission};
 
 export const getGroupMemberships: (state: GlobalState) => Record<string, GroupMembership> = createSelector(
     'getGroupMemberships',

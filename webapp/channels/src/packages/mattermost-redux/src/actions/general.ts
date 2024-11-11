@@ -43,7 +43,7 @@ export function getLicenseConfig() {
     });
 }
 
-export function logClientError(message: string, level = LogLevel.Error) {
+function logClientError(message: string, level = LogLevel.Error) {
     return bindClientFunc({
         clientFunc: Client4.logClientError,
         onRequest: GeneralTypes.LOG_CLIENT_ERROR_REQUEST,
@@ -100,10 +100,3 @@ export function getFirstAdminSetupComplete(): ActionFuncAsync<SystemSetting> {
     };
 }
 
-export default {
-    getClientConfig,
-    getLicenseConfig,
-    logClientError,
-    setServerVersion,
-    setUrl,
-};

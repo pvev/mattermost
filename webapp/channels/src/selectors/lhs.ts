@@ -17,7 +17,7 @@ export function getIsLhsOpen(state: GlobalState): boolean {
     return state.views.lhs.isOpen;
 }
 
-export function getLhsSize(state: GlobalState): SidebarSize {
+function getLhsSize(state: GlobalState): SidebarSize {
     return state.views.lhs.size;
 }
 
@@ -25,7 +25,7 @@ export function getCurrentStaticPageId(state: GlobalState): string {
     return state.views.lhs.currentStaticPageId;
 }
 
-export const getDraftsCount = makeGetDraftsCount();
+const getDraftsCount = makeGetDraftsCount();
 
 export const getVisibleStaticPages = createSelector(
     'getVisibleSidebarStaticPages',

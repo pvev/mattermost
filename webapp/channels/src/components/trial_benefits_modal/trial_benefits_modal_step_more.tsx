@@ -10,7 +10,7 @@ import {TELEMETRY_CATEGORIES} from 'utils/constants';
 
 import './trial_benefits_modal_step_more.scss';
 
-export type TrialBenefitsModalStepMoreProps = {
+type TrialBenefitsModalStepMoreProps = {
     id: string;
     route: string;
     message: string;

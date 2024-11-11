@@ -15,7 +15,7 @@ const toNewObj = <T extends {id: string}>(current: IDMappedObjects<T>, arr: T[])
     }, {...current});
 };
 
-export function byChannelId(state: ChannelBookmarksState['byChannelId'] = {}, action: AnyAction) {
+function byChannelId(state: ChannelBookmarksState['byChannelId'] = {}, action: AnyAction) {
     switch (action.type) {
     case ChannelBookmarkTypes.RECEIVED_BOOKMARKS: {
         const channelId: Channel['id'] = action.data.channelId;

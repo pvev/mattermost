@@ -34,7 +34,7 @@ export function modalState(state: ViewsState['modals']['modalState'] = {}, actio
     }
 }
 
-export function showLaunchingWorkspace(state = false, action: AnyAction) {
+function showLaunchingWorkspace(state = false, action: AnyAction) {
     switch (action.type) {
     case GeneralTypes.SHOW_LAUNCHING_WORKSPACE:
         return action.open;

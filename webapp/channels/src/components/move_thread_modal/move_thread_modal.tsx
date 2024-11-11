@@ -39,7 +39,7 @@ export type ActionProps = {
     moveThread: (postId: string, channelId: string) => Promise<ActionResult>;
 }
 
-export type OwnProps = {
+type OwnProps = {
 
     // The function called immediately after the modal is hidden
     onExited?: () => void;
@@ -48,7 +48,7 @@ export type OwnProps = {
     post: Post;
 };
 
-export type Props = OwnProps & {actions: ActionProps};
+type Props = OwnProps & {actions: ActionProps};
 
 const noop = () => {};
 

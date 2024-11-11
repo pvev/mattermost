@@ -12,7 +12,7 @@ import type {SearchType} from 'types/store/rhs';
 
 export type SearchFilterType = 'all' | 'documents' | 'spreadsheets' | 'presentations' | 'code' | 'images' | 'audio' | 'video';
 
-export type OwnProps = {
+type OwnProps = {
     isSideBarRight?: boolean;
     isSideBarRightOpen?: boolean;
     hideSearchBar?: boolean;
@@ -22,7 +22,7 @@ export type OwnProps = {
     children?: React.ReactNode;
 }
 
-export type StateProps = {
+type StateProps = {
     isRhsExpanded: boolean;
     isRhsOpen: boolean;
     isSearchingTerm: boolean;
@@ -38,7 +38,7 @@ export type StateProps = {
     isMobileView: boolean;
 }
 
-export type DispatchProps = {
+type DispatchProps = {
     actions: {
         updateSearchTerms: (term: string) => Action;
         updateSearchTermsForShortcut: () => void;

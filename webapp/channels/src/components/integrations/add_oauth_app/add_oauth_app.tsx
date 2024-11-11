@@ -27,7 +27,7 @@ const messages = defineMessages({
     },
 });
 
-export type Props = {
+type Props = {
 
     /**
     * The team data

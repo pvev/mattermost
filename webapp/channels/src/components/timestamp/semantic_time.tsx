@@ -5,7 +5,7 @@ import {DateTime} from 'luxon';
 import React, {memo} from 'react';
 import type {FC, ReactNode, TimeHTMLAttributes} from 'react';
 
-export type Props = {
+type Props = {
     value: Date;
     children?: ReactNode;
 } & TimeHTMLAttributes<HTMLTimeElement>;

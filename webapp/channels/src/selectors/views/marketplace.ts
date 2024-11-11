@@ -10,7 +10,7 @@ import type {GlobalState} from 'types/store';
 
 export const getPlugins = (state: GlobalState): MarketplacePlugin[] => state.views.marketplace.plugins;
 
-export const getApps = (state: GlobalState): MarketplaceApp[] => state.views.marketplace.apps;
+const getApps = (state: GlobalState): MarketplaceApp[] => state.views.marketplace.apps;
 
 export const getListing = createSelector(
     'getListing',

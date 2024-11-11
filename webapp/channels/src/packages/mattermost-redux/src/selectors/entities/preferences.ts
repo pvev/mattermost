@@ -34,7 +34,7 @@ export function get(state: GlobalState, category: string, name: string, defaultV
     return pref ? pref.value : defaultValue;
 }
 
-export function getFromPreferences(preferences: PreferencesType, category: string, name: string, defaultValue: any = '') {
+function getFromPreferences(preferences: PreferencesType, category: string, name: string, defaultValue: any = '') {
     const key = getPreferenceKey(category, name);
 
     if (!(key in preferences)) {
@@ -256,7 +256,7 @@ export function getCollapsedThreadsPreference(state: GlobalState): string {
     );
 }
 
-export function getCollapsedThreadsPreferenceFromPreferences(state: GlobalState, userPreferences: PreferencesType): string {
+function getCollapsedThreadsPreferenceFromPreferences(state: GlobalState, userPreferences: PreferencesType): string {
     const configValue = getConfig(state)?.CollapsedThreads;
     let preferenceDefault = Preferences.COLLAPSED_REPLY_THREADS_OFF;
 
@@ -302,7 +302,7 @@ export function getIsOnboardingFlowEnabled(state: GlobalState): boolean {
     return getConfig(state).EnableOnboardingFlow === 'true';
 }
 
-export function getHasDismissedSystemConsoleLimitReached(state: GlobalState): boolean {
+function getHasDismissedSystemConsoleLimitReached(state: GlobalState): boolean {
     return getBool(state, Preferences.CATEGORY_UPGRADE_CLOUD, Preferences.SYSTEM_CONSOLE_LIMIT_REACHED, false);
 }
 

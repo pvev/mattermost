@@ -27,7 +27,7 @@ import {doesCookieContainsMMUserId} from 'utils/utils';
 
 import type {Translations} from 'types/store/i18n';
 
-export type TranslationPluginFunction = (locale: string) => Translations
+type TranslationPluginFunction = (locale: string) => Translations
 
 /**
  * This function meant to be used in root.tsx component loads config, license and if user is logged in, it loads user and its related data.

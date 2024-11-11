@@ -6,7 +6,7 @@ import {combineReducers} from 'redux';
 
 import {ActionTypes} from 'utils/constants';
 
-export function switcherOpen(state = false, action: AnyAction) {
+function switcherOpen(state = false, action: AnyAction) {
     switch (action.type) {
     case ActionTypes.SET_PRODUCT_SWITCHER_OPEN:
         return action.open;

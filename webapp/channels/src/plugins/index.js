@@ -88,7 +88,7 @@ export async function initializePlugins() {
 }
 
 // getPlugins queries the server for all enabled plugins
-export function getPlugins() {
+function getPlugins() {
     return async (dispatch) => {
         let plugins;
         try {

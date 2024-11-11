@@ -6,7 +6,7 @@ import {combineReducers} from 'redux';
 
 import {ActionTypes} from 'utils/constants';
 
-export function isShowOnboardingTaskCompletion(state = false, action: AnyAction) {
+function isShowOnboardingTaskCompletion(state = false, action: AnyAction) {
     switch (action.type) {
     case ActionTypes.SHOW_ONBOARDING_TASK_COMPLETION:
         return action.open;
@@ -15,7 +15,7 @@ export function isShowOnboardingTaskCompletion(state = false, action: AnyAction)
     }
 }
 
-export function isShowOnboardingCompleteProfileTour(state = false, action: AnyAction) {
+function isShowOnboardingCompleteProfileTour(state = false, action: AnyAction) {
     switch (action.type) {
     case ActionTypes.SHOW_ONBOARDING_COMPLETE_PROFILE_TOUR:
         return action.open;
@@ -24,7 +24,7 @@ export function isShowOnboardingCompleteProfileTour(state = false, action: AnyAc
     }
 }
 
-export function isShowOnboardingVisitConsoleTour(state = false, action: AnyAction) {
+function isShowOnboardingVisitConsoleTour(state = false, action: AnyAction) {
     switch (action.type) {
     case ActionTypes.SHOW_ONBOARDING_VISIT_CONSOLE_TOUR:
         return action.open;

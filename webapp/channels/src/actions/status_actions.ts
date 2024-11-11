@@ -100,7 +100,7 @@ export function loadStatusesForProfilesMap(users: Record<string, UserProfile> | 
     };
 }
 
-export function loadStatusesByIds(userIds: string[]): ActionFunc {
+function loadStatusesByIds(userIds: string[]): ActionFunc {
     return (dispatch, getState) => {
         const state = getState();
         const enabledUserStatuses = getIsUserStatusesConfigEnabled(state);

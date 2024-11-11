@@ -13,12 +13,7 @@ import type {UserAccessToken, UserProfile} from './users';
 import type {RelationOneToOne} from './utilities';
 
 export enum LogLevelEnum {
-    SILLY = 'silly',
-    DEBUG = 'debug',
-    INFO = 'info',
-    WARN = 'warn',
-    ERROR = 'error',
-}
+    }
 
 export type LogServerNames = string[];
 export type LogLevels = LogLevelEnum[];

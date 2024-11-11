@@ -9,7 +9,7 @@ import WithTooltip from 'components/with_tooltip';
 
 import {ZoomSettings} from 'utils/constants';
 
-export interface Props {
+interface Props {
     scale?: number;
     showZoomControls?: boolean;
     handleZoomIn?: () => void;

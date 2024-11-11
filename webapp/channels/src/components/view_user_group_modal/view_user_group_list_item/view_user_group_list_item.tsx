@@ -19,7 +19,7 @@ import * as Utils from 'utils/utils';
 
 import type {GlobalState} from 'types/store';
 
-export type Props = {
+type Props = {
     groupId: string;
     user: UserProfile;
     group: Group;

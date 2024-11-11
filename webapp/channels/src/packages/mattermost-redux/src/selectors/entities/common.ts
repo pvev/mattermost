@@ -44,7 +44,7 @@ export function getCurrentUser(state: GlobalState): UserProfile {
     return state.entities.users.profiles[getCurrentUserId(state)];
 }
 
-export function getCurrentUserEmail(state: GlobalState): UserProfile['email'] {
+function getCurrentUserEmail(state: GlobalState): UserProfile['email'] {
     return getCurrentUser(state)?.email;
 }
 

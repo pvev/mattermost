@@ -8,7 +8,7 @@ import {trackEvent} from 'actions/telemetry_actions';
 
 import './three_days_left_trial_modal.scss';
 
-export type LearnMoreActionButtonProps = {
+type LearnMoreActionButtonProps = {
     id: string;
     route: string;
     message: string;

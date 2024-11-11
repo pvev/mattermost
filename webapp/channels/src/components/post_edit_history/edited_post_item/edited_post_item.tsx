@@ -47,7 +47,7 @@ const itemMessages = defineMessages({
     },
 });
 
-export type Props = PropsFromRedux & {
+type Props = PropsFromRedux & {
     post: Post;
     isCurrent?: boolean;
     theme: Theme;

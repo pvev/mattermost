@@ -3,7 +3,7 @@
 
 import type {GlobalState} from 'types/store';
 
-export function isShowOnboardingTaskCompletion(state: GlobalState) {
+function isShowOnboardingTaskCompletion(state: GlobalState) {
     return state.views.onboardingTasks.isShowOnboardingTaskCompletion;
 }
 

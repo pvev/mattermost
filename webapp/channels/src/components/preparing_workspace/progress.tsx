@@ -15,7 +15,7 @@ type Props = {
     transitionSpeed: number;
 }
 
-export const Progress = (props: Props) => {
+const Progress = (props: Props) => {
     // exclude transitioning out as a progress step
     const numSteps = props.stepOrder.length - 1;
     if (numSteps < 2) {

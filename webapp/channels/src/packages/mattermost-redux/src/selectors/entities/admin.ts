@@ -8,7 +8,7 @@ import type {GlobalState} from '@mattermost/types/store';
 
 import {createSelector} from 'mattermost-redux/selectors/create_selector';
 
-export function getLogs(state: GlobalState) {
+function getLogs(state: GlobalState) {
     return state.entities.admin.logs;
 }
 
@@ -52,11 +52,11 @@ export function getComplianceReports(state: GlobalState) {
     return state.entities.admin.complianceReports;
 }
 
-export function getClusterInfo(state: GlobalState) {
+function getClusterInfo(state: GlobalState) {
     return state.entities.admin.clusterInfo;
 }
 
-export function getUserAccessTokens(state: GlobalState) {
+function getUserAccessTokens(state: GlobalState) {
     return state.entities.admin.userAccessTokens;
 }
 
@@ -73,11 +73,11 @@ export function getDataRetentionCustomPolicy(state: GlobalState, id: string): Da
     return policy[id];
 }
 
-export function getAdminAnalytics(state: GlobalState) {
+function getAdminAnalytics(state: GlobalState) {
     return state.entities.admin.analytics;
 }
 
-export function getPluginStatuses(state: GlobalState): Record<string, PluginStatusRedux> | undefined {
+function getPluginStatuses(state: GlobalState): Record<string, PluginStatusRedux> | undefined {
     return state.entities.admin.pluginStatuses;
 }
 

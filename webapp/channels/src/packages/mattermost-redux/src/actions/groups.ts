@@ -291,7 +291,7 @@ export function patchGroup(groupID: string, patch: GroupPatch | CustomGroupPatch
     });
 }
 
-export function getGroupsByUserId(userID: string) {
+function getGroupsByUserId(userID: string) {
     return bindClientFunc({
         clientFunc: Client4.getGroupsByUserId,
         onSuccess: [GroupTypes.RECEIVED_MY_GROUPS],

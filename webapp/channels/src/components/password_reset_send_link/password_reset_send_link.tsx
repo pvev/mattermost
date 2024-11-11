@@ -10,7 +10,7 @@ import {isEmail} from 'mattermost-redux/utils/helpers';
 import BackButton from 'components/common/back_button';
 import LocalizedPlaceholderInput from 'components/localized_placeholder_input';
 
-export interface Props {
+interface Props {
     actions: {
         sendPasswordResetEmail: (email: string) => Promise<ActionResult>;
     };

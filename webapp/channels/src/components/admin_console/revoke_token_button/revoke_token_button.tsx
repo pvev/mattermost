@@ -8,7 +8,7 @@ import type {ActionResult} from 'mattermost-redux/types/actions';
 
 import {trackEvent} from 'actions/telemetry_actions.jsx';
 
-export interface RevokeTokenButtonProps {
+interface RevokeTokenButtonProps {
     actions: {
         revokeUserAccessToken: (
             tokenId: string

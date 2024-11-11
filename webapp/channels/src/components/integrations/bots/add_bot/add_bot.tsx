@@ -98,7 +98,7 @@ export type Props = {
     };
 };
 
-export type State = {
+type State = {
     username: string;
     displayName: string | undefined;
     description: string | undefined;

@@ -46,7 +46,7 @@ export type Params = {
 
 export type Props = PropsFromRedux & RouteComponentProps<Params> & WrappedComponentProps;
 
-export type State = {
+type State = {
     user?: UserProfile;
     emailField: string;
     isLoading: boolean;
@@ -61,7 +61,7 @@ export type State = {
     showTeamSelectorModal: boolean;
 };
 
-export class SystemUserDetail extends PureComponent<Props, State> {
+class SystemUserDetail extends PureComponent<Props, State> {
     constructor(props: Props) {
         super(props);
         this.state = {

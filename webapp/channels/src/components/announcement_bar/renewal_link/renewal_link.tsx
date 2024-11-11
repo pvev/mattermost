@@ -10,7 +10,7 @@ import type {ModalData} from 'types/actions';
 
 import './renew_link.scss';
 
-export interface RenewalLinkProps {
+interface RenewalLinkProps {
     telemetryInfo?: { success: string; error: string };
     actions: {
         openModal: <P>(modalData: ModalData<P>) => void;

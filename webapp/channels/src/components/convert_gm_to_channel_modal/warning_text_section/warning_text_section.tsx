@@ -6,7 +6,7 @@ import {useIntl} from 'react-intl';
 
 import SectionNotice from 'components/section_notice';
 
-export type Props = {
+type Props = {
     channelMemberNames: string[];
 }
 const WarningTextSection = (props: Props): JSX.Element => {

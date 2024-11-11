@@ -29,7 +29,7 @@ interface PostFilterOptions {
     lastViewedAt?: number;
 }
 
-export function getSelectedThreadIdInTeam(state: GlobalState): ViewsState['threads']['selectedThreadIdInTeam'] {
+function getSelectedThreadIdInTeam(state: GlobalState): ViewsState['threads']['selectedThreadIdInTeam'] {
     return state.views.threads.selectedThreadIdInTeam;
 }
 
@@ -45,7 +45,7 @@ export const getSelectedThreadIdInCurrentTeam: (state: GlobalState) => ViewsStat
     },
 );
 
-export const getSelectedThreadInCurrentTeam: (state: GlobalState) => UserThread | null = createSelector(
+const getSelectedThreadInCurrentTeam: (state: GlobalState) => UserThread | null = createSelector(
     'getSelectedThreadInCurrentTeam',
     getCurrentTeamId,
     getSelectedThreadIdInTeam,
@@ -90,7 +90,7 @@ export const isThreadManuallyUnread = (state: GlobalState, threadId: UserThread[
 // Returns a selector that, given the state and an object containing an array of postIds and an optional
 // timestamp of when the channel was last read, returns a memoized array of postIds interspersed with
 // day indicators, an optional new message indicator and create comment.
-export function makeFilterRepliesAndAddSeparators() {
+function makeFilterRepliesAndAddSeparators() {
     const getPostsForIds = makeGetPostsForIds();
 
     return createIdsSelector(

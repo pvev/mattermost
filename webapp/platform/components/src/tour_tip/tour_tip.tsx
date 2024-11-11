@@ -19,7 +19,7 @@ import 'tippy.js/animations/perspective-subtle.css';
 
 import './tour_tip.scss';
 
-export type TourTipEventSource = 'next' | 'prev' | 'dismiss' | 'jump' | 'skipped' | 'open' | 'punchOut'
+type TourTipEventSource = 'next' | 'prev' | 'dismiss' | 'jump' | 'skipped' | 'open' | 'punchOut'
 
 type Props = {
     show: boolean;

@@ -31,7 +31,7 @@ export interface Props extends WrappedComponentProps {
         getStandardAnalytics(teamId?: string): void;
     };
 }
-export class SystemNotice extends React.PureComponent<Props> {
+class SystemNotice extends React.PureComponent<Props> {
     componentDidMount() {
         if (this.props.isSystemAdmin) {
             this.props.actions.getStandardAnalytics();

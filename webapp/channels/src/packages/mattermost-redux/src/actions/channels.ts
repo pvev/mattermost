@@ -1453,33 +1453,3 @@ export function fetchMissingChannels(channelIDs: string[]): ActionFuncAsync<Arra
     };
 }
 
-export default {
-    selectChannel,
-    createChannel,
-    createDirectChannel,
-    patchChannel,
-    updateChannelNotifyProps,
-    getChannel,
-    fetchChannelsAndMembers,
-    getChannelTimezones,
-    getChannelMembersByIds,
-    leaveChannel,
-    joinChannel,
-    deleteChannel,
-    unarchiveChannel,
-    getChannels,
-    autocompleteChannels,
-    autocompleteChannelsForSearch,
-    searchChannels,
-    searchGroupChannels,
-    getChannelStats,
-    addChannelMember,
-    addChannelMembers,
-    removeChannelMember,
-    markChannelAsRead,
-    favoriteChannel,
-    unfavoriteChannel,
-    membersMinusGroupMembers,
-    getChannelModerations,
-    getChannelMemberCountsByGroup,
-};

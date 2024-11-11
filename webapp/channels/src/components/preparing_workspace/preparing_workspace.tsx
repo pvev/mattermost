@@ -64,7 +64,7 @@ type SubmissionState = typeof SubmissionStates[keyof typeof SubmissionStates];
 // START_TRANSITIONING_OUT is how long the other side of the transitioning screen
 const WAIT_FOR_REDIRECT_TIME = 2000 - START_TRANSITIONING_OUT;
 
-export type Actions = {
+type Actions = {
     createTeam: (team: Team) => Promise<ActionResult>;
     updateTeam: (team: Team) => Promise<ActionResult>;
     checkIfTeamExists: (teamName: string) => Promise<ActionResult<boolean>>;

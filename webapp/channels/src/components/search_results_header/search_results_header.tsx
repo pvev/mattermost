@@ -11,7 +11,7 @@ import {RHSStates} from 'utils/constants';
 
 import type {PropsFromRedux} from './index';
 
-export interface Props extends PropsFromRedux {
+interface Props extends PropsFromRedux {
     children: React.ReactNode;
 }
 

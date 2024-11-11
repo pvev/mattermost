@@ -26,7 +26,7 @@ type Params = {
     team_id: string;
 }
 
-export type OwnProps = RouteComponentProps<Params>;
+type OwnProps = RouteComponentProps<Params>;
 
 function mapStateToProps(state: GlobalState, props: OwnProps) {
     const teamID = props.match.params.team_id;

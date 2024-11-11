@@ -20,7 +20,7 @@ import type {ModalData} from 'types/actions';
 import 'components/user_groups_modal/user_groups_modal.scss';
 import './update_user_group_modal.scss';
 
-export type Props = {
+type Props = {
     onExited: () => void;
     groupId: string;
     group: Group;

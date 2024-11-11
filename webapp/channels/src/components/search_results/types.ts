@@ -45,7 +45,7 @@ export type StateProps = {
     isSearchFilesAtEnd: boolean;
 };
 
-export type IntlProps = {
+type IntlProps = {
     intl: IntlShape;
 };
 

@@ -4,7 +4,7 @@
 import type {Reducer} from 'redux';
 
 // Based on http://nicolasgallagher.com/redux-modules-and-code-splitting/
-export class ReducerRegistry {
+class ReducerRegistry {
     emitChange?: (reducers: Record<string, Reducer>) => void;
     reducers: Record<string, Reducer> = {};
 

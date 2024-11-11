@@ -145,7 +145,7 @@ export const FormField = ({label, children, helpText}: FormFieldProps) => {
     );
 };
 
-export const ModalFieldsetWrapper = styled.div`
+const ModalFieldsetWrapper = styled.div`
     width: 100%;
     display: flex;
     flex-direction: column;

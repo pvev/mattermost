@@ -15,7 +15,7 @@ export const makeGetGlobalItem = <T = any>(name: string, defaultValue: T) => {
     };
 };
 
-export const getItemFromStorage = <T = any>(storage: Record<string, any>, name: string, defaultValue: T): T => {
+const getItemFromStorage = <T = any>(storage: Record<string, any>, name: string, defaultValue: T): T => {
     return storage[name]?.value ?? defaultValue;
 };
 

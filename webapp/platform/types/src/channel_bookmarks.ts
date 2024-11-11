@@ -48,7 +48,7 @@ export type ChannelBookmarkPatch = {
     emoji?: string;
 }
 
-export type ChannelBookmarkWithFileInfo = ChannelBookmark & {
+type ChannelBookmarkWithFileInfo = ChannelBookmark & {
     file: FileInfo;
 }
 

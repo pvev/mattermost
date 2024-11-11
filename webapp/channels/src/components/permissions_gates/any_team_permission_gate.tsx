@@ -11,7 +11,7 @@ import {getMyTeams} from 'mattermost-redux/selectors/entities/teams';
 
 import Gate from './gate';
 
-export type Props = {
+type Props = {
 
     /**
      * Permissions enough to pass the gate (binary OR)

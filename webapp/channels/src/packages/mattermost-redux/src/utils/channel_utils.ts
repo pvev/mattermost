@@ -80,7 +80,7 @@ export function completeDirectChannelDisplayName(currentUserId: string, profiles
     return channel;
 }
 
-export function cleanUpUrlable(input: string): string {
+function cleanUpUrlable(input: string): string {
     let cleaned = input.trim().replace(/-/g, ' ').replace(/[^\w\s]/gi, '').toLowerCase().replace(/\s/g, '-');
     cleaned = cleaned.replace(/-{2,}/, '-');
     cleaned = cleaned.replace(/^-+/, '');
@@ -124,7 +124,7 @@ export function isGroupChannel(channel: Channel): boolean {
     return channel.type === General.GM_CHANNEL;
 }
 
-export function getChannelsIdForTeam(state: GlobalState, teamId: string): string[] {
+function getChannelsIdForTeam(state: GlobalState, teamId: string): string[] {
     const {channels} = state.entities.channels;
 
     return Object.keys(channels).map((key) => channels[key]).reduce((res, channel: Channel) => {
@@ -135,7 +135,7 @@ export function getChannelsIdForTeam(state: GlobalState, teamId: string): string
     }, [] as string[]);
 }
 
-export function getGroupDisplayNameFromUserIds(userIds: Set<string>, profiles: IDMappedObjects<UserProfile>, currentUserId: string, teammateNameDisplay: string, omitCurrentUser = true): string {
+function getGroupDisplayNameFromUserIds(userIds: Set<string>, profiles: IDMappedObjects<UserProfile>, currentUserId: string, teammateNameDisplay: string, omitCurrentUser = true): string {
     const names: string[] = [];
     userIds.forEach((id) => {
         if (!(id === currentUserId && omitCurrentUser)) {
@@ -213,7 +213,7 @@ function newCompleteDirectGroupInfo(currentUserId: string, profiles: IDMappedObj
     return channel;
 }
 
-export function isOpenChannel(channel: Channel): boolean {
+function isOpenChannel(channel: Channel): boolean {
     return channel.type === General.OPEN_CHANNEL;
 }
 
@@ -281,7 +281,7 @@ export function sortChannelsByDisplayName(locale: string, a: Channel, b: Channel
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase(), locale, {numeric: true});
 }
 
-export function sortChannelsByDisplayNameAndMuted(locale: string, members: RelationOneToOne<Channel, ChannelMembership>, a: Channel, b: Channel): number {
+function sortChannelsByDisplayNameAndMuted(locale: string, members: RelationOneToOne<Channel, ChannelMembership>, a: Channel, b: Channel): number {
     const aMember = members[a.id];
     const bMember = members[b.id];
 

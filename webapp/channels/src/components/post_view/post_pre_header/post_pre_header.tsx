@@ -7,7 +7,7 @@ import type {IntlShape} from 'react-intl';
 
 import FlagIconFilled from 'components/widgets/icons/flag_icon_filled';
 
-export type Props = {
+type Props = {
     intl: IntlShape;
     isFlagged: boolean;
     isPinned?: boolean;
@@ -20,7 +20,7 @@ export type Props = {
     };
 }
 
-export enum PostPinnedOrFlagged {
+enum PostPinnedOrFlagged {
     Flagged,
     Pinned,
     PinnedAndFlagged,

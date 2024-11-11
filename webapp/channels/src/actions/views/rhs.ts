@@ -122,7 +122,7 @@ export function selectPostFromRightHandSideSearch(post: Post) {
     return selectPostWithPreviousState(post);
 }
 
-export function selectPostFromRightHandSideSearchByPostId(postId: string): ActionFuncAsync<boolean, GlobalState> {
+function selectPostFromRightHandSideSearchByPostId(postId: string): ActionFuncAsync<boolean, GlobalState> {
     return async (dispatch, getState) => {
         const post = getPost(getState(), postId);
         return dispatch(selectPostFromRightHandSideSearch(post));
@@ -568,18 +568,18 @@ export function selectPostById(postId: string): ActionFuncAsync {
     };
 }
 
-export function highlightReply(post: Post) {
+function highlightReply(post: Post) {
     return {
         type: ActionTypes.HIGHLIGHT_REPLY,
         postId: post.id,
     };
 }
 
-export const clearHighlightReply = {
+const clearHighlightReply = {
     type: ActionTypes.CLEAR_HIGHLIGHT_REPLY,
 };
 
-export const debouncedClearHighlightReply = debounce((dispatch) => {
+const debouncedClearHighlightReply = debounce((dispatch) => {
     return dispatch(clearHighlightReply);
 }, Constants.PERMALINK_FADEOUT);
 

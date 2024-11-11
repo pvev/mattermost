@@ -65,11 +65,11 @@ export function getSiteURL(): string {
     return getModule<() => string>('utils/url/getSiteURL')?.() ?? getSiteURLFromWindowObject(window);
 }
 
-export function getBasePathFromWindowObject(obj: WindowObject): string {
+function getBasePathFromWindowObject(obj: WindowObject): string {
     return obj.basename || '';
 }
 
-export function getBasePath(): string {
+function getBasePath(): string {
     return getBasePathFromWindowObject(window);
 }
 
@@ -240,7 +240,7 @@ export function mightTriggerExternalRequest(url: string, siteURL?: string): bool
     return true;
 }
 
-export function isInternalURL(url: string, siteURL?: string): boolean {
+function isInternalURL(url: string, siteURL?: string): boolean {
     return url.startsWith(siteURL || '') || url.startsWith('/');
 }
 
@@ -322,7 +322,7 @@ export function teamNameToUrl(teamName: string): UrlValidationCheck {
     return {url, error: false};
 }
 
-export function channelNameToUrl(channelName: string): UrlValidationCheck {
+function channelNameToUrl(channelName: string): UrlValidationCheck {
     // borrowed from team_url, which has some peculiarities tied to being a part of a two screen UI
     // that allows more variation between team name and url than we allow in usages of this function
     const url = cleanUpUrlable(channelName.trim());

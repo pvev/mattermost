@@ -11,7 +11,7 @@ import AdvancedTextEditor from 'components/advanced_text_editor/advanced_text_ed
 
 import {Locations} from 'utils/constants';
 
-export type Props = {
+type Props = {
 
     // The channel for which this comment is a part of
     channelId: string;

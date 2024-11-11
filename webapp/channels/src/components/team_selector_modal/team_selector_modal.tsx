@@ -50,7 +50,7 @@ type State = {
     confirmAddTeam: any;
 };
 
-export class TeamSelectorModal extends React.PureComponent<Props, State> {
+class TeamSelectorModal extends React.PureComponent<Props, State> {
     private searchTimeoutId?: number;
     private selectedItemRef?: React.RefObject<HTMLDivElement> | undefined;
     private currentSchemeId?: string;

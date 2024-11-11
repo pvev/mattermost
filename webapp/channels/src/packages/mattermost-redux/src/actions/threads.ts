@@ -26,7 +26,7 @@ import {getPostThread} from './posts';
 
 type ExtendedPost = Post & { system_post_ids?: string[] };
 
-export function fetchThreads(userId: string, teamId: string, {before = '', after = '', perPage = ThreadConstants.THREADS_CHUNK_SIZE, unread = false, totalsOnly = false, threadsOnly = false, extended = false, since = 0} = {}): ActionFuncAsync<UserThreadList> {
+function fetchThreads(userId: string, teamId: string, {before = '', after = '', perPage = ThreadConstants.THREADS_CHUNK_SIZE, unread = false, totalsOnly = false, threadsOnly = false, extended = false, since = 0} = {}): ActionFuncAsync<UserThreadList> {
     return async (dispatch, getState) => {
         let data: undefined | UserThreadList;
 

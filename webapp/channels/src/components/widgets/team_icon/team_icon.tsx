@@ -41,7 +41,7 @@ type Props = {
  * An icon representing a Team. If `url` is set - shows the image,
  * otherwise shows team initials
  */
-export class TeamIcon extends React.PureComponent<Props> {
+class TeamIcon extends React.PureComponent<Props> {
     public static defaultProps = {
         size: 'sm' as const,
     };

@@ -434,7 +434,7 @@ export function getLatestPostId(postIds: string[]): string {
     return '';
 }
 
-export function makeGetMentionsFromMessage(): (state: GlobalState, post: Post) => Record<string, UserProfile> {
+function makeGetMentionsFromMessage(): (state: GlobalState, post: Post) => Record<string, UserProfile> {
     return createSelector(
         'getMentionsFromMessage',
         (state: GlobalState, post: Post) => post,

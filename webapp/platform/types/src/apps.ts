@@ -30,7 +30,7 @@ export type AppManifest = {
     requested_locations?: Locations[];
 }
 
-export type AppModalState = {
+type AppModalState = {
     form: AppForm;
     call: AppCallRequest;
 }
@@ -226,7 +226,7 @@ export type AppField = {
     max_length?: number;
 };
 
-export type AutocompleteSuggestion = {
+type AutocompleteSuggestion = {
     suggestion: string;
     complete?: string;
     description?: string;
@@ -234,20 +234,20 @@ export type AutocompleteSuggestion = {
     iconData?: string;
 }
 
-export type AutocompleteSuggestionWithComplete = AutocompleteSuggestion & {
+type AutocompleteSuggestionWithComplete = AutocompleteSuggestion & {
     complete: string;
 }
 
-export type AutocompleteElement = AppField;
+type AutocompleteElement = AppField;
 export type AutocompleteStaticSelect = AutocompleteElement & {
     options: AppSelectOption[];
 };
 
-export type AutocompleteDynamicSelect = AutocompleteElement;
+type AutocompleteDynamicSelect = AutocompleteElement;
 
-export type AutocompleteUserSelect = AutocompleteElement;
+type AutocompleteUserSelect = AutocompleteElement;
 
-export type AutocompleteChannelSelect = AutocompleteElement;
+type AutocompleteChannelSelect = AutocompleteElement;
 
 export type FormResponseData = {
     errors?: {

@@ -21,7 +21,7 @@ type State = {
     show: boolean;
 }
 
-export type ChannelDetailsActions = {
+type ChannelDetailsActions = {
     unarchiveChannel: (channelId: string) => Promise<ActionResult>;
 };
 

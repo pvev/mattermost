@@ -83,11 +83,11 @@ export function isAndroid(): boolean {
     return userAgent().indexOf('Android') !== -1;
 }
 
-export function isAndroidChrome(): boolean {
+function isAndroidChrome(): boolean {
     return userAgent().indexOf('Android') !== -1 && userAgent().indexOf('Chrome') !== -1 && userAgent().indexOf('Version') === -1;
 }
 
-export function isAndroidFirefox(): boolean {
+function isAndroidFirefox(): boolean {
     return userAgent().indexOf('Android') !== -1 && userAgent().indexOf('Firefox') !== -1;
 }
 
@@ -95,7 +95,7 @@ export function isAndroidWeb(): boolean {
     return isAndroidChrome() || isAndroidFirefox();
 }
 
-export function isIosClassic(): boolean {
+function isIosClassic(): boolean {
     return isMobileApp() && isIos();
 }
 
@@ -134,7 +134,7 @@ export function isDesktopApp(): boolean {
     return userAgent().indexOf('Mattermost') !== -1 && userAgent().indexOf('Electron') !== -1;
 }
 
-export function isWindowsApp(): boolean {
+function isWindowsApp(): boolean {
     return isDesktopApp() && isWindows();
 }
 
@@ -154,7 +154,7 @@ export function isLinux(): boolean {
     return navigator.platform.toUpperCase().indexOf('LINUX') >= 0;
 }
 
-export function isWindows7(): boolean {
+function isWindows7(): boolean {
     const appVersion = navigator.appVersion;
 
     if (!appVersion) {

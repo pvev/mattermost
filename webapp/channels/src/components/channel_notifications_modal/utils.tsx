@@ -26,22 +26,22 @@ const MobileReplyThreadsInputFieldData: FieldsetCheckbox = {
     dataTestId: 'mobileReplyThreads',
 };
 
-export const sameMobileSettingsDesktopInputFieldData: FieldsetCheckbox = {
+const sameMobileSettingsDesktopInputFieldData: FieldsetCheckbox = {
     name: 'same mobile settings as Desktop',
     dataTestId: 'sameMobileSettingsDesktop',
 };
 
-export const IgnoreMentionsInputFieldData: FieldsetCheckbox = {
+const IgnoreMentionsInputFieldData: FieldsetCheckbox = {
     name: 'ignore mentions',
     dataTestId: 'ignoreMentions',
 };
 
-export const AutoFollowThreadsInputFieldData: FieldsetCheckbox = {
+const AutoFollowThreadsInputFieldData: FieldsetCheckbox = {
     name: 'auto follow threads',
     dataTestId: 'autoFollowThreads',
 };
 
-export const desktopNotificationInputFieldData = (defaultOption: string): FieldsetRadio => {
+const desktopNotificationInputFieldData = (defaultOption: string): FieldsetRadio => {
     return {
         options: [
             {
@@ -105,18 +105,18 @@ export const desktopNotificationInputFieldData = (defaultOption: string): Fields
     };
 };
 
-export const desktopNotificationSoundsCheckboxFieldData: FieldsetCheckbox = {
+const desktopNotificationSoundsCheckboxFieldData: FieldsetCheckbox = {
     name: 'desktopNotificationSoundsCheckbox',
     dataTestId: 'desktopNotificationSoundsCheckbox',
 };
 
-export const desktopNotificationSoundsSelectFieldData: FieldsetReactSelect = {
+const desktopNotificationSoundsSelectFieldData: FieldsetReactSelect = {
     id: 'desktopNotificationSoundsSelect',
     inputId: 'desktopNotificationSoundsSelectInputId',
     options: optionsOfMessageNotificationSoundsSelect,
 };
 
-export const mobileNotificationInputFieldData = (defaultOption: string): FieldsetRadio => {
+const mobileNotificationInputFieldData = (defaultOption: string): FieldsetRadio => {
     return {
         options: [
             {

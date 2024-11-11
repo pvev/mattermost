@@ -158,7 +158,7 @@ const HEADER_BEARER = 'BEARER';
 const HEADER_CONTENT_TYPE = 'Content-Type';
 const HEADER_REQUESTED_WITH = 'X-Requested-With';
 const HEADER_USER_AGENT = 'User-Agent';
-export const HEADER_X_CLUSTER_ID = 'X-Cluster-Id';
+const HEADER_X_CLUSTER_ID = 'X-Cluster-Id';
 const HEADER_X_CSRF_TOKEN = 'X-CSRF-Token';
 export const HEADER_X_VERSION_ID = 'X-Version-Id';
 const LOGS_PER_PAGE_DEFAULT = 10000;
@@ -4469,7 +4469,7 @@ export default class Client4 {
     };
 }
 
-export function parseAndMergeNestedHeaders(originalHeaders: any) {
+function parseAndMergeNestedHeaders(originalHeaders: any) {
     const headers = new Map();
     let nestedHeaders = new Map();
     originalHeaders.forEach((val: string, key: string) => {

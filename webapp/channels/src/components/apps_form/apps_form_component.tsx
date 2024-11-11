@@ -29,7 +29,7 @@ import AppsFormHeader from './apps_form_header';
 
 import './apps_form_component.scss';
 
-export type AppsFormProps = {
+type AppsFormProps = {
     form: AppForm;
     isEmbedded?: boolean;
     onExited: () => void;

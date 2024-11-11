@@ -28,21 +28,21 @@ function dispatcher(type: ActionType, data: any, dispatch: DispatchFunc) {
     }
 }
 
-export function requestData(type: ActionType) {
+function requestData(type: ActionType) {
     return {
         type,
         data: null,
     };
 }
 
-export function requestSuccess(type: ActionType, data: any) {
+function requestSuccess(type: ActionType, data: any) {
     return {
         type,
         data,
     };
 }
 
-export function requestFailure(type: ActionType, error: ServerError): any {
+function requestFailure(type: ActionType, error: ServerError): any {
     return {
         type,
         error,
@@ -137,7 +137,7 @@ export function debounce(func: (...args: any) => unknown, wait: number, immediat
     };
 }
 
-export class FormattedError extends Error {
+class FormattedError extends Error {
     intl: {
         id: string;
         defaultMessage: string;

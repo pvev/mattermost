@@ -9,7 +9,7 @@ import {AppBindingLocations} from 'mattermost-redux/constants/apps';
 import {createSelector} from 'mattermost-redux/selectors/create_selector';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
-export const appsPluginIsEnabled = (state: GlobalState) => state.entities.apps.pluginEnabled;
+const appsPluginIsEnabled = (state: GlobalState) => state.entities.apps.pluginEnabled;
 
 export const appsFeatureFlagEnabled = createSelector(
     'appsConfiguredAsEnabled',

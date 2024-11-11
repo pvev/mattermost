@@ -58,7 +58,7 @@ export function addRecentEmoji(alias) {
     return addRecentEmojis([alias]);
 }
 
-export const MAXIMUM_RECENT_EMOJI = 27;
+const MAXIMUM_RECENT_EMOJI = 27;
 
 export function addRecentEmojis(aliases) {
     return (dispatch, getState) => {

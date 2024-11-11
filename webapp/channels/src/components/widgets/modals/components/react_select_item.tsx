@@ -66,7 +66,6 @@ function ReactSelectItemCreator({
     );
 }
 
-export default ReactSelectItemCreator;
 
 function NoIndicatorSeparatorComponent() {
     return null;

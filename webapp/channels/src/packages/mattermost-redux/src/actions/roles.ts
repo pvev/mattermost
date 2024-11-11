@@ -61,7 +61,7 @@ export function editRole(role: Partial<Role> & {id: string}) {
     });
 }
 
-export function setPendingRoles(roles: string[]) {
+function setPendingRoles(roles: string[]) {
     return {
         type: RoleTypes.SET_PENDING_ROLES,
         data: roles,

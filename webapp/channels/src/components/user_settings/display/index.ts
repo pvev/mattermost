@@ -34,7 +34,7 @@ import type {GlobalState} from 'types/store';
 import type {OwnProps} from './user_settings_display';
 import UserSettingsDisplay from './user_settings_display';
 
-export function makeMapStateToProps() {
+function makeMapStateToProps() {
     return (state: GlobalState, props: OwnProps) => {
         const config = getConfig(state);
         const currentUserId = getCurrentUserId(state);

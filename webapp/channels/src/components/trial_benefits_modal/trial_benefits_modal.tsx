@@ -32,7 +32,7 @@ import type {TrialBenefitsModalStepProps} from './trial_benefits_modal_step';
 
 import './trial_benefits_modal.scss';
 
-export type Props = {
+type Props = {
     onClose?: () => void;
     onExited: () => void;
     trialJustStarted?: boolean;

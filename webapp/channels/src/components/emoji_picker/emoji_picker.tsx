@@ -34,7 +34,7 @@ import {NoResultsVariant} from 'components/no_results_indicator/types';
 
 import type {PropsFromRedux} from './index';
 
-export interface Props extends PropsFromRedux {
+interface Props extends PropsFromRedux {
     filter: string;
     onEmojiClick: (emoji: Emoji) => void;
     handleFilterChange: (filter: string) => void;

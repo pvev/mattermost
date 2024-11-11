@@ -21,7 +21,7 @@ import {getMentionsAndStatusesForPosts, receivedPosts} from './posts';
 
 export const WEBAPP_SEARCH_PER_PAGE = 20;
 
-export function getMissingChannelsFromPosts(posts: PostList['posts']): ThunkActionFunc<unknown> {
+function getMissingChannelsFromPosts(posts: PostList['posts']): ThunkActionFunc<unknown> {
     return async (dispatch, getState) => {
         const {
             channels,
@@ -44,7 +44,7 @@ export function getMissingChannelsFromPosts(posts: PostList['posts']): ThunkActi
     };
 }
 
-export function getMissingChannelsFromFiles(files: Map<string, FileSearchResultItem>): ThunkActionFunc<Promise<ActionResult[]>> {
+function getMissingChannelsFromFiles(files: Map<string, FileSearchResultItem>): ThunkActionFunc<Promise<ActionResult[]>> {
     return async (dispatch, getState) => {
         const {
             channels,
@@ -265,7 +265,3 @@ export function getPinnedPosts(channelId: string): ActionFuncAsync {
     };
 }
 
-export default {
-    clearSearch,
-    searchPosts,
-};

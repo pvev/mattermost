@@ -11,7 +11,7 @@ import Menu from 'components/widgets/menu/menu';
 
 import {Constants, NotificationLevels} from 'utils/constants';
 
-export type Actions = {
+type Actions = {
     updateChannelNotifyProps(userId: string, channelId: string, props: Partial<ChannelNotifyProps>): void;
 };
 

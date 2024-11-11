@@ -5,7 +5,7 @@ import React from 'react';
 
 import WithTooltip from 'components/with_tooltip';
 
-export interface Props {
+interface Props {
     children: React.ReactNode;
     name: string;
     imageUrl: string;

@@ -29,7 +29,7 @@ interface ListItem {
     type: ListItemType;
     data: ChannelMember | JSX.Element;
 }
-export interface Props {
+interface Props {
     channel: Channel;
     members: ListItem[];
     editing: boolean;

@@ -8,7 +8,7 @@ import {FormattedMessage} from 'react-intl';
 import FilterList from './filter_list';
 import './filter.scss';
 
-export type Filters = {
+type Filters = {
     [filterKey: string]: string[];
 };
 

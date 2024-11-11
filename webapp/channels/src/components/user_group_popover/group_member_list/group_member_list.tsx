@@ -35,22 +35,22 @@ import {Load} from '../constants';
 const USERS_PER_PAGE = 100;
 
 // These constants must be changed if user list style is modified
-export const VIEWPORT_SCALE_FACTOR = 0.4;
+const VIEWPORT_SCALE_FACTOR = 0.4;
 const ITEM_HEIGHT = 40;
 const MARGIN = 8;
 const getItemHeight = (isCap: boolean) => (isCap ? ITEM_HEIGHT + MARGIN : ITEM_HEIGHT);
-export const getListHeight = (num: number) => (num * ITEM_HEIGHT) + (2 * MARGIN);
+const getListHeight = (num: number) => (num * ITEM_HEIGHT) + (2 * MARGIN);
 
 // Reasonable extrema for the user list
 const MIN_LIST_HEIGHT = 120;
-export const MAX_LIST_HEIGHT = 800;
+const MAX_LIST_HEIGHT = 800;
 
 export type GroupMember = {
     user: UserProfile;
     displayName: string;
 }
 
-export type Props = {
+type Props = {
 
     /**
      * The group corresponding to the parent popover

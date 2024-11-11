@@ -22,11 +22,11 @@ export type {
     AppField,
     AppContext,
     AppForm,
-    AutocompleteElement,
-    AutocompleteDynamicSelect,
+    
+    
     AutocompleteStaticSelect,
-    AutocompleteUserSelect,
-    AutocompleteChannelSelect,
+    
+    
     AppLookupResponse,
     AppSelectOption,
 } from '@mattermost/types/apps';
@@ -53,8 +53,8 @@ export {autocompleteUsersInChannel} from 'actions/views/channel';
 
 export {makeAppBindingsSelector, makeRHSAppBindingSelector, getAppCommandForm, getAppRHSCommandForm} from 'mattermost-redux/selectors/entities/apps';
 
-export {getPost} from 'mattermost-redux/selectors/entities/posts';
-export {getChannel as selectChannel, getCurrentChannel, getChannelByName as selectChannelByName} from 'mattermost-redux/selectors/entities/channels';
+;
+export {getChannel as selectChannel,  getChannelByName as selectChannelByName} from 'mattermost-redux/selectors/entities/channels';
 export {getCurrentTeamId, getCurrentTeam} from 'mattermost-redux/selectors/entities/teams';
 export {getUserByUsername as selectUserByUsername, getUser as selectUser} from 'mattermost-redux/selectors/entities/users';
 
@@ -109,7 +109,7 @@ export type ExtendedAutocompleteSuggestion = AutocompleteSuggestion & {
     item?: UserProfile | Channel;
 }
 
-export const displayError = (err: string, channelID: string, rootID?: string) => {
+const displayError = (err: string, channelID: string, rootID?: string) => {
     reduxStore.dispatch(sendEphemeralPost(err, channelID, rootID));
 };
 

@@ -48,7 +48,7 @@ export const getAutoSortedCategoryIds: (state: GlobalState) => Set<string> = (()
     },
 ))();
 
-export const getChannelsByCategoryForCurrentTeam: (state: GlobalState) => RelationOneToOne<ChannelCategory, Channel[]> = (() => {
+const getChannelsByCategoryForCurrentTeam: (state: GlobalState) => RelationOneToOne<ChannelCategory, Channel[]> = (() => {
     const getChannelsByCategory = makeGetChannelsByCategory();
 
     return memoizeResult((state: GlobalState) => {

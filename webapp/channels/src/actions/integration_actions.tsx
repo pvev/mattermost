@@ -150,7 +150,7 @@ export function loadOutgoingOAuthConnectionsAndProfiles(teamId: string, page = 0
     };
 }
 
-export function loadProfilesForOutgoingOAuthConnections(connections: OutgoingOAuthConnection[]): ActionFuncAsync<null> {
+function loadProfilesForOutgoingOAuthConnections(connections: OutgoingOAuthConnection[]): ActionFuncAsync<null> {
     return async (dispatch, getState) => {
         const state = getState();
         const profilesToLoad: {[key: string]: boolean} = {};

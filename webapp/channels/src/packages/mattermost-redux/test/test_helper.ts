@@ -19,7 +19,7 @@ import type {Team, TeamMembership} from '@mattermost/types/teams';
 import type {UserThread} from '@mattermost/types/threads';
 import type {UserProfile, UserNotifyProps} from '@mattermost/types/users';
 
-export const DEFAULT_SERVER = 'http://localhost:8065';
+const DEFAULT_SERVER = 'http://localhost:8065';
 const PASSWORD = 'password1';
 
 import General from 'mattermost-redux/constants/general';

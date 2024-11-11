@@ -11,7 +11,7 @@ import {RequestStatus} from 'mattermost-redux/constants';
 
 import {initialRequestState} from './helpers';
 
-export function handleUploadFilesRequest(
+function handleUploadFilesRequest(
     REQUEST: string,
     SUCCESS: string,
     FAILURE: string,

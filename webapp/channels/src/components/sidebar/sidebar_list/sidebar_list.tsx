@@ -36,7 +36,7 @@ const GlobalThreadsLink = makeAsyncComponent('GlobalThreadsLink', lazy(() => imp
 const UnreadChannelIndicator = makeAsyncComponent('UnreadChannelIndicator', lazy(() => import('../unread_channel_indicator')));
 const UnreadChannels = makeAsyncComponent('UnreadChannels', lazy(() => import('../unread_channels')));
 
-export function renderView(props: React.HTMLProps<HTMLDivElement>) {
+function renderView(props: React.HTMLProps<HTMLDivElement>) {
     return (
         <div
             {...props}
@@ -45,7 +45,7 @@ export function renderView(props: React.HTMLProps<HTMLDivElement>) {
     );
 }
 
-export function renderThumbHorizontal(props: React.HTMLProps<HTMLDivElement>) {
+function renderThumbHorizontal(props: React.HTMLProps<HTMLDivElement>) {
     return (
         <div
             {...props}
@@ -54,7 +54,7 @@ export function renderThumbHorizontal(props: React.HTMLProps<HTMLDivElement>) {
     );
 }
 
-export function renderTrackVertical(props: React.HTMLProps<HTMLDivElement>) {
+function renderTrackVertical(props: React.HTMLProps<HTMLDivElement>) {
     return (
         <div
             {...props}
@@ -63,7 +63,7 @@ export function renderTrackVertical(props: React.HTMLProps<HTMLDivElement>) {
     );
 }
 
-export function renderThumbVertical(props: React.HTMLProps<HTMLDivElement>) {
+function renderThumbVertical(props: React.HTMLProps<HTMLDivElement>) {
     return (
         <div
             {...props}

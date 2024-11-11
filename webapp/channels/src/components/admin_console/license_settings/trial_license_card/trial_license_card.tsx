@@ -15,7 +15,7 @@ import {getBrowserTimezone} from 'utils/timezone';
 
 import './trial_license_card.scss';
 
-export interface Props {
+interface Props {
     license: ClientLicense;
 }
 

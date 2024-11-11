@@ -14,7 +14,7 @@ import FormError from 'components/form_error';
 import icon50 from 'images/icon50x50.png';
 import {getHistory} from 'utils/browser_history';
 
-export type Params = {
+type Params = {
     responseType: string | null;
     clientId: string | null;
     redirectUri: string | null;

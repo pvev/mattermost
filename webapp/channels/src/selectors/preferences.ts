@@ -25,7 +25,7 @@ export const isSendOnCtrlEnter = (state: GlobalState) => {
     );
 };
 
-export const isUseMilitaryTime = (state: GlobalState) => {
+const isUseMilitaryTime = (state: GlobalState) => {
     return getBoolPreference(
         state,
         Preferences.CATEGORY_DISPLAY_SETTINGS,

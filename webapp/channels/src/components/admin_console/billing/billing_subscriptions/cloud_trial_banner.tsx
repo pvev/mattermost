@@ -22,7 +22,7 @@ import {getBrowserTimezone} from 'utils/timezone';
 
 import './cloud_trial_banner.scss';
 
-export interface Props {
+interface Props {
     trialEndDate: number;
 }
 

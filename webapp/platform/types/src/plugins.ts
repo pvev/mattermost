@@ -139,7 +139,7 @@ export enum ReleaseStage { // TODO remove this in favour of the definition in ty
     Experimental = 'experimental',
 }
 
-export type MarketplacePlugin = { // TODO remove this in favour of the definition in types/marketplace after the mattermost-redux migration
+type MarketplacePlugin = { // TODO remove this in favour of the definition in types/marketplace after the mattermost-redux migration
     homepage_url?: string;
     icon_data?: string;
     download_url?: string;

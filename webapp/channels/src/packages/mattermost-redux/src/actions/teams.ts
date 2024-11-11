@@ -578,7 +578,7 @@ export function sendEmailInvitesToTeam(teamId: string, emails: string[]) {
     });
 }
 
-export function sendEmailGuestInvitesToChannels(teamId: string, channelIds: string[], emails: string[], message: string) {
+function sendEmailGuestInvitesToChannels(teamId: string, channelIds: string[], emails: string[], message: string) {
     return bindClientFunc({
         clientFunc: Client4.sendEmailGuestInvitesToChannels,
         params: [

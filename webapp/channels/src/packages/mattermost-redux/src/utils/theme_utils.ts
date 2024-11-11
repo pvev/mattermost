@@ -4,7 +4,7 @@
 import {Preferences} from 'mattermost-redux/constants';
 import type {LegacyThemeType, Theme, ThemeKey, ThemeType} from 'mattermost-redux/selectors/entities/preferences';
 
-export function makeStyleFromTheme(getStyleFromTheme: (a: any) => any): (a: any) => any {
+function makeStyleFromTheme(getStyleFromTheme: (a: any) => any): (a: any) => any {
     let lastTheme: any;
     let style: any;
     return (theme: any) => {

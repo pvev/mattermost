@@ -28,12 +28,12 @@ import {
 
 import type {Props as UserSettingsNotificationsProps} from '../user_settings_notifications';
 
-export type SelectOption = {
+type SelectOption = {
     value: string;
     label: ReactNode;
 };
 
-export type Props = {
+type Props = {
     active: boolean;
     updateSection: (section: string) => void;
     onSubmit: () => void;

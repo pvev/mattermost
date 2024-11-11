@@ -17,7 +17,7 @@ const HEADER = defineMessage({id: 'add_outgoing_oauth_connection.add', defaultMe
 const FOOTER = defineMessage({id: 'add_outgoing_oauth_connection.save', defaultMessage: 'Save'});
 const LOADING = defineMessage({id: 'add_outgoing_oauth_connection.saving', defaultMessage: 'Saving...'});
 
-export type Props = {
+type Props = {
     team: Team;
 };
 

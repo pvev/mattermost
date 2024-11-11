@@ -226,7 +226,7 @@ export type PostInfo = {
 }
 
 export type NotificationStatus = 'error' | 'not_sent' | 'unsupported' | 'success';
-export type NotificationResult = {
+type NotificationResult = {
     status: NotificationStatus;
     reason?: string;
     data?: string;

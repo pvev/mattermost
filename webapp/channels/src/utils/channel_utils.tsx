@@ -112,7 +112,7 @@ export function joinPrivateChannelPrompt(team: Team, channelDisplayName: string,
     };
 }
 
-export function makeNewEmptyChannel(displayName: string, teamId: string): Channel {
+function makeNewEmptyChannel(displayName: string, teamId: string): Channel {
     return {
         team_id: teamId,
         name: cleanUpUrlable(displayName),

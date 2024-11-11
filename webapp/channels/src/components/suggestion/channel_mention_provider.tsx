@@ -19,7 +19,7 @@ import type {ResultsCallback} from './provider';
 import {SuggestionContainer} from './suggestion';
 import type {SuggestionProps} from './suggestion';
 
-export const MIN_CHANNEL_LINK_LENGTH = 2;
+const MIN_CHANNEL_LINK_LENGTH = 2;
 
 type WrappedChannel = {
     type: string;

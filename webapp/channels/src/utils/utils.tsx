@@ -76,7 +76,6 @@ const MS_PER_HOUR = 60 * MS_PER_MINUTE;
 const MS_PER_DAY = 24 * MS_PER_HOUR;
 
 export enum TimeInformation {
-    MILLISECONDS = 'm',
     SECONDS = 's',
     MINUTES = 'x',
     HOURS = 'h',
@@ -311,7 +310,7 @@ function dropAlpha(value: string): string {
 }
 
 // given '#fffff', returns '255, 255, 255' (no trailing comma)
-export function toRgbValues(hexStr: string): string {
+function toRgbValues(hexStr: string): string {
     const rgbaStr = `${parseInt(hexStr.substr(1, 2), 16)}, ${parseInt(hexStr.substr(3, 2), 16)}, ${parseInt(hexStr.substr(5, 2), 16)}`;
     return rgbaStr;
 }
@@ -1154,7 +1153,7 @@ export function isUriDrop(dataTransfer: DataTransfer) {
     return false; // we don't care about others, they handle as we want it
 }
 
-export function isTextTransfer(dataTransfer: DataTransfer) {
+function isTextTransfer(dataTransfer: DataTransfer) {
     return ['text/plain', 'text/unicode', 'Text'].some((type) => dataTransfer.types.includes(type));
 }
 
@@ -1411,7 +1410,7 @@ export function setCSRFFromCookie() {
     }
 }
 
-export function getNextBillingDate() {
+function getNextBillingDate() {
     const nextBillingDate = moment().add(1, 'months').startOf('month');
     return nextBillingDate.format('MMM D, YYYY');
 }
@@ -1424,7 +1423,7 @@ export function stringToNumber(s: string | undefined) {
     return parseInt(s, 10);
 }
 
-export function deleteKeysFromObject(value: Record<string, any>, keys: string[]) {
+function deleteKeysFromObject(value: Record<string, any>, keys: string[]) {
     for (const key of keys) {
         delete value[key];
     }
@@ -1559,7 +1558,7 @@ export const getRoleForTrackFlow = createSelector(
     },
 );
 
-export function getSbr() {
+function getSbr() {
     const params = new URLSearchParams(window.location.search);
     const sbr = params.get('sbr') ?? '';
     return sbr;
@@ -1623,7 +1622,7 @@ export function a11yFocus(element: HTMLElement | null | undefined, keyboardOnly 
     ));
 }
 
-export function getBlankAddressWithCountry(country?: string): Address {
+function getBlankAddressWithCountry(country?: string): Address {
     let c = '';
     if (country) {
         c = getName(country) || '';

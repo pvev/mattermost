@@ -63,7 +63,7 @@ type State = {
     expand: boolean;
 }
 
-export class LastUsers extends React.PureComponent<Props, State> {
+class LastUsers extends React.PureComponent<Props, State> {
     constructor(props: Props) {
         super(props);
 

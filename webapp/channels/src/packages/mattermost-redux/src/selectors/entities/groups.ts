@@ -51,15 +51,15 @@ export const getAllGroupsByName: (state: GlobalState) => Record<string, Group> =
     },
 );
 
-export function getMyGroupIds(state: GlobalState) {
+function getMyGroupIds(state: GlobalState) {
     return state.entities.groups.myGroups;
 }
 
-export function getAllGroupStats(state: GlobalState) {
+function getAllGroupStats(state: GlobalState) {
     return state.entities.groups.stats;
 }
 
-export function getGroupStats(state: GlobalState, id: string) {
+function getGroupStats(state: GlobalState, id: string) {
     return getAllGroupStats(state)[id] || {};
 }
 
@@ -83,7 +83,7 @@ export function getGroupChannels(state: GlobalState, id: string) {
     return getGroupSyncables(state, id).channels;
 }
 
-export const getAllCustomGroups: (state: GlobalState) => Group[] = createSelector(
+const getAllCustomGroups: (state: GlobalState) => Group[] = createSelector(
     'getAllCustomGroups',
     getAllGroups,
     (groups) => {
@@ -183,7 +183,7 @@ const getChannelGroupIDSet = createSelector(
     (channelIDs) => new Set(channelIDs),
 );
 
-export const getMyGroups: (state: GlobalState) => Group[] = createSelector(
+const getMyGroups: (state: GlobalState) => Group[] = createSelector(
     'getGroupsNotAssociatedToTeam',
     getAllGroups,
     getMyGroupIds,
@@ -301,7 +301,7 @@ export const makeGetMyAllowReferencedGroups = () => {
     );
 };
 
-export const getMyGroupsAssociatedToChannelForReference: (state: GlobalState, teamId: string, channelId: string) => Group[] = createSelector(
+const getMyGroupsAssociatedToChannelForReference: (state: GlobalState, teamId: string, channelId: string) => Group[] = createSelector(
     'getMyGroupsAssociatedToChannelForReference',
     getMyGroups,
     getAssociatedGroupsByName,

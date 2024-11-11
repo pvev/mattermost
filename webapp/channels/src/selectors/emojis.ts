@@ -48,7 +48,7 @@ export const getRecentEmojisData = createSelector(
     },
 );
 
-export function normalizeRecentEmojisData(data: RecentEmojiData[], userSkinTone: string) {
+function normalizeRecentEmojisData(data: RecentEmojiData[], userSkinTone: string) {
     const usageCounts = new Map<string, number>();
 
     for (const recentEmoji of data) {

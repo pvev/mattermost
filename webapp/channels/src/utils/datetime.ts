@@ -67,7 +67,7 @@ export function isWithinLastWeek(a: Date): boolean {
     );
 }
 
-export function isSameMonth(a: Date, b: Date = new Date()): boolean {
+function isSameMonth(a: Date, b: Date = new Date()): boolean {
     return a.getMonth() === b.getMonth() && isSameYear(a, b);
 }
 

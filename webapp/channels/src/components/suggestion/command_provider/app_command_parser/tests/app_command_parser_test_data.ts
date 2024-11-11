@@ -100,7 +100,7 @@ export const reduxTestState = {
     },
 };
 
-export const viewCommand: AppBinding = {
+const viewCommand: AppBinding = {
     app_id: 'jira',
     label: 'view',
     location: '/command/jira/issue/view',
@@ -133,7 +133,7 @@ export const viewCommand: AppBinding = {
     } as AppForm,
 };
 
-export const createCommand: AppBinding = {
+const createCommand: AppBinding = {
     app_id: 'jira',
     label: 'create',
     location: '/command/jira/issue/create',
@@ -190,7 +190,7 @@ export const createCommand: AppBinding = {
     } as AppForm,
 };
 
-export const restCommand: AppBinding = {
+const restCommand: AppBinding = {
     app_id: 'jira',
     label: 'rest',
     location: 'rest',

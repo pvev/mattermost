@@ -90,7 +90,7 @@ function handleSingleTeamReceivedThread(state: State, thread: UserThread, teamId
     return state;
 }
 
-export function handleReceivedThread(state: State, action: AnyAction, extra: ExtraData) {
+function handleReceivedThread(state: State, action: AnyAction, extra: ExtraData) {
     const {thread, team_id: teamId} = action.data;
 
     if (!teamId) {

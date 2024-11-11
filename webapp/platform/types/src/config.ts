@@ -1001,7 +1001,7 @@ export type ReplicaLagSetting = {
     QueryTimeLag: string;
 }
 
-export type EnvironmentConfigSettings<T> = {
+type EnvironmentConfigSettings<T> = {
     [P in keyof T]: boolean;
 }
 

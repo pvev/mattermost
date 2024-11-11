@@ -189,7 +189,7 @@ interface MenuItemStyledProps extends MuiMenuItemProps {
     isLabelsRowLayout?: boolean;
 }
 
-export const MenuItemStyled = styled(MuiMenuItem, {
+const MenuItemStyled = styled(MuiMenuItem, {
     shouldForwardProp: (prop) => prop !== 'isDestructive' &&
         prop !== 'hasSecondaryLabel' && prop !== 'isLabelsRowLayout',
 })<MenuItemStyledProps>(

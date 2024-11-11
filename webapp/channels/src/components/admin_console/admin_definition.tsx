@@ -240,7 +240,7 @@ export const it = {
     isSystemAdmin: (config: Partial<AdminConfig>, state: any, license?: ClientLicense, enterpriseReady?: boolean, consoleAccess?: ConsoleAccess, cloud?: CloudState, isSystemAdmin?: boolean) => Boolean(isSystemAdmin),
 };
 
-export const validators = {
+const validators = {
     isRequired: (text: MessageDescriptor | string) => (value: string) => new ValidationResult(Boolean(value), text),
     minValue: (min: number, text: MessageDescriptor | string) => (value: number) => new ValidationResult((value >= min), text),
     maxValue: (max: number, text: MessageDescriptor | string) => (value: number) => new ValidationResult((value <= max), text),

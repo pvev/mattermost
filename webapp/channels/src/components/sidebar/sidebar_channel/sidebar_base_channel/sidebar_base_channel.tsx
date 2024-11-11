@@ -17,7 +17,7 @@ import SidebarBaseChannelIcon from './sidebar_base_channel_icon';
 
 import type {PropsFromRedux} from './index';
 
-export interface Props extends PropsFromRedux {
+interface Props extends PropsFromRedux {
     channel: Channel;
     currentTeamName: string;
 }

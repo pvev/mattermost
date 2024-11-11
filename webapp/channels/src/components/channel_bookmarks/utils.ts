@@ -51,7 +51,7 @@ export const useChannelBookmarkPermission = (channelId: string, action: TAction)
     return useSelector((state: GlobalState) => getHaveIChannelBookmarkPermission(state, channelId, action));
 };
 
-export const getHaveIChannelBookmarkPermission = (state: GlobalState, channelId: string, action: TAction) => {
+const getHaveIChannelBookmarkPermission = (state: GlobalState, channelId: string, action: TAction) => {
     const channel: Channel | undefined = getChannel(state, channelId);
 
     if (!channel) {
@@ -81,7 +81,7 @@ export const useCanGetPublicLink = () => {
     return useSelector((state: GlobalState) => isPublicLinksEnabled(getConfig(state)));
 };
 
-export const useCanGetLinkPreviews = () => {
+const useCanGetLinkPreviews = () => {
     return useSelector((state: GlobalState) => getConfig(state).EnableLinkPreviews === 'true');
 };
 

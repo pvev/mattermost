@@ -6,7 +6,7 @@ import {Popover as BSPopover} from 'react-bootstrap';
 import type {Sizes as BSSizes} from 'react-bootstrap';
 
 const SizeMap = {xs: 'xsmall', sm: 'small', md: 'medium', lg: 'large'};
-export type Sizes = 'xs' | 'sm' | 'md' | 'lg';
+type Sizes = 'xs' | 'sm' | 'md' | 'lg';
 
 interface Props {
     id?: string;

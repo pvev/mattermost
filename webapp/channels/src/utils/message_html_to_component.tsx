@@ -64,7 +64,7 @@ type ProcessingInstruction = {
  * - hasPluginTooltips - If specified, the LinkTooltip component is placed inside links. Defaults to false.
  * - channelId = If specified, to be passed along to ProfilePopover via AtMention
  */
-export function messageHtmlToComponent(html: string, options: Options = {}) {
+function messageHtmlToComponent(html: string, options: Options = {}) {
     if (!html) {
         return null;
     }

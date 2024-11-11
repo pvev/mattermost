@@ -45,7 +45,7 @@ export function displayUsername(
     return name;
 }
 
-export function spaceSeparatedStringIncludes(item: string, spaceSeparated?: string): boolean {
+function spaceSeparatedStringIncludes(item: string, spaceSeparated?: string): boolean {
     if (spaceSeparated) {
         const items = spaceSeparated?.split(' ');
         return items.includes(item);
@@ -103,7 +103,7 @@ export function profileListToMap(profileList: UserProfile[]): IDMappedObjects<Us
     return profiles;
 }
 
-export function removeUserFromList(userId: UserProfile['id'], list: UserProfile[]): UserProfile[] {
+function removeUserFromList(userId: UserProfile['id'], list: UserProfile[]): UserProfile[] {
     for (let i = list.length - 1; i >= 0; i--) {
         if (list[i].id === userId) {
             list.splice(i, 1);

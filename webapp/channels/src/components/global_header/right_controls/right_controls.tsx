@@ -50,7 +50,7 @@ const StyledStatusDropdown = styled.div`
     margin-left: 8px;
 `;
 
-export type Props = {
+type Props = {
     productId?: ProductIdentifier;
 }
 

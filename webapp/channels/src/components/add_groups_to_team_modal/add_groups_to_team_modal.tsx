@@ -40,7 +40,7 @@ type Props = {
     actions: Actions;
 }
 
-export type Actions = {
+type Actions = {
     getGroupsNotAssociatedToTeam: (teamID: string, q?: string, page?: number, perPage?: number) => Promise<ActionResult>;
     setModalSearchTerm: (term: string) => void;
     linkGroupSyncable: (groupID: string, syncableID: string, syncableType: SyncableType, patch: SyncablePatch) => Promise<ActionResult>;

@@ -14,7 +14,7 @@ export function openModal<P>(modalData: ModalData<P>) {
     };
 }
 
-export type CloseModalType = {
+type CloseModalType = {
     type: string;
     modalId: string;
 }

@@ -84,7 +84,7 @@ export function getSchemeTeams(schemeId: string, page = 0, perPage: number = Gen
     });
 }
 
-export function getSchemeChannels(schemeId: string, page = 0, perPage: number = General.PAGE_SIZE_DEFAULT) {
+function getSchemeChannels(schemeId: string, page = 0, perPage: number = General.PAGE_SIZE_DEFAULT) {
     return bindClientFunc({
         clientFunc: Client4.getSchemeChannels,
         onSuccess: [SchemeTypes.RECEIVED_SCHEME_CHANNELS],

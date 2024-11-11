@@ -70,7 +70,7 @@ defineMessages({
     },
 });
 
-export enum OrgSize {
+enum OrgSize {
     ONE_TO_50 = '1-50',
     FIFTY_TO_100 = '51-100',
     ONE_HUNDRED_TO_500 = '101-500',

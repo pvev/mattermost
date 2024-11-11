@@ -131,7 +131,7 @@ export const FreeTrial = ({daysLeftOnTrial}: FreeTrialProps) => {
         </div>);
 };
 
-export const getPaymentStatus = () => {
+const getPaymentStatus = () => {
     return (
         <div className='BillingSummary__lastInvoice-headerStatus paid'>
             <CheckCircleOutlineIcon/> {' '}
@@ -151,7 +151,7 @@ type InvoiceInfoProps = {
     hasMore?: number;
 }
 
-export const InvoiceInfo = ({invoice, product, fullCharges, partialCharges, hasMore}: InvoiceInfoProps) => {
+const InvoiceInfo = ({invoice, product, fullCharges, partialCharges, hasMore}: InvoiceInfoProps) => {
     const dispatch = useDispatch();
 
     const isUpcomingInvoice = invoice?.status.toLowerCase() === 'upcoming';

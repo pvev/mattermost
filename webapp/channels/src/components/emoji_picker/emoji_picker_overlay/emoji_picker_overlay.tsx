@@ -15,7 +15,7 @@ import EmojiPickerTabs from '../emoji_picker_tabs';
 
 import type {PropsFromRedux} from './index';
 
-export interface Props extends PropsFromRedux {
+interface Props extends PropsFromRedux {
     target: () => ReactNode;
     onEmojiClick: (emoji: Emoji) => void;
     onGifClick?: (gif: string) => void;

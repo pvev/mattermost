@@ -198,7 +198,7 @@ export function makeGetDraft() {
     };
 }
 
-export function makeGetChannelDraft() {
+function makeGetChannelDraft() {
     const defaultDraft = Object.freeze({
         message: '',
         fileInfos: [],

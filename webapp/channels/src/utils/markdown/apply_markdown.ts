@@ -181,7 +181,7 @@ const applyOlMarkdown = ({selectionEnd, selectionStart, message}: ApplySpecificM
     };
 };
 
-export const applyMarkdownToSelectedLines = ({
+const applyMarkdownToSelectedLines = ({
     selectionEnd,
     selectionStart,
     message,
@@ -408,7 +408,7 @@ function applyBoldItalicMarkdown({selectionEnd, selectionStart, message, markdow
 
 export const DEFAULT_PLACEHOLDER_URL = 'url';
 
-export function applyLinkMarkdown({selectionEnd, selectionStart, message, url = DEFAULT_PLACEHOLDER_URL}: ApplyLinkMarkdownOptions) {
+function applyLinkMarkdown({selectionEnd, selectionStart, message, url = DEFAULT_PLACEHOLDER_URL}: ApplyLinkMarkdownOptions) {
     // <prefix> <selection> <suffix>
     const prefix = message.slice(0, selectionStart);
     const selection = message.slice(selectionStart, selectionEnd);

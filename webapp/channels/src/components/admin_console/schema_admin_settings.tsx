@@ -81,7 +81,7 @@ export function escapePathPart(pathPart: string) {
     return pathPart.replace(/\./g, '+');
 }
 
-export function unescapePathPart(pathPart: string) {
+function unescapePathPart(pathPart: string) {
     return pathPart.replace(/\+/g, '.');
 }
 

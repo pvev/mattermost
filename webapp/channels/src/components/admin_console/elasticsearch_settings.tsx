@@ -45,7 +45,7 @@ type Props = BaseProps & {
     config: AdminConfig;
 };
 
-export const messages = defineMessages({
+const messages = defineMessages({
     title: {id: 'admin.elasticsearch.title', defaultMessage: 'Elasticsearch'},
     enableIndexingTitle: {id: 'admin.elasticsearch.enableIndexingTitle', defaultMessage: 'Enable Elasticsearch Indexing:'},
     enableIndexingDescription: {id: 'admin.elasticsearch.enableIndexingDescription', defaultMessage: 'When true, indexing of new posts occurs automatically. Search queries will use database search until "Enable Elasticsearch for search queries" is enabled. <link>Learn more about Elasticsearch in our documentation.</link>'},

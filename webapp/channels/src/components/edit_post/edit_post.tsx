@@ -58,7 +58,7 @@ export type Actions = {
     updateScheduledPost: (scheduledPost: ScheduledPost, connectionId: string) => Promise<ActionResult>;
 }
 
-export type Props = {
+type Props = {
     canEditPost?: boolean;
     canDeletePost?: boolean;
     readOnlyChannel?: boolean;
@@ -89,7 +89,7 @@ export type Props = {
     onDeleteScheduledPost?: () => Promise<{error?: string}>;
 };
 
-export type State = {
+type State = {
     editText: string;
     selectionRange: {start: number; end: number};
     postError: React.ReactNode;

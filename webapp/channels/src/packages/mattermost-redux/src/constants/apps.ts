@@ -12,7 +12,7 @@ export const AppBindingLocations = {
     MARKETPLACE: '/marketplace',
 };
 
-export const AppBindingPresentations = {
+const AppBindingPresentations = {
     MODAL: 'modal',
 };
 
@@ -24,7 +24,7 @@ export const AppCallResponseTypes: { [name: string]: AppCallResponseType } = {
     NAVIGATE: 'navigate',
 };
 
-export const AppExpandLevels: { [name: string]: AppExpandLevel } = {
+const AppExpandLevels: { [name: string]: AppExpandLevel } = {
     EXPAND_DEFAULT: '',
     EXPAND_NONE: 'none',
     EXPAND_ALL: 'all',

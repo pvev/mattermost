@@ -35,7 +35,7 @@ export function isFileAttachmentsEnabled(config: Partial<ClientConfig>): boolean
     return config.EnableFileAttachments === 'true';
 }
 
-export function isMobileFileUploadsEnabled(config: Partial<ClientConfig>): boolean {
+function isMobileFileUploadsEnabled(config: Partial<ClientConfig>): boolean {
     return config.EnableMobileFileUpload === 'true';
 }
 

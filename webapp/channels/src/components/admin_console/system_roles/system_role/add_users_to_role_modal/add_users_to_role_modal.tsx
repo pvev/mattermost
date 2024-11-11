@@ -60,7 +60,7 @@ function searchUsersToAdd(users: Record<string, UserProfile>, term: string): Rec
     return filterProfiles(profileListToMap(filteredProfilesList), {});
 }
 
-export class AddUsersToRoleModal extends React.PureComponent<Props, State> {
+class AddUsersToRoleModal extends React.PureComponent<Props, State> {
     constructor(props: Props) {
         super(props);
 

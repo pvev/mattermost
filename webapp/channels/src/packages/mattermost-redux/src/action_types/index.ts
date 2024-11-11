@@ -49,14 +49,14 @@ export {
     SchemeTypes,
     GroupTypes,
     BotTypes,
-    PluginTypes,
+    
     ChannelCategoryTypes,
     CloudTypes,
     AppsTypes,
     ThreadTypes,
     HostedCustomerTypes,
-    DraftTypes,
-    PlaybookType,
+    
+    
     ChannelBookmarkTypes,
     ScheduledPostTypes,
 };

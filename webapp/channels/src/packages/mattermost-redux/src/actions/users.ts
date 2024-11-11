@@ -343,7 +343,6 @@ export function getProfilesWithoutTeam(page: number, perPage: number = General.P
 }
 
 export enum ProfilesInChannelSortBy {
-    None = '',
     Admin = 'admin',
 }
 
@@ -1348,47 +1347,3 @@ export function checkForModifiedUsers(): ActionFuncAsync {
     };
 }
 
-export default {
-    generateMfaSecret,
-    logout,
-    getProfiles,
-    getProfilesByIds,
-    getProfilesInTeam,
-    getProfilesInChannel,
-    getProfilesNotInChannel,
-    getUser,
-    getMe,
-    getUserByUsername,
-    getStatusesByIds,
-    getSessions,
-    getTotalUsersStats,
-    revokeSession,
-    revokeAllSessionsForUser,
-    revokeSessionsForAllUsers,
-    getUserAudits,
-    searchProfiles,
-    updateMe,
-    updateUserRoles,
-    updateUserMfa,
-    updateUserPassword,
-    updateUserActive,
-    verifyUserEmail,
-    sendVerificationEmail,
-    resetUserPassword,
-    sendPasswordResetEmail,
-    uploadProfileImage,
-    switchEmailToOAuth,
-    switchOAuthToEmail,
-    switchEmailToLdap,
-    switchLdapToEmail,
-    getTermsOfService,
-    createTermsOfService,
-    updateMyTermsOfServiceStatus,
-    createUserAccessToken,
-    getUserAccessToken,
-    getUserAccessTokensForUser,
-    revokeUserAccessToken,
-    disableUserAccessToken,
-    enableUserAccessToken,
-    checkForModifiedUsers,
-};

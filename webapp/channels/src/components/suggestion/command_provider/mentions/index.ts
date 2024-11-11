@@ -14,8 +14,8 @@ import {autocompleteUsersInChannel} from 'actions/views/channel';
 
 import {Constants} from 'utils/constants';
 
-export const COMMAND_SUGGESTION_CHANNEL = Constants.Integrations.COMMAND_SUGGESTION_CHANNEL;
-export const COMMAND_SUGGESTION_USER = Constants.Integrations.COMMAND_SUGGESTION_USER;
+const COMMAND_SUGGESTION_CHANNEL = Constants.Integrations.COMMAND_SUGGESTION_CHANNEL;
+const COMMAND_SUGGESTION_USER = Constants.Integrations.COMMAND_SUGGESTION_USER;
 
 export async function inTextMentionSuggestions(pretext: string, store: Store, channelID: string, teamID: string, delimiter = ''): Promise<AutocompleteSuggestion[] | null> {
     const separatedWords = pretext.split(' ');

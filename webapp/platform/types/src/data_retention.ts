@@ -21,11 +21,11 @@ export type PatchDataRetentionCustomPolicy = {
     post_duration: number;
 }
 
-export type PatchDataRetentionCustomPolicyTeams = {
+type PatchDataRetentionCustomPolicyTeams = {
     team_ids: string[];
 }
 
-export type PatchDataRetentionCustomPolicyChannels = {
+type PatchDataRetentionCustomPolicyChannels = {
     channel_ids: string[];
 }
 

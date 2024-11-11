@@ -13,7 +13,7 @@ import type React from 'react';
 import {shallowWithIntl} from 'tests/helpers/intl-test-helper';
 import Constants from 'utils/constants';
 
-export const INPUT = 'Hello world!';
+const INPUT = 'Hello world!';
 export const OUTPUT_APPEND = 'Hello world!\n';
 export const OUTPUT_REPLACE = 'Hello\norld!';
 const REPLACE_START = 5;

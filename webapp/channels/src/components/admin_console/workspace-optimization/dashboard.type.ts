@@ -40,7 +40,7 @@ export type ItemModel = {
     infoText?: string;
 }
 
-export type UpdatesParam = {
+type UpdatesParam = {
     serverVersion: {
         type: string;
         status: ItemStatus;

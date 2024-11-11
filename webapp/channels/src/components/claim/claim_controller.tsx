@@ -28,7 +28,7 @@ type Location = {
     search: string;
 }
 
-export type Props = {
+type Props = {
     location: Location;
     siteName?: string;
     ldapLoginFieldName?: string;

@@ -8,7 +8,7 @@ import type {Product, Subscription, CloudCustomer, Invoice, Limits} from '@matte
 
 import {CloudTypes} from 'mattermost-redux/action_types';
 
-export function subscription(state: Subscription | null = null, action: AnyAction) {
+function subscription(state: Subscription | null = null, action: AnyAction) {
     switch (action.type) {
     case CloudTypes.RECEIVED_CLOUD_SUBSCRIPTION: {
         return action.data;
@@ -99,7 +99,7 @@ export interface ErrorsReducer {
     trueUpReview?: true;
 }
 const emptyErrors = {};
-export function errors(state: ErrorsReducer = emptyErrors, action: AnyAction) {
+function errors(state: ErrorsReducer = emptyErrors, action: AnyAction) {
     switch (action.type) {
     case CloudTypes.CLOUD_SUBSCRIPTION_FAILED: {
         return {...state, subscription: true};

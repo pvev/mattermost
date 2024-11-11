@@ -96,7 +96,7 @@ export default function ResetToDefaultButton(props: Props) {
     );
 }
 
-export function resetChannelsNotificationToUsersDefault(userNotifyProps: UserNotifyProps, sectionName: SectionName): ChannelMembership['notify_props'] {
+function resetChannelsNotificationToUsersDefault(userNotifyProps: UserNotifyProps, sectionName: SectionName): ChannelMembership['notify_props'] {
     if (sectionName === SectionName.Desktop) {
         return {
             desktop: userNotifyProps.desktop,

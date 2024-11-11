@@ -16,7 +16,7 @@ import {formatText} from 'utils/text_formatting';
 
 import type {PropsFromRedux} from './index';
 
-export type Props = PropsFromRedux & OwnProps;
+type Props = PropsFromRedux & OwnProps;
 
 export type OwnProps = {
 

@@ -23,4 +23,3 @@ jest.mock('redux-persist', () => {
     };
 });
 
-export default {};

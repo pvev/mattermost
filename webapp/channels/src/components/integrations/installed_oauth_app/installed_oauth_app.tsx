@@ -58,7 +58,7 @@ export type InstalledOAuthAppProps = {
     filter?: string | null;
 }
 
-export type InstalleOAuthAppState = {
+type InstalleOAuthAppState = {
     clientSecret: string;
     error?: string | null;
 }

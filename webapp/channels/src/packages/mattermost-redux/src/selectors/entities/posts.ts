@@ -58,11 +58,11 @@ export function getPostRepliesCount(state: GlobalState, postId: Post['id']): num
     return state.entities.posts.postsReplies[postId] || 0;
 }
 
-export function getPostsInThread(state: GlobalState): RelationOneToMany<Post, Post> {
+function getPostsInThread(state: GlobalState): RelationOneToMany<Post, Post> {
     return state.entities.posts.postsInThread;
 }
 
-export function getPostsInThreadOrdered(state: GlobalState, rootId: string): string[] {
+function getPostsInThreadOrdered(state: GlobalState, rootId: string): string[] {
     const postIds = getPostsInThread(state)[rootId];
     if (!postIds) {
         return [rootId];
@@ -74,7 +74,7 @@ export function getPostsInThreadOrdered(state: GlobalState, rootId: string): str
     return [...sortedPosts.map((v) => v.id), rootId];
 }
 
-export function getReactionsForPosts(state: GlobalState): RelationOneToOne<Post, {
+function getReactionsForPosts(state: GlobalState): RelationOneToOne<Post, {
     [x: string]: Reaction;
 }> {
     return state.entities.posts.reactions;
@@ -97,7 +97,7 @@ export function getHasReactions(state: GlobalState, postId: Post['id']): boolean
     return Object.keys(reactions).length > 0;
 }
 
-export function getOpenGraphMetadata(state: GlobalState): RelationOneToOne<Post, Record<string, OpenGraphMetadata>> {
+function getOpenGraphMetadata(state: GlobalState): RelationOneToOne<Post, Record<string, OpenGraphMetadata>> {
     return state.entities.posts.openGraph;
 }
 
@@ -607,7 +607,7 @@ export function isPostAcknowledgementsEnabled(state: GlobalState) {
     );
 }
 
-export function getAllowPersistentNotifications(state: GlobalState) {
+function getAllowPersistentNotifications(state: GlobalState) {
     return (
         isPostPriorityEnabled(state) &&
         getConfig(state).AllowPersistentNotifications === 'true'
@@ -622,14 +622,14 @@ export function getPersistentNotificationIntervalMinutes(state: GlobalState) {
     return getConfig(state).PersistentNotificationIntervalMinutes;
 }
 
-export function getAllowPersistentNotificationsForGuests(state: GlobalState) {
+function getAllowPersistentNotificationsForGuests(state: GlobalState) {
     return (
         isPostPriorityEnabled(state) &&
         getConfig(state).AllowPersistentNotificationsForGuests === 'true'
     );
 }
 
-export function getPostAcknowledgements(state: GlobalState, postId: Post['id']): Record<UserProfile['id'], PostAcknowledgement['acknowledged_at']> {
+function getPostAcknowledgements(state: GlobalState, postId: Post['id']): Record<UserProfile['id'], PostAcknowledgement['acknowledged_at']> {
     return state.entities.posts.acknowledgements[postId];
 }
 

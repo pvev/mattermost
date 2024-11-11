@@ -52,7 +52,7 @@ export function getCategoryInTeamWithChannel(state: GlobalState, teamId: string,
 
 // getCategoryWhere returns the first category meeting the given condition. This should not be used with a condition
 // that matches multiple categories.
-export function getCategoryWhere(state: GlobalState, condition: (category: ChannelCategory) => boolean) {
+function getCategoryWhere(state: GlobalState, condition: (category: ChannelCategory) => boolean) {
     const categoriesByIds = getAllCategoriesByIds(state);
 
     return Object.values(categoriesByIds).find(condition);
@@ -79,7 +79,7 @@ export function makeGetCategoriesForTeam(): (state: GlobalState, teamId: string)
 
 // makeFilterArchivedChannels returns a selector that filters a given list of channels based on whether or not the channel
 // is archived or is currently being viewed. The selector returns the original array if no channels are filtered out.
-export function makeFilterArchivedChannels(): (state: GlobalState, channels: Channel[]) => Channel[] {
+function makeFilterArchivedChannels(): (state: GlobalState, channels: Channel[]) => Channel[] {
     return createSelector(
         'makeFilterArchivedChannels',
         (state: GlobalState, channels: Channel[]) => channels,
@@ -239,7 +239,7 @@ export function makeFilterManuallyClosedDMs(): (state: GlobalState, channels: Ch
     );
 }
 
-export function makeCompareChannels(getDisplayName: (channel: Channel) => string, locale: string, myMembers: RelationOneToOne<Channel, ChannelMembership>) {
+function makeCompareChannels(getDisplayName: (channel: Channel) => string, locale: string, myMembers: RelationOneToOne<Channel, ChannelMembership>) {
     return (a: Channel, b: Channel) => {
         // Sort muted channels last
         const aMuted = isChannelMuted(myMembers[a.id]);
@@ -343,7 +343,7 @@ export function makeSortChannelsByRecency(): (state: GlobalState, channels: Chan
     );
 }
 
-export function makeSortChannels() {
+function makeSortChannels() {
     const sortChannelsByName = makeSortChannelsByName();
     const sortChannelsByNameWithDMs = makeSortChannelsByNameWithDMs();
     const sortChannelsByRecency = makeSortChannelsByRecency();

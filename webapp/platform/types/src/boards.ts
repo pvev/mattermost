@@ -44,6 +44,6 @@ export declare type Board = {
     deleteAt: number;
 }
 
-export declare type CreateBoardResponse = {
+declare type CreateBoardResponse = {
     boards: Board[];
 }

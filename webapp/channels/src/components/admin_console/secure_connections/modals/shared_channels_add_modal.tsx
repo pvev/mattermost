@@ -304,7 +304,7 @@ const TYPING_DELAY_MS = 250;
  * Auto-cancels any prior func calls that are still pending
  * @param func cancelable func; the provided signal will be aborted if any subsequent func calls are made
  */
-export const useLatest = <TArgs extends unknown[], TResult>(func: (signal: AbortSignal, ...args: TArgs) => Promise<TResult>, deps: DependencyList, opts?: {delay: number}) => {
+const useLatest = <TArgs extends unknown[], TResult>(func: (signal: AbortSignal, ...args: TArgs) => Promise<TResult>, deps: DependencyList, opts?: {delay: number}) => {
     const r = useRef<{controller: AbortController; handler?: NodeJS.Timeout}>();
 
     const start = useCallback(() => {

@@ -30,7 +30,7 @@ import {Load} from './constants';
 
 import './user_group_popover.scss';
 
-export type Props = {
+type Props = {
     group: Group;
     hide: () => void;
     returnFocus: () => void;

@@ -11,7 +11,7 @@ import {ModalIdentifiers} from 'utils/constants';
 
 import type {ModalData} from 'types/actions';
 
-export type Props = {
+type Props = {
     canCreateCustomGroups: boolean;
     onExited: () => void;
     backButtonAction: () => void;

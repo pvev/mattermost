@@ -8,7 +8,7 @@ import {UserTypes} from 'mattermost-redux/action_types';
 
 import {ActionTypes} from 'utils/constants';
 
-export function isOpen(state = false, action: AnyAction) {
+function isOpen(state = false, action: AnyAction) {
     switch (action.type) {
     case ActionTypes.STATUS_DROPDOWN_TOGGLE:
         return action.open;

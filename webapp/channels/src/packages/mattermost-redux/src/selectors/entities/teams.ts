@@ -98,7 +98,7 @@ export function getTeam(state: GlobalState, id: string): Team | undefined {
     return teams[id];
 }
 
-export const getCurrentTeamMembership: (state: GlobalState) => TeamMembership | undefined = createSelector(
+const getCurrentTeamMembership: (state: GlobalState) => TeamMembership | undefined = createSelector(
     'getCurrentTeamMembership',
     getCurrentTeamId,
     getTeamMemberships,
@@ -169,7 +169,7 @@ export const getMyTeams: (state: GlobalState) => Team[] = createSelector(
     },
 );
 
-export const getMyDeletedTeams: (state: GlobalState) => Team[] = createSelector(
+const getMyDeletedTeams: (state: GlobalState) => Team[] = createSelector(
     'getMyDeletedTeams',
     getTeams,
     getTeamMemberships,
@@ -209,7 +209,7 @@ export function getTeamMember(state: GlobalState, teamId: string, userId: string
     return getMembersInTeams(state)[teamId]?.[userId];
 }
 
-export const getListableTeamIds: (state: GlobalState) => Array<Team['id']> = createIdsSelector(
+const getListableTeamIds: (state: GlobalState) => Array<Team['id']> = createIdsSelector(
     'getListableTeamIds',
     getTeams,
     getTeamMemberships,

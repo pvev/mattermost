@@ -18,7 +18,7 @@ import Constants from 'utils/constants';
 import {cleanUpUrlable, getSiteURL, validateChannelUrl} from 'utils/url';
 import {generateSlug} from 'utils/utils';
 
-export type Props = {
+type Props = {
     value: string;
     name: string;
     placeholder: string;

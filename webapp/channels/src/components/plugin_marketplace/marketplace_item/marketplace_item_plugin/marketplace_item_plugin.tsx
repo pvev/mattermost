@@ -22,7 +22,7 @@ type UpdateVersionProps = {
 };
 
 // UpdateVersion renders the version text in the update details, linking out to release notes if available.
-export const UpdateVersion = ({version, releaseNotesUrl}: UpdateVersionProps): JSX.Element => {
+const UpdateVersion = ({version, releaseNotesUrl}: UpdateVersionProps): JSX.Element => {
     if (!releaseNotesUrl) {
         return (
             <span>

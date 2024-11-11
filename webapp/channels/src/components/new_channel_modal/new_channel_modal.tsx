@@ -33,7 +33,7 @@ import type {GlobalState} from 'types/store';
 
 import './new_channel_modal.scss';
 
-export function getChannelTypeFromPermissions(canCreatePublicChannel: boolean, canCreatePrivateChannel: boolean) {
+function getChannelTypeFromPermissions(canCreatePublicChannel: boolean, canCreatePrivateChannel: boolean) {
     let channelType = Constants.OPEN_CHANNEL;
 
     if (!canCreatePublicChannel && channelType === Constants.OPEN_CHANNEL) {

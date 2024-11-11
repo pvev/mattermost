@@ -26,7 +26,7 @@ export const getCustomEmojis: (state: GlobalState) => IDMappedObjects<CustomEmoj
     },
 );
 
-export const getCustomEmojisAsMap: (state: GlobalState) => Map<string, CustomEmoji> = createSelector(
+const getCustomEmojisAsMap: (state: GlobalState) => Map<string, CustomEmoji> = createSelector(
     'getCustomEmojisAsMap',
     getCustomEmojis,
     (emojis) => {

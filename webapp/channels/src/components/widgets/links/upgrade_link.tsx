@@ -9,7 +9,7 @@ import {trackEvent} from 'actions/telemetry_actions';
 import './link.scss';
 import useOpenSalesLink from 'components/common/hooks/useOpenSalesLink';
 
-export interface UpgradeLinkProps {
+interface UpgradeLinkProps {
     telemetryInfo?: string;
     buttonText?: string;
     styleButton?: boolean; // show as a blue primary button

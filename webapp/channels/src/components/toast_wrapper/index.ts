@@ -25,7 +25,7 @@ interface OwnProps {
     channelId: string;
 }
 
-export function makeGetRootPosts() {
+function makeGetRootPosts() {
     return createSelector(
         'makeGetRootPosts',
         getAllPosts,
@@ -47,7 +47,7 @@ export function makeGetRootPosts() {
     );
 }
 
-export function makeCountUnreadsBelow() {
+function makeCountUnreadsBelow() {
     return createSelector(
         'makeCountUnreadsBelow',
         getAllPosts,

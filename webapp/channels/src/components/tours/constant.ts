@@ -4,7 +4,7 @@
 export const FINISHED = 999;
 export const SKIPPED = 999;
 
-export const ChannelsTourTelemetryPrefix = 'channels-tour';
+const ChannelsTourTelemetryPrefix = 'channels-tour';
 const AutoStatusSuffix = '_auto_tour_status';
 
 export const AutoTourStatus = {
@@ -15,7 +15,7 @@ export const AutoTourStatus = {
 // this should be used as for the tours related to channels
 export const ChannelsTour = 'channels_tour';
 
-export const OtherToolsTour = 'other_tools_tour';
+const OtherToolsTour = 'other_tools_tour';
 
 export const TutorialTourName = {
     ONBOARDING_TUTORIAL_STEP: 'tutorial_step',
@@ -47,7 +47,7 @@ export const CrtTutorialSteps = {
     FINISHED,
 };
 
-export const CrtTutorialTriggerSteps = {
+const CrtTutorialTriggerSteps = {
     START: 0,
     STARTED: 1,
     FINISHED,

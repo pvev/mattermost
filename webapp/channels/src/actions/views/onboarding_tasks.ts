@@ -50,7 +50,7 @@ export function openInvitationsModal(timeout = 1): ActionFunc {
     };
 }
 
-export function setShowOnboardingTaskCompletion(open: boolean) {
+function setShowOnboardingTaskCompletion(open: boolean) {
     return {
         type: ActionTypes.SHOW_ONBOARDING_TASK_COMPLETION,
         open,

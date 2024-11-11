@@ -994,7 +994,7 @@ const latinMap: { [key: string]: string } = {
 };
 /* eslint-enable */
 
-export function map(x: string) {
+function map(x: string) {
     return latinMap[x] || x;
 }
 

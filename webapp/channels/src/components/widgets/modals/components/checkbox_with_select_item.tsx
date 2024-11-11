@@ -95,7 +95,7 @@ function NoIndicatorSeparatorComponent() {
     return null;
 }
 
-export type SelectOption = {
+type SelectOption = {
     value: string;
     label: ReactNode;
 };

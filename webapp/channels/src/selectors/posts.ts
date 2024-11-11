@@ -29,7 +29,7 @@ export function getIsPostBeingEditedInRHS(state: GlobalState, postId: string) {
     return editingPost.isRHS && editingPost.postId === postId && state.views.posts.editingPost.show;
 }
 
-export function getPostEditHistory(state: GlobalState): Post[] {
+function getPostEditHistory(state: GlobalState): Post[] {
     return state.entities.posts.postEditHistory;
 }
 

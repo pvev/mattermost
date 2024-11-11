@@ -407,7 +407,7 @@ export function getPrevTrialLicense(): ActionFuncAsync {
     };
 }
 
-export function getAnalytics(name: string, teamId = ''): ActionFuncAsync {
+function getAnalytics(name: string, teamId = ''): ActionFuncAsync {
     return async (dispatch, getState) => {
         let data;
         try {
@@ -841,7 +841,7 @@ export function removeDataRetentionCustomPolicyChannels(id: string, channels: st
     };
 }
 
-export function completeSetup(completeSetup: CompleteOnboardingRequest) {
+function completeSetup(completeSetup: CompleteOnboardingRequest) {
     return bindClientFunc({
         clientFunc: Client4.completeSetup,
         params: [completeSetup],

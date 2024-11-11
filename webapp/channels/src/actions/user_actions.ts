@@ -153,7 +153,7 @@ export function loadTeamMembersForProfilesList(profiles: UserProfile[], teamId: 
     };
 }
 
-export function loadProfilesWithoutTeam(page: number, perPage: number, options?: Record<string, any>): ActionFuncAsync {
+function loadProfilesWithoutTeam(page: number, perPage: number, options?: Record<string, any>): ActionFuncAsync {
     return async (doDispatch) => {
         const {data} = await doDispatch(UserActions.getProfilesWithoutTeam(page, perPage, options));
 

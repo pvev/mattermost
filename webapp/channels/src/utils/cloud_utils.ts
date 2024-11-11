@@ -7,7 +7,7 @@ import {trackEvent} from 'actions/telemetry_actions';
 
 import {CloudLinks} from 'utils/constants';
 
-export function buildInvoiceSummaryPropsFromLineItems(lineItems: InvoiceLineItem[]) {
+function buildInvoiceSummaryPropsFromLineItems(lineItems: InvoiceLineItem[]) {
     let fullCharges = lineItems.filter((item) => item.type === 'full');
     const partialCharges = lineItems.filter((item) => item.type === 'partial');
     if (!partialCharges.length && !fullCharges.length) {
@@ -40,14 +40,14 @@ export function isCustomerCardExpired(customer?: CloudCustomer): boolean {
     return lastExpiryDate <= new Date();
 }
 
-export function openExternalPricingLink() {
+function openExternalPricingLink() {
     trackEvent('cloud_admin', 'click_pricing_link');
     window.open(CloudLinks.PRICING, '_blank');
 }
 
 export const FREEMIUM_TO_ENTERPRISE_TRIAL_LENGTH_DAYS = 30;
 
-export function daysUntil(end?: number, simulatedCurrentTimeMs?: number) {
+function daysUntil(end?: number, simulatedCurrentTimeMs?: number) {
     let now = new Date();
 
     if (simulatedCurrentTimeMs) {
@@ -59,10 +59,10 @@ export function daysUntil(end?: number, simulatedCurrentTimeMs?: number) {
     return Math.ceil(diff / (1000 * 3600 * 24));
 }
 
-export function daysToExpiration(subscription?: Subscription): number {
+function daysToExpiration(subscription?: Subscription): number {
     return daysUntil(subscription?.end_at, subscription?.simulated_current_time_ms);
 }
 
-export function daysToCancellation(subscription?: Subscription): number {
+function daysToCancellation(subscription?: Subscription): number {
     return daysUntil(subscription?.cancel_at, subscription?.simulated_current_time_ms);
 }

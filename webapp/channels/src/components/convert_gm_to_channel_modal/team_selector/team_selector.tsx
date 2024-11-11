@@ -11,7 +11,7 @@ import {getCurrentLocale} from 'selectors/i18n';
 
 import DropdownInput from 'components/dropdown_input';
 
-export type Props = {
+type Props = {
     teamsById: {[id: string]: Team};
     onChange: (teamId: string) => void;
 }

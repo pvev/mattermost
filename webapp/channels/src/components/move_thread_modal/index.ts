@@ -12,7 +12,7 @@ import {joinChannelById, switchToChannel} from 'actions/views/channel';
 
 import MoveThreadModal from './move_thread_modal';
 
-export type PropsFromRedux = ConnectedProps<typeof connector>;
+type PropsFromRedux = ConnectedProps<typeof connector>;
 
 function mapDispatchToProps(dispatch: Dispatch) {
     return {

@@ -11,7 +11,7 @@ import WithTooltip from 'components/with_tooltip';
 
 import {Locations, A11yCustomEventTypes} from 'utils/constants';
 
-export type Actions = {
+type Actions = {
     flagPost: (postId: string) => void;
     unflagPost: (postId: string) => void;
 }

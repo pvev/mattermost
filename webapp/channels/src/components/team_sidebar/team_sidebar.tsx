@@ -35,7 +35,7 @@ type State = {
     teamsOrder: Team[];
 }
 
-export function renderView(props: Props) {
+function renderView(props: Props) {
     return (
         <div
             {...props}
@@ -44,7 +44,7 @@ export function renderView(props: Props) {
     );
 }
 
-export function renderThumbHorizontal(props: Props) {
+function renderThumbHorizontal(props: Props) {
     return (
         <div
             {...props}
@@ -53,7 +53,7 @@ export function renderThumbHorizontal(props: Props) {
     );
 }
 
-export function renderThumbVertical(props: Props) {
+function renderThumbVertical(props: Props) {
     return (
         <div
             {...props}

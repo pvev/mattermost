@@ -236,7 +236,7 @@ function mapDispatchToProps(dispatch: Dispatch) {
 
 const connector = connect(makeMapStateToProps, mapDispatchToProps);
 
-export type PropsFromRedux = ConnectedProps<typeof connector>
+type PropsFromRedux = ConnectedProps<typeof connector>
 
 export default connector(PostComponent);
 

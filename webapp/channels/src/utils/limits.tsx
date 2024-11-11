@@ -16,7 +16,7 @@ export function inK(num: number): string {
 }
 
 // usage percent meaning 0-100 (for use in usage bar)
-export function toUsagePercent(usage: number, limit: number): number {
+function toUsagePercent(usage: number, limit: number): number {
     return Math.floor((usage / limit) * 100);
 }
 
@@ -36,7 +36,7 @@ export const fallbackStarterLimits = {
 };
 
 // A positive usage value means they are over the limit. This function simply tells you whether ANY LIMIT has been reached/surpassed.
-export function anyUsageDeltaExceededLimit(deltas: CloudUsage) {
+function anyUsageDeltaExceededLimit(deltas: CloudUsage) {
     let foundAPositive = false;
 
     // JSON.parse recursively moves through the object tree, passing the key and value post transformation

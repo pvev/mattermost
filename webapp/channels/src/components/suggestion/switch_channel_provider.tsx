@@ -334,7 +334,7 @@ function sortChannelsByRecencyAndTypeAndDisplayName(wrappedA: WrappedChannel, wr
     return sortChannelsByTypeAndDisplayName('en', wrappedA.channel as Channel, wrappedB.channel as Channel);
 }
 
-export function quickSwitchSorter(wrappedA: WrappedChannel, wrappedB: WrappedChannel) {
+function quickSwitchSorter(wrappedA: WrappedChannel, wrappedB: WrappedChannel) {
     const aIsArchived = wrappedA.channel.delete_at ? wrappedA.channel.delete_at !== 0 : false;
     const bIsArchived = wrappedB.channel.delete_at ? wrappedB.channel.delete_at !== 0 : false;
 

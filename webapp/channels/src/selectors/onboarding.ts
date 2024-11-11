@@ -32,7 +32,7 @@ export type StepType = {
     roles: string[];
 };
 
-export const Steps: StepType[] = [
+const Steps: StepType[] = [
     {
         id: RecommendedNextStepsLegacy.COMPLETE_PROFILE,
         roles: [],
@@ -60,7 +60,7 @@ export const Steps: StepType[] = [
 ];
 
 // Filter the steps shown by checking if our user has any of the required roles for that step
-export function isStepForUser(step: StepType, roles: string): boolean {
+function isStepForUser(step: StepType, roles: string): boolean {
     const userRoles = roles?.split(' ');
     return (
         userRoles?.some((role) => step.roles.includes(role)) ||
@@ -82,7 +82,7 @@ const getNextStepsPreferences = makeGetCategory('getNextStepsPreferences', Prefe
 export const getOnboardingTaskPreferences = makeGetCategory('getOnboardingTaskPreferences', OnboardingTaskCategory);
 
 // Loop through all Steps. For each step, check that
-export const legacyNextStepsNotFinished = createSelector(
+const legacyNextStepsNotFinished = createSelector(
     'legacyNextStepsNotFinished',
     getNextStepsPreferences,
     (state: GlobalState) => getCurrentUser(state),
@@ -96,7 +96,7 @@ export const legacyNextStepsNotFinished = createSelector(
 );
 
 // Loop through all Steps. For each step, check that
-export const hasLegacyNextStepsPreferences = createSelector(
+const hasLegacyNextStepsPreferences = createSelector(
     'hasLegacyNextStepsPreferences',
     getNextStepsPreferences,
     (state: GlobalState) => getSteps(state),

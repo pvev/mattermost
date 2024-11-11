@@ -53,7 +53,7 @@ export type Team = {
     display_name: string;
 };
 
-export interface TextFormattingOptionsBase {
+interface TextFormattingOptionsBase {
 
     /**
      * If specified, this word is highlighted in the resulting html.
@@ -448,7 +448,7 @@ function autolinkEmails(text: string, tokens: Tokens) {
     return text.replace(emailRegex, replaceEmailWithToken);
 }
 
-export function autoLinkSumOfMembersMentions(text: string, tokens: Tokens): string {
+function autoLinkSumOfMembersMentions(text: string, tokens: Tokens): string {
     function replaceSumOfMembersMentionWithToken(fullMatch: string) {
         const index = tokens.size;
         const alias = `$MM_SUMOFMEMBERSMENTION${index}$`;
@@ -470,7 +470,7 @@ export function autoLinkSumOfMembersMentions(text: string, tokens: Tokens): stri
     return output;
 }
 
-export function autoPlanMentions(text: string, tokens: Tokens): string {
+function autoPlanMentions(text: string, tokens: Tokens): string {
     function replacePlanMentionWithToken(fullMatch: string) {
         const index = tokens.size;
         const alias = `$MM_PLANMENTION${index}$`;
@@ -645,7 +645,7 @@ export function escapeRegex(text?: string): string {
     return text?.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') || '';
 }
 
-export function escapeReplaceSpecialPatterns(text?: string): string {
+function escapeReplaceSpecialPatterns(text?: string): string {
     return text?.replace(/[$]/g, '$$$$') || '';
 }
 

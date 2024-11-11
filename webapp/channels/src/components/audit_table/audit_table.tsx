@@ -22,7 +22,7 @@ type Props = {
     };
 };
 
-export class AuditTable extends React.PureComponent<Props> {
+class AuditTable extends React.PureComponent<Props> {
     componentDidMount() {
         const ids = this.props.audits.map((audit) => audit.user_id);
         this.props.actions.getMissingProfilesByIds(ids);

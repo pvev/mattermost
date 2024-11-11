@@ -24,7 +24,7 @@ export type PostsRequestsStatuses = {
     getPostThread: RequestStatusType;
 };
 
-export type ThreadsRequestStatuses = {
+type ThreadsRequestStatuses = {
     getThreads: RequestStatusType;
 };
 
@@ -43,7 +43,7 @@ export type AdminRequestsStatuses = {
     createCompliance: RequestStatusType;
 };
 
-export type EmojisRequestsStatuses = {
+type EmojisRequestsStatuses = {
     createCustomEmoji: RequestStatusType;
     getCustomEmojis: RequestStatusType;
     deleteCustomEmoji: RequestStatusType;
@@ -61,7 +61,7 @@ export type RolesRequestsStatuses = {
     editRole: RequestStatusType;
 };
 
-export type SearchRequestsStatuses = {
+type SearchRequestsStatuses = {
     flaggedPosts: RequestStatusType;
     pinnedPosts: RequestStatusType;
 };

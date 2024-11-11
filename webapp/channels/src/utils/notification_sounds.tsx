@@ -31,7 +31,7 @@ export const DesktopNotificationSounds = {
     UPSTAIRS: 'Upstairs',
 } as const;
 
-export const notificationSounds = new Map<string, string>([
+const notificationSounds = new Map<string, string>([
     [DesktopNotificationSounds.BING, bing],
     [DesktopNotificationSounds.CRACKLE, crackle],
     [DesktopNotificationSounds.DOWN, down],
@@ -120,7 +120,7 @@ export function getValueOfNotificationSoundsSelect(soundName?: string) {
     return soundOption;
 }
 
-export const callsNotificationSounds = new Map([
+const callsNotificationSounds = new Map([
     ['Dynamic', calls_dynamic],
     ['Calm', calls_calm],
     ['Urgent', calls_urgent],
@@ -253,14 +253,14 @@ export function stopTryNotificationRing() {
     }
 }
 
-export function loopNotificationRing(name: string) {
+function loopNotificationRing(name: string) {
     const audio = new Audio(callsNotificationSounds.get(name) ?? callsNotificationSounds.get('Calm'));
     audio.loop = true;
     audio.play();
     return audio;
 }
 
-export function hasSoundOptions() {
+function hasSoundOptions() {
     return (!UserAgent.isEdge());
 }
 

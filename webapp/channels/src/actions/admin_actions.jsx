@@ -73,7 +73,7 @@ export async function recycleDatabaseConnection(success, error) {
     }
 }
 
-export async function adminResetEmail(user, success, error) {
+async function adminResetEmail(user, success, error) {
     const {data, error: err} = await dispatch(UserActions.patchUser(user));
     if (data && success) {
         success(data);
@@ -82,7 +82,7 @@ export async function adminResetEmail(user, success, error) {
     }
 }
 
-export async function samlCertificateStatus(success, error) {
+async function samlCertificateStatus(success, error) {
     const {data, error: err} = await dispatch(AdminActions.getSamlCertificateStatus());
     if (data && success) {
         success(data);
@@ -326,7 +326,7 @@ export async function elasticsearchPurgeIndexes(success, error, indexes) {
     }
 }
 
-export async function jobCreate(success, error, job) {
+async function jobCreate(success, error, job) {
     const {data, error: err} = await dispatch(createJob(job));
     if (data && success) {
         success(data);

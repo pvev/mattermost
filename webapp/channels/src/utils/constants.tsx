@@ -31,7 +31,7 @@ import solarizedDarkIcon from 'images/themes/code_themes/solarized-dark.png';
 import solarizedLightIcon from 'images/themes/code_themes/solarized-light.png';
 import logoWebhook from 'images/webhook_icon.jpg';
 
-export const SettingsTypes = {
+const SettingsTypes = {
     TYPE_TEXT: 'text' as const,
     TYPE_LONG_TEXT: 'longtext' as const,
     TYPE_NUMBER: 'number' as const,
@@ -51,7 +51,7 @@ export const SettingsTypes = {
     TYPE_ROLES: 'roles' as const,
 };
 
-export const InviteTypes = {
+const InviteTypes = {
     INVITE_MEMBER: 'member',
     INVITE_GUEST: 'guest',
 };
@@ -507,7 +507,7 @@ export const CloudProducts = {
     LEGACY: 'cloud-legacy',
 };
 
-export const CloudBillingTypes = {
+const CloudBillingTypes = {
     INTERNAL: 'internal',
     LICENSED: 'licensed',
 };
@@ -541,7 +541,7 @@ export enum LicenseSkus {
     Enterprise = 'enterprise',
 }
 
-export const CloudProductToSku = {
+const CloudProductToSku = {
     [CloudProducts.PROFESSIONAL]: LicenseSkus.Professional,
     [CloudProducts.ENTERPRISE]: LicenseSkus.Enterprise,
 };
@@ -667,7 +667,7 @@ export const SocketEvents = {
     HOSTED_CUSTOMER_SIGNUP_PROGRESS_UPDATED: 'hosted_customer_signup_progress_updated',
 };
 
-export const TutorialSteps = {
+const TutorialSteps = {
     ADD_FIRST_CHANNEL: -1,
     POST_POPOVER: 0,
     CHANNEL_POPOVER: 1,
@@ -680,7 +680,7 @@ export const TutorialSteps = {
 };
 
 // note: add steps in same order as the keys in TutorialSteps above
-export const AdminTutorialSteps = ['START_TRIAL'];
+const AdminTutorialSteps = ['START_TRIAL'];
 
 export const CrtTutorialSteps = {
     WELCOME_POPOVER: 0,
@@ -706,7 +706,6 @@ export const TopLevelProducts = {
 };
 
 export enum ItemStatus {
-    NONE = 'none',
     SUCCESS = 'success',
     INFO = 'info',
     WARNING = 'warning',
@@ -972,7 +971,7 @@ defineMessages({
     },
 });
 
-export const VerifyEmailErrors = {
+const VerifyEmailErrors = {
     FAILED_EMAIL_VERIFICATION: 'failed_email_verification',
     FAILED_USER_STATE_GET: 'failed_get_user_state',
 };
@@ -1012,7 +1011,7 @@ export const IgnoreChannelMentions = {
     DEFAULT: 'default',
 } as const;
 
-export const ChannelAutoFollowThreads = {
+const ChannelAutoFollowThreads = {
     ON: 'on',
     OFF: 'off',
 } as const;
@@ -1047,19 +1046,19 @@ export const RHSStates = {
     EDIT_HISTORY: 'edit-history',
 };
 
-export const UploadStatuses = {
+const UploadStatuses = {
     LOADING: 'loading',
     COMPLETE: 'complete',
     DEFAULT: '',
 };
 
-export const GroupUnreadChannels = {
+const GroupUnreadChannels = {
     DISABLED: 'disabled',
     DEFAULT_ON: 'default_on',
     DEFAULT_OFF: 'default_off',
 };
 
-export const SidebarChannelGroups = {
+const SidebarChannelGroups = {
     UNREADS: 'unreads',
     FAVORITE: 'favorite',
 };
@@ -1166,7 +1165,7 @@ export const LicenseLinks = {
     UNSUPPORTED: 'https://mattermost.com/pricing/',
 };
 
-export const MattermostLink = 'https://mattermost.com/';
+const MattermostLink = 'https://mattermost.com/';
 
 export const BillingSchemes = {
     FLAT_FEE: 'flat_fee',

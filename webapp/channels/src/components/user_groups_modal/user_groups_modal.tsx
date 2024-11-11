@@ -24,7 +24,7 @@ import UserGroupsModalHeader from './user_groups_modal_header';
 
 const GROUPS_PER_PAGE = 60;
 
-export type Props = {
+type Props = {
     onExited: () => void;
     groups: Group[];
     myGroups: Group[];

@@ -9,7 +9,7 @@ import useOpenSalesLink from 'components/common/hooks/useOpenSalesLink';
 
 import './purchase_link.scss';
 
-export interface Props {
+interface Props {
     buttonTextElement: JSX.Element;
     eventID?: string;
 }

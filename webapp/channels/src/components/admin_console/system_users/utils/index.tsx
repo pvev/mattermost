@@ -84,7 +84,7 @@ export function getSortableColumnValueBySortColumn(row: UserReport, sortColumn: 
     }
 }
 
-export function getTeamFilterOption(teamId?: string): Partial<Pick<UserReportOptions, 'team_filter' | 'has_no_team'>> {
+function getTeamFilterOption(teamId?: string): Partial<Pick<UserReportOptions, 'team_filter' | 'has_no_team'>> {
     if (!teamId || teamId === TeamFilters.AllTeams) {
         return {
             team_filter: undefined,
@@ -186,14 +186,14 @@ export function getDefaultSelectedTeam(teamId: Team['id'] | string, label?: stri
     };
 }
 
-export function getRoleFilterOption(role?: string): Pick<UserReportOptions, 'role_filter'> {
+function getRoleFilterOption(role?: string): Pick<UserReportOptions, 'role_filter'> {
     if (!role || role === RoleFilters.Any) {
         return {role_filter: undefined};
     }
     return {role_filter: role};
 }
 
-export function getSearchFilterOption(search?: string): Pick<UserReportOptions, 'search_term'> {
+function getSearchFilterOption(search?: string): Pick<UserReportOptions, 'search_term'> {
     if (!search || search.trim().length === 0) {
         return {search_term: undefined};
     }

@@ -14,7 +14,7 @@ import {countsReducer, countsIncludingDirectReducer} from './counts';
 import {threadsInTeamReducer, unreadThreadsInTeamReducer} from './threadsInTeam';
 import type {ExtraData} from './types';
 
-export const threadsReducer = (state: ThreadsState['threads'] = {}, action: AnyAction, extra: ExtraData) => {
+const threadsReducer = (state: ThreadsState['threads'] = {}, action: AnyAction, extra: ExtraData) => {
     switch (action.type) {
     case ThreadTypes.RECEIVED_UNREAD_THREADS:
     case ThreadTypes.RECEIVED_THREADS: {

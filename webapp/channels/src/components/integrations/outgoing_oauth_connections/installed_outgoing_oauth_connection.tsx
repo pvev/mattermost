@@ -27,7 +27,7 @@ export type InstalledOutgoingOAuthConnectionProps = {
     onDelete: (outgoingOAuthConnection: OutgoingOAuthConnection) => void;
 }
 
-export type InstalledOutgoingOAuthConnectionState = {
+type InstalledOutgoingOAuthConnectionState = {
     clientSecret: string;
     error?: string | null;
 }

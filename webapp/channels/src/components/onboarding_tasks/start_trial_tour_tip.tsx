@@ -9,7 +9,7 @@ import {TourTip, useMeasurePunchouts} from '@mattermost/components';
 import {TaskNameMapToSteps} from './constants';
 import {useHandleOnBoardingTaskData} from './onboarding_tasks_manager';
 
-export const StartTrialTour = () => {
+const StartTrialTour = () => {
     const handleTask = useHandleOnBoardingTaskData();
 
     // please add this in OnBoardingTasksName in constants files

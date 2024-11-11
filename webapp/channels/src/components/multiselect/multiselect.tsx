@@ -70,7 +70,7 @@ export type Props<T extends Value> = {
     customNoOptionsMessage?: React.ReactNode;
 }
 
-export type State = {
+type State = {
     a11yActive: boolean;
     input: string;
     page: number;

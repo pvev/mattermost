@@ -25,7 +25,7 @@ const CenterControlsContainer = styled.div`
     }
 `;
 
-export type Props = {
+type Props = {
     productId?: ProductIdentifier;
 }
 

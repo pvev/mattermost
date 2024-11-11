@@ -43,7 +43,7 @@ type State = {
 
 const CHANNELS_PER_PAGE = 50;
 
-export class ChannelSelectorModal extends React.PureComponent<Props, State> {
+class ChannelSelectorModal extends React.PureComponent<Props, State> {
     searchTimeoutId = 0;
     selectedItemRef = React.createRef<HTMLDivElement>();
 

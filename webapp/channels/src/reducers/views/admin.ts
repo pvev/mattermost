@@ -74,7 +74,7 @@ export const adminConsoleUserManagementTablePropertiesInitialState: AdminConsole
     filterRole: '',
 };
 
-export function adminConsoleUserManagementTableProperties(state = adminConsoleUserManagementTablePropertiesInitialState, action: AnyAction) {
+function adminConsoleUserManagementTableProperties(state = adminConsoleUserManagementTablePropertiesInitialState, action: AnyAction) {
     switch (action.type) {
     case ActionTypes.SET_ADMIN_CONSOLE_USER_MANAGEMENT_TABLE_PROPERTIES: {
         return {...state, ...action.data};

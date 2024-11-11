@@ -73,7 +73,7 @@ type State = {
     isStatusSet: boolean;
 };
 
-export const statusDropdownMessages: Record<string, Record<string, MessageDescriptor>> = {
+const statusDropdownMessages: Record<string, Record<string, MessageDescriptor>> = {
     ooo: defineMessages({
         name: {
             id: 'status_dropdown.set_ooo',
@@ -110,7 +110,7 @@ export const statusDropdownMessages: Record<string, Record<string, MessageDescri
     }),
 };
 
-export class StatusDropdown extends React.PureComponent<Props, State> {
+class StatusDropdown extends React.PureComponent<Props, State> {
     dndTimes = [
         {id: 'dont_clear', label: defineMessage({id: 'status_dropdown.dnd_sub_menu_item.dont_clear', defaultMessage: 'Don\'t clear'})},
         {id: 'thirty_minutes', label: defineMessage({id: 'status_dropdown.dnd_sub_menu_item.thirty_minutes', defaultMessage: '30 mins'})},

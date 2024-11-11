@@ -9,7 +9,7 @@ import store from 'stores/redux_store';
 
 import PluginRegistry from './registry';
 
-export abstract class ProductPlugin {
+abstract class ProductPlugin {
     abstract initialize(registry: PluginRegistry, store: Store): void;
     abstract uninitialize(): void;
 }

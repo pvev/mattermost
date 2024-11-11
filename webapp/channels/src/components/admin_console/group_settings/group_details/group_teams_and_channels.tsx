@@ -18,7 +18,7 @@ export type Props = {
     isDisabled?: boolean;
 };
 
-export type State = {
+type State = {
     collapsed: Record<string, boolean>;
 };
 

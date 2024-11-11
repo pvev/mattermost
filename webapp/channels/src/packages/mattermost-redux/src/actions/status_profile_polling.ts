@@ -54,7 +54,7 @@ export function addUserIdsForStatusFetchingPoll(userIdsForStatus: Array<UserProf
  * Adds list(s) of user id(s) to the profile fetching poll. Which gets fetched based on user interval polling duration
  * Do not use if profile is required immediately.
  */
-export function addUserIdsForProfileFetchingPoll(userIdsForProfile: Array<UserProfile['id']>): ActionFunc<boolean> {
+function addUserIdsForProfileFetchingPoll(userIdsForProfile: Array<UserProfile['id']>): ActionFunc<boolean> {
     return (dispatch, getState, {loaders}: any) => {
         if (!loaders.pollingProfileLoader) {
             loaders.pollingProfileLoader = new BackgroundDataLoader<UserProfile['id']>({
@@ -179,7 +179,7 @@ export function batchFetchStatusesProfilesGroupsFromPosts(postsArrayOrMap: Post[
     };
 }
 
-export function getUsersFromMentionedUsernamesAndGroups(usernamesAndGroups: string[]): ActionFuncAsync<string[]> {
+function getUsersFromMentionedUsernamesAndGroups(usernamesAndGroups: string[]): ActionFuncAsync<string[]> {
     return async (dispatch) => {
         // We run the at-mentioned be it user or group through the user profile search
         const {data: userProfiles} = await dispatch(getProfilesByUsernames(usernamesAndGroups));

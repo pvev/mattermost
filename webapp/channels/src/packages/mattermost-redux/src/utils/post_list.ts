@@ -17,10 +17,10 @@ import {isUserActivityPost, shouldFilterJoinLeavePost, isFromWebhook} from 'matt
 import {getUserCurrentTimezone} from 'mattermost-redux/utils/timezone_utils';
 
 export const COMBINED_USER_ACTIVITY = 'user-activity-';
-export const CREATE_COMMENT = 'create-comment';
+const CREATE_COMMENT = 'create-comment';
 export const DATE_LINE = 'date-';
 export const START_OF_NEW_MESSAGES = 'start-of-new-messages-';
-export const MAX_COMBINED_SYSTEM_POSTS = 100;
+const MAX_COMBINED_SYSTEM_POSTS = 100;
 
 interface PostFilterOptions {
     postIds: string[];

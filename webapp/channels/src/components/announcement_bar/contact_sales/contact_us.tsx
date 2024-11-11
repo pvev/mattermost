@@ -10,7 +10,7 @@ import useOpenSalesLink from 'components/common/hooks/useOpenSalesLink';
 
 import './contact_us.scss';
 
-export interface Props {
+interface Props {
     buttonTextElement?: JSX.Element;
     eventID?: string;
     customClass?: string;

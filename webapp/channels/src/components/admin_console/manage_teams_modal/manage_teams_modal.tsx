@@ -21,7 +21,7 @@ import * as Utils from 'utils/utils';
 import ManageTeamsDropdown from './manage_teams_dropdown';
 import RemoveFromTeamButton from './remove_from_team_button';
 
-export type Props = {
+type Props = {
     locale: string;
     user?: UserProfile;
     onExited: () => void;

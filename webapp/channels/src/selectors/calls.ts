@@ -35,7 +35,7 @@ export function getCallsConfig(state: GlobalState): CallsConfig {
     return state[CALLS_PLUGIN]?.callsConfig;
 }
 
-export function getCallsChannelState(state: GlobalState, channelId: string): {enabled?: boolean} {
+function getCallsChannelState(state: GlobalState, channelId: string): {enabled?: boolean} {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     if (!state[CALLS_PLUGIN] || !state[CALLS_PLUGIN].channels) {

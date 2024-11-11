@@ -92,7 +92,7 @@ type State = {
     appBindings?: AppBinding[];
 }
 
-export class ActionMenuClass extends React.PureComponent<Props, State> {
+class ActionMenuClass extends React.PureComponent<Props, State> {
     public static defaultProps: Partial<Props> = {
         appBindings: [],
         location: Locations.CENTER,

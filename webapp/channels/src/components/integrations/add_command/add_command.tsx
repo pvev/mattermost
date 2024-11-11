@@ -13,7 +13,7 @@ import type {ActionResult} from 'mattermost-redux/types/actions.js';
 
 import AbstractCommand from '../abstract_command';
 
-export type Props = {
+type Props = {
 
     /**
     * The team data

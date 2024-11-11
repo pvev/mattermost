@@ -7,7 +7,7 @@ export function getPreferenceKey(category: string, name: string): string {
     return `${category}--${name}`;
 }
 
-export function getPreferencesByCategory(myPreferences: PreferencesType, category: string): Map<string, any> {
+function getPreferencesByCategory(myPreferences: PreferencesType, category: string): Map<string, any> {
     const prefix = `${category}--`;
     const preferences = new Map();
     Object.keys(myPreferences).forEach((key) => {

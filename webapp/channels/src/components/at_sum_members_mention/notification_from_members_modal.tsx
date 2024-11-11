@@ -49,7 +49,7 @@ enum ListItemType {
     Separator = 'separator',
 }
 
-export interface ListItem {
+interface ListItem {
     type: ListItemType;
     data: ChannelMember | JSX.Element;
 }

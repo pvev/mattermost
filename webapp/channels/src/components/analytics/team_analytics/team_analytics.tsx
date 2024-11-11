@@ -359,7 +359,7 @@ type Item = {
     tip: string;
 };
 
-export function formatRecentUsersData(data: UserProfile[], locale: string): Item[] {
+function formatRecentUsersData(data: UserProfile[], locale: string): Item[] {
     if (data == null) {
         return [];
     }
@@ -380,7 +380,7 @@ export function formatRecentUsersData(data: UserProfile[], locale: string): Item
     }));
 }
 
-export function formatNewUsersData(data: UserProfile[], locale: string): Item[] {
+function formatNewUsersData(data: UserProfile[], locale: string): Item[] {
     if (data == null) {
         return [];
     }

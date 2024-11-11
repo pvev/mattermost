@@ -4,7 +4,7 @@
 /* eslint-disable */
 
 // Generates a RFC-4122 version 4 compliant globally unique identifier.
-export function generateId() {
+function generateId() {
     // implementation taken from http://stackoverflow.com/a/2117523
     let id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx';
     id = id.replace(/[xy]/g, (c) => {
@@ -135,7 +135,7 @@ export function createSelectorCreator(memoize, ...memoizeOptions) {
 
 export const createSelector = /* #__PURE__ */ createSelectorCreator(defaultMemoize);
 
-export function createStructuredSelector(selectors, selectorCreator = createSelector) {
+function createStructuredSelector(selectors, selectorCreator = createSelector) {
     if (typeof selectors !== 'object') {
         throw new Error(
             'createStructuredSelector expects first argument to be an object ' +

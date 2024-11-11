@@ -17,7 +17,7 @@ import * as Utils from 'utils/utils';
 
 import type {ModalData} from 'types/actions';
 
-export type Props = {
+type Props = {
     group: Group;
     onExited: () => void;
     backButtonCallback: () => void;

@@ -26,7 +26,7 @@ export type PrefillFieldFormFieldIDs = {
     val: string;
 }
 
-export const buildZendeskSupportForm = (form: ZendeskSupportForm, formFieldIDs: PrefillFieldFormFieldIDs[]): string => {
+const buildZendeskSupportForm = (form: ZendeskSupportForm, formFieldIDs: PrefillFieldFormFieldIDs[]): string => {
     let formUrl = `${baseZendeskFormURL}?ticket_form_id=${form}`;
 
     formFieldIDs.forEach((formPrefill) => {
@@ -76,7 +76,7 @@ export const goToMattermostContactSalesForm = (firstName: string, lastName: stri
     window.open(url, '_blank');
 };
 
-export const getCloudContactSalesLink = (firstName: string, lastName: string, companyName: string, businessEmail: string, source: string, medium: string) => {
+const getCloudContactSalesLink = (firstName: string, lastName: string, companyName: string, businessEmail: string, source: string, medium: string) => {
     const url = buildMMURL(LicenseLinks.CONTACT_SALES, firstName, lastName, companyName, businessEmail, source, medium);
     return url;
 };

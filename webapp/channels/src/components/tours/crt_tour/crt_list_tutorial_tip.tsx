@@ -17,7 +17,7 @@ import CRTTourTip from './crt_tour_tip';
 
 const translate = {x: -6, y: 62};
 
-export const UpShortcut = () => {
+const UpShortcut = () => {
     const {formatMessage} = useIntl();
     return (<ShortcutKey variant={ShortcutKeyVariant.TutorialTip}>
         {
@@ -29,7 +29,7 @@ export const UpShortcut = () => {
     </ShortcutKey>);
 };
 
-export const DownShortcut = () => {
+const DownShortcut = () => {
     const {formatMessage} = useIntl();
     return (<ShortcutKey variant={ShortcutKeyVariant.TutorialTip}>
         {

@@ -7,10 +7,7 @@ export enum UserReportSortColumns {
     username = 'Username',
     email = 'Email',
     createAt = 'CreateAt',
-    firstName = 'FirstName',
-    lastName = 'LastName',
-    nickname = 'Nickname',
-}
+    }
 
 export enum ReportSortDirection {
     ascending = 'asc',

@@ -150,7 +150,7 @@ export function setChannelReadAndViewed(dispatch: DispatchFunc, getState: GetSta
     return actionsToMarkChannelAsUnread(getState, websocketMessageProps.team_id, post.channel_id, websocketMessageProps.mentions || '', fetchedChannelMember, post.root_id === '', post?.metadata?.priority?.priority);
 }
 
-export function setThreadRead(post: Post): ActionFunc<boolean, GlobalState> {
+function setThreadRead(post: Post): ActionFunc<boolean, GlobalState> {
     const getThreadLastViewedAt = makeGetThreadLastViewedAt();
     return (dispatch, getState) => {
         const state = getState();

@@ -24,7 +24,7 @@ import {Constants, ModalIdentifiers} from 'utils/constants';
 
 import './add_members_button.scss';
 
-export interface AddMembersButtonProps {
+interface AddMembersButtonProps {
     totalUsers?: number;
     usersLimit: number;
     channel: Channel;

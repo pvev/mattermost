@@ -11,7 +11,7 @@ import GenericUserProvider from 'components/suggestion/generic_user_provider';
 import SuggestionBox from 'components/suggestion/suggestion_box';
 import SuggestionList from 'components/suggestion/suggestion_list';
 
-export type Props = {
+type Props = {
     id: string;
     label: string;
     placeholder: string;

@@ -12,7 +12,7 @@ function isPointDefined(point: PartialPoint): point is Point {
     return point.height !== undefined && point.width !== undefined;
 }
 
-export function getDistanceBW2Points(point1: Point, point2: Point) {
+function getDistanceBW2Points(point1: Point, point2: Point) {
     return Math.sqrt(Math.pow(point1.width - point2.width, 2) + Math.pow(point1.height - point2.height, 2));
 }
 

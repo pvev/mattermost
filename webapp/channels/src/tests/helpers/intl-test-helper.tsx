@@ -47,7 +47,7 @@ function unwrapForwardRef<WrappedComponentElement extends ReactElement>(element:
 }
 
 type IntlInjectedElement = ReactElement<any, ReturnType<typeof injectIntl>>;
-export function isIntlInjectedElement(element: ReactElement): element is IntlInjectedElement {
+function isIntlInjectedElement(element: ReactElement): element is IntlInjectedElement {
     const {type} = element;
     if (typeof type === 'function' && type.name === 'WithIntl') {
         return true;

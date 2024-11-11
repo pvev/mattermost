@@ -33,7 +33,7 @@ export type DeepPartial<T> = {
     );
 }
 
-export type ValueOf<T> = T[keyof T];
+type ValueOf<T> = T[keyof T];
 
 /**
  * Based on https://stackoverflow.com/a/49725198

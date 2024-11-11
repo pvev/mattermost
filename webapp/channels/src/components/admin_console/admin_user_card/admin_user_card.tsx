@@ -17,7 +17,7 @@ type BulletProps = {
     user: UserProfile;
 }
 
-export type Props = {
+type Props = {
     user?: UserProfile;
     isLoading?: boolean;
     body?: React.ReactNode;

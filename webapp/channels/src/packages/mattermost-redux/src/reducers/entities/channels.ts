@@ -831,7 +831,7 @@ export function manuallyUnread(state: RelationOneToOne<Channel, boolean> = {}, a
     }
 }
 
-export function channelModerations(state: any = {}, action: AnyAction) {
+function channelModerations(state: any = {}, action: AnyAction) {
     switch (action.type) {
     case ChannelTypes.RECEIVED_CHANNEL_MODERATIONS: {
         const {channelId, moderations} = action.data;
@@ -845,7 +845,7 @@ export function channelModerations(state: any = {}, action: AnyAction) {
     }
 }
 
-export function channelMemberCountsByGroup(state: any = {}, action: AnyAction) {
+function channelMemberCountsByGroup(state: any = {}, action: AnyAction) {
     switch (action.type) {
     case ChannelTypes.RECEIVED_CHANNEL_MEMBER_COUNTS_BY_GROUP: {
         const {channelId, memberCounts} = action.data;

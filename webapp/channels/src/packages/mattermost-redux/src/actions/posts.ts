@@ -68,7 +68,7 @@ export function receivedPosts(posts: PostList) {
 }
 
 // receivedPostsAfter should be dispatched when receiving an ordered list of posts that come before a given post.
-export function receivedPostsAfter(posts: PostList, channelId: string, afterPostId: string, recent = false) {
+function receivedPostsAfter(posts: PostList, channelId: string, afterPostId: string, recent = false) {
     return {
         type: PostTypes.RECEIVED_POSTS_AFTER,
         channelId,
@@ -92,7 +92,7 @@ export function receivedPostsBefore(posts: PostList, channelId: string, beforePo
 // receivedPostsSince should be dispatched when receiving a list of posts that have been updated since a certain time.
 // Due to how the API endpoint works, some of these posts will be ordered, but others will not, so this needs special
 // handling from the reducers.
-export function receivedPostsSince(posts: PostList, channelId: string) {
+function receivedPostsSince(posts: PostList, channelId: string) {
     return {
         type: PostTypes.RECEIVED_POSTS_SINCE,
         channelId,
@@ -113,7 +113,7 @@ export function receivedPostsInChannel(posts: PostList, channelId: string, recen
 }
 
 // receivedPostsInThread should be dispatched when receiving a list of unordered posts in a thread.
-export function receivedPostsInThread(posts: PostList, rootId: string) {
+function receivedPostsInThread(posts: PostList, rootId: string) {
     return {
         type: PostTypes.RECEIVED_POSTS_IN_THREAD,
         data: posts,
@@ -132,14 +132,14 @@ export function postDeleted(post: Post) {
 
 // postRemoved should be dispatched when a post should be immediately removed. This typically happens when a post is
 // deleted by the current user.
-export function postRemoved(post: Post) {
+function postRemoved(post: Post) {
     return {
         type: PostTypes.POST_REMOVED,
         data: post,
     };
 }
 
-export function postPinnedChanged(postId: string, isPinned: boolean, updateAt = Date.now()) {
+function postPinnedChanged(postId: string, isPinned: boolean, updateAt = Date.now()) {
     return {
         type: PostTypes.POST_PINNED_CHANGED,
         postId,
@@ -464,7 +464,7 @@ export function pinPost(postId: string): ActionFuncAsync {
 /**
  * Decrements the pinned post count for a channel by 1
  */
-export function decrementPinnedPostCount(channelId: Channel['id']) {
+function decrementPinnedPostCount(channelId: Channel['id']) {
     return {
         type: ChannelTypes.DECREMENT_PINNED_POST_COUNT,
         id: channelId,
@@ -1148,7 +1148,7 @@ export function moveThread(postId: string, channelId: string): ActionFuncAsync {
     };
 }
 
-export function selectFocusedPostId(postId: string) {
+function selectFocusedPostId(postId: string) {
     return {
         type: PostTypes.RECEIVED_FOCUSED_POST,
         data: postId,

@@ -38,7 +38,7 @@ import ProfilePopoverTitle from './profile_popover_title';
 import './profile_popover.scss';
 
 const PLUGGABLE_COMPONENT_NAME_PROFILE_POPOVER = 'PopoverUserAttributes';
-export interface Props {
+interface Props {
     userId: string;
     src: string;
     channelId?: string;

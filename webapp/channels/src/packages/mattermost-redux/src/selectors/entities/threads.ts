@@ -12,11 +12,11 @@ import type {IDMappedObjects, RelationOneToMany} from '@mattermost/types/utiliti
 import {createSelector} from 'mattermost-redux/selectors/create_selector';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 
-export function getThreadsInTeam(state: GlobalState): RelationOneToMany<Team, UserThread> {
+function getThreadsInTeam(state: GlobalState): RelationOneToMany<Team, UserThread> {
     return state.entities.threads.threadsInTeam;
 }
 
-export function getUnreadThreadsInTeam(state: GlobalState): RelationOneToMany<Team, UserThread> {
+function getUnreadThreadsInTeam(state: GlobalState): RelationOneToMany<Team, UserThread> {
     return state.entities.threads.unreadThreadsInTeam;
 }
 
@@ -32,7 +32,7 @@ export const getThreadsInCurrentTeam: (state: GlobalState) => Array<UserThread['
     },
 );
 
-export const getUnreadThreadsInCurrentTeam: (state: GlobalState) => Array<UserThread['id']> = createSelector(
+const getUnreadThreadsInCurrentTeam: (state: GlobalState) => Array<UserThread['id']> = createSelector(
     'getUnreadThreadsInCurrentTeam',
     getCurrentTeamId,
     getUnreadThreadsInTeam,

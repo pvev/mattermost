@@ -626,7 +626,7 @@ const msg = defineMessages({
 
 const TYPING_DELAY_MS = 250;
 const REQUEST_TIMEOUT = 10000;
-export const useBookmarkLinkValidation = (link: string, onValidated: (validatedLink: string, forced?: boolean) => void) => {
+const useBookmarkLinkValidation = (link: string, onValidated: (validatedLink: string, forced?: boolean) => void) => {
     const {formatMessage} = useIntl();
 
     const [loading, setLoading] = useState<URL>();
@@ -697,7 +697,7 @@ export const useBookmarkLinkValidation = (link: string, onValidated: (validatedL
     return [error, {loading: Boolean(loading), suppressed}] as const;
 };
 
-export const validHttpUrl = (input: string) => {
+const validHttpUrl = (input: string) => {
     const val = parseLink(input);
 
     if (!val || !isValidUrl(val)) {

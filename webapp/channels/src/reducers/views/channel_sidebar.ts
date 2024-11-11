@@ -13,7 +13,7 @@ import {ActionTypes} from 'utils/constants';
 
 import type {DraggingState} from 'types/store';
 
-export function unreadFilterEnabled(state = false, action: AnyAction) {
+function unreadFilterEnabled(state = false, action: AnyAction) {
     switch (action.type) {
     case ActionTypes.SET_UNREAD_FILTER_ENABLED:
         return action.enabled;
@@ -25,7 +25,7 @@ export function unreadFilterEnabled(state = false, action: AnyAction) {
     }
 }
 
-export function draggingState(state: DraggingState = {}, action: AnyAction): DraggingState {
+function draggingState(state: DraggingState = {}, action: AnyAction): DraggingState {
     switch (action.type) {
     case ActionTypes.SIDEBAR_DRAGGING_SET_STATE:
         return {
@@ -42,7 +42,7 @@ export function draggingState(state: DraggingState = {}, action: AnyAction): Dra
     }
 }
 
-export function newCategoryIds(state: string[] = [], action: AnyAction): string[] {
+function newCategoryIds(state: string[] = [], action: AnyAction): string[] {
     switch (action.type) {
     case ActionTypes.ADD_NEW_CATEGORY_ID:
         return [...state, action.data];
@@ -116,7 +116,7 @@ export function multiSelectedChannelIds(state: string[] = [], action: AnyAction)
     }
 }
 
-export function lastSelectedChannel(state = '', action: AnyAction): string {
+function lastSelectedChannel(state = '', action: AnyAction): string {
     switch (action.type) {
     case ActionTypes.MULTISELECT_CHANNEL:
     case ActionTypes.MULTISELECT_CHANNEL_ADD:

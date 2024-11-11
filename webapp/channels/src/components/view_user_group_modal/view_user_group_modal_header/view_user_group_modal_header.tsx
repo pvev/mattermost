@@ -17,7 +17,7 @@ import type {ModalData} from 'types/actions';
 
 import ViewUserGroupHeaderSubMenu from '../view_user_group_header_sub_menu';
 
-export type Props = {
+type Props = {
     groupId: string;
     group: Group;
     onExited: () => void;

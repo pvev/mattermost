@@ -75,8 +75,3 @@ export const goToMattermostContactSalesForm = (firstName: string, lastName: stri
     const url = buildMMURL(LicenseLinks.CONTACT_SALES, firstName, lastName, companyName, businessEmail, source, medium);
     window.open(url, '_blank');
 };
-
-const getCloudContactSalesLink = (firstName: string, lastName: string, companyName: string, businessEmail: string, source: string, medium: string) => {
-    const url = buildMMURL(LicenseLinks.CONTACT_SALES, firstName, lastName, companyName, businessEmail, source, medium);
-    return url;
-};

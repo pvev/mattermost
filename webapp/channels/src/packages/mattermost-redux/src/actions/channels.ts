@@ -1427,6 +1427,8 @@ export function getChannelMemberCountsByGroup(channelId: string) {
     });
 }
 
+// let member = getMyChannelMemberships(state)[channel.id];
+// if (!member) {
 export function fetchMissingChannels(channelIDs: string[]): ActionFuncAsync<Array<Channel['id']>> {
     return async (dispatch, getState, {loaders}: any) => {
         if (!loaders.missingChannelLoader) {

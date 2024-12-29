@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {useRef} from 'react';
 import {FormattedMessage} from 'react-intl';
 import {useSelector} from 'react-redux';
 
@@ -11,7 +11,8 @@ import {getSearchTeam} from 'selectors/rhs';
 
 import type {SearchFilterType} from 'components/search/types';
 
-import Constants from 'utils/constants';
+import type {A11yFocusEventDetail} from 'utils/constants';
+import Constants, {A11yCustomEventTypes} from 'utils/constants';
 import * as Keyboard from 'utils/keyboard';
 
 import type {GlobalState} from 'types/store';
@@ -39,6 +40,10 @@ export default function MessagesOrFilesSelector(props: Props): JSX.Element {
     const teams = useSelector((state: GlobalState) => getMyTeams(state));
     const searchTeam = useSelector((state: GlobalState) => getSearchTeam(state));
 
+    // REFS to the tabs so there is ability to pass the custom A11y focus event
+    const messagesTabRef = useRef<HTMLButtonElement>(null);
+    const filesTabRef = useRef<HTMLButtonElement>(null);
+
     const options = [{value: '', label: 'All teams', selected: searchTeam === ''}];
     for (const team of teams) {
         options.push({value: team.id, label: team.display_name, selected: searchTeam === team.id});
@@ -48,12 +53,64 @@ export default function MessagesOrFilesSelector(props: Props): JSX.Element {
         props.onTeamChange(e.target.value);
     };
 
+    // Enhanced arrow key handling to focus the new select tab and also send the a11y custom event
+    const handleTabKeyDown = (
+        e: React.KeyboardEvent<HTMLButtonElement>,
+        currentTab: 'messages' | 'files',
+    ) => {
+        if (Keyboard.isKeyPressed(e, KeyCodes.LEFT) || Keyboard.isKeyPressed(e, KeyCodes.RIGHT)) {
+            e.preventDefault();
+            e.stopPropagation();
+            let nextTab: SearchType;
+            let nextTabRef: React.RefObject<HTMLButtonElement>;
+
+            if (currentTab === 'messages' && props.isFileAttachmentsEnabled) {
+                nextTab = 'files';
+                nextTabRef = filesTabRef;
+            } else {
+                nextTab = 'messages';
+                nextTabRef = messagesTabRef;
+            }
+
+            props.onChange(nextTab);
+
+            // Dispatch the custom a11y focus event to focus the selected tab
+            if (nextTabRef.current) {
+                setTimeout(() => {
+                    document.dispatchEvent(
+                        new CustomEvent<A11yFocusEventDetail>(A11yCustomEventTypes.FOCUS, {
+                            detail: {
+                                target: nextTabRef.current,
+                                keyboardOnly: true,
+                            },
+                        }),
+                    );
+                }, 0);
+            }
+            return;
+        }
+
+        if (Keyboard.isKeyPressed(e, KeyCodes.ENTER)) {
+            props.onChange(currentTab);
+        }
+    };
+
     return (
         <div className='MessagesOrFilesSelector'>
-            <div className='buttons-container'>
+            <div
+                className='buttons-container'
+                role='tablist'
+                aria-label='Messages or Files'
+            >
                 <button
+                    ref={messagesTabRef}
+                    role='tab'
+                    aria-selected={props.selected === 'messages' ? 'true' : 'false'}
+                    tabIndex={props.selected === 'messages' ? 0 : -1}
+                    aria-controls='searchMessagesPanel'
+                    id='messagesTab'
                     onClick={() => props.onChange('messages')}
-                    onKeyDown={(e: React.KeyboardEvent<HTMLSpanElement>) => Keyboard.isKeyPressed(e, KeyCodes.ENTER) && props.onChange('messages')}
+                    onKeyDown={(e) => handleTabKeyDown(e, 'messages')}
                     className={props.selected === 'messages' ? 'active tab messages-tab' : 'tab messages-tab'}
                 >
                     <FormattedMessage
@@ -62,10 +119,16 @@ export default function MessagesOrFilesSelector(props: Props): JSX.Element {
                     />
                     <span className='counter'>{props.messagesCounter}</span>
                 </button>
-                {props.isFileAttachmentsEnabled &&
+                {props.isFileAttachmentsEnabled && (
                     <button
+                        ref={filesTabRef}
+                        role='tab'
+                        aria-selected={props.selected === 'files' ? 'true' : 'false'}
+                        tabIndex={props.selected === 'files' ? 0 : -1}
+                        aria-controls='searchFilesPanel'
+                        id='filesTab'
                         onClick={() => props.onChange('files')}
-                        onKeyDown={(e: React.KeyboardEvent<HTMLSpanElement>) => Keyboard.isKeyPressed(e, KeyCodes.ENTER) && props.onChange('files')}
+                        onKeyDown={(e) => handleTabKeyDown(e, 'files')}
                         className={props.selected === 'files' ? 'active tab files-tab' : 'tab files-tab'}
                     >
                         <FormattedMessage
@@ -74,7 +137,7 @@ export default function MessagesOrFilesSelector(props: Props): JSX.Element {
                         />
                         <span className='counter'>{props.filesCounter}</span>
                     </button>
-                }
+                )}
             </div>
             {props.crossTeamSearchEnabled && (
                 <div className='team-selector-container'>
@@ -93,11 +156,12 @@ export default function MessagesOrFilesSelector(props: Props): JSX.Element {
                     </select>
                 </div>
             )}
-            {props.selected === 'files' &&
+            {props.selected === 'files' && (
                 <FilesFilterMenu
                     selectedFilter={props.selectedFilter}
                     onFilter={props.onFilter}
-                />}
+                />
+            )}
         </div>
     );
 }

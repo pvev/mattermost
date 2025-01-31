@@ -23,6 +23,7 @@ export function focusElement(
     resetOriginElement = false,
 ) {
     let target: HTMLElement | null = null;
+    debugger;
 
     if (typeof elementOrId === 'string') {
         // It's an ID string

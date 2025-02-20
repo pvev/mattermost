@@ -17,9 +17,9 @@ import type {ServerError} from '@mattermost/types/errors';
 
 import {patchChannel} from 'mattermost-redux/actions/channels';
 import Permissions from 'mattermost-redux/constants/permissions';
-import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {haveITeamPermission} from 'mattermost-redux/selectors/entities/roles';
 
+import ChannelNameFormField from 'components/channel_name_form_field/channel_name_form_field';
 import ConfirmModal from 'components/confirm_modal';
 import PublicPrivateSelector from 'components/widgets/public-private-selector/public-private-selector';
 
@@ -28,20 +28,14 @@ import Constants from 'utils/constants';
 import {isKeyPressed, cmdOrCtrlPressed} from 'utils/keyboard';
 import {stopTryNotificationRing} from 'utils/notification_sounds';
 
-// Example: Redux selectors/actions for channel info
-
-// Example: This might be your custom sidebar or a small subcomponent for tab links
 import type {GlobalState} from 'types/store';
 
 import ChannelSettingsSidebar from './channel_settings_sidebar';
 
-// Types (if you’re using TypeScript)
-
-// SCSS import
 import './channel_settings_modal.scss';
 
 type ChannelSettingsModalProps = {
-    channelId: string;
+    channel: Channel;
     onExited: () => void;
     focusOriginElement?: string;
     isOpen: boolean;
@@ -53,12 +47,10 @@ enum ChannelSettingsTabs {
     ARCHIVE = 'archive',
 }
 
-function ChannelSettingsModal(props: ChannelSettingsModalProps) {
+function ChannelSettingsModal({channel, isOpen, onExited, focusOriginElement}: ChannelSettingsModalProps) {
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
 
-    // --- Redux / Data ---
-    const channel = useSelector((state: GlobalState) => getChannel(state, props.channelId));
     const canConvertToPrivate = useSelector((state: GlobalState) =>
         haveITeamPermission(state, channel?.team_id ?? '', Permissions.CREATE_PRIVATE_CHANNEL),
     );
@@ -66,8 +58,7 @@ function ChannelSettingsModal(props: ChannelSettingsModalProps) {
         haveITeamPermission(state, channel?.team_id ?? '', Permissions.CREATE_PUBLIC_CHANNEL),
     );
 
-    // --- UI State ---
-    const [show, setShow] = useState(props.isOpen);
+    const [show, setShow] = useState(isOpen);
     const [enforceFocus, setEnforceFocus] = useState(true);
 
     // Active tab
@@ -81,17 +72,15 @@ function ChannelSettingsModal(props: ChannelSettingsModalProps) {
     // The fields we allow editing
     const [displayName, setDisplayName] = useState(channel?.display_name ?? '');
     const [url, setURL] = useState(channel?.name ?? ''); // channel `name` is the URL slug
-    const [purpose, setPurpose] = useState(channel?.purpose ?? '');
-    const [header] = useState(channel?.header ?? '');
-    const [channelType, setChannelType] = useState<ChannelType>(channel?.type as ChannelType ?? Constants.OPEN_CHANNEL as ChannelType);
+    const [channelPurpose, setChannelPurpose] = useState(channel.purpose ?? '');
 
-    // For toggling URL editing
-    const [isEditingURL, setIsEditingURL] = useState(false);
+    const [header, setChannelHeader] = useState(channel?.header ?? '');
+    const [channelType, setChannelType] = useState<ChannelType>(channel?.type as ChannelType ?? Constants.OPEN_CHANNEL as ChannelType);
+    const [showPreview, setShowPreview] = useState(false);
 
     // UI Feedback: errors, states
     const [urlError, setURLError] = useState('');
     const [serverError, setServerError] = useState('');
-    const [purposeError, setPurposeError] = useState('');
 
     // Refs
     const modalBodyRef = useRef<HTMLDivElement>(null);
@@ -105,16 +94,16 @@ function ChannelSettingsModal(props: ChannelSettingsModalProps) {
         return (
             displayName !== channel.display_name ||
             url !== channel.name ||
-            purpose !== channel.purpose ||
+            channelPurpose !== channel.purpose ||
             header !== channel.header ||
             channelType !== channel.type
         );
-    }, [channel, displayName, url, purpose, header, channelType]);
+    }, [channel, displayName, url, channelPurpose, header, channelType]);
 
     // Possibly set requireConfirm whenever an edit has occurred
     useEffect(() => {
         setRequireConfirm(hasUnsavedChanges());
-    }, [displayName, url, purpose, header, channelType, hasUnsavedChanges]);
+    }, [displayName, url, channelPurpose, header, channelType, hasUnsavedChanges]);
 
     // For KeyDown handling (e.g. Ctrl+Shift+A => close)
     useEffect(() => {
@@ -195,10 +184,10 @@ function ChannelSettingsModal(props: ChannelSettingsModalProps) {
     const handleHidden = () => {
         // Clear anything if needed
         setActiveTab(ChannelSettingsTabs.INFO);
-        if (props.focusOriginElement) {
-            focusElement(props.focusOriginElement, true);
+        if (focusOriginElement) {
+            focusElement(focusOriginElement, true);
         }
-        props.onExited();
+        onExited();
     };
 
     // Validate & Save
@@ -221,7 +210,7 @@ function ChannelSettingsModal(props: ChannelSettingsModalProps) {
             ...channel,
             display_name: displayName.trim(),
             name: url.trim(),
-            purpose: purpose.trim(),
+            purpose: channelPurpose.trim(),
             header: header.trim(),
             type: channelType as ChannelType,
         };
@@ -284,77 +273,31 @@ function ChannelSettingsModal(props: ChannelSettingsModalProps) {
         }
     };
 
+    const handleURLChange = useCallback((newURL: string) => {
+        setURL(newURL);
+        setURLError('');
+    }, []);
+
     const renderInfoTab = () => {
         // Channel name, URL, purpose, header, plus the public/private toggle
         return (
             <div className='ChannelSettingsModal__infoTab'>
                 <label className='Input_legend'>{formatMessage({id: 'channel_settings.label.name', defaultMessage: 'Channel Name'})}</label>
-                <input
-                    type='text'
-                    className='form-control'
+                <ChannelNameFormField
                     value={displayName}
-                    onChange={(e) => {
-                        setDisplayName(e.target.value);
-                        setServerError('');
+                    name='channel-settings-name'
+                    placeholder={formatMessage({
+                        id: 'channel_settings_modal.name.placeholder',
+                        defaultMessage: 'Enter a name for your channel',
+                    })}
+                    onDisplayNameChange={(name) => {
+                        setDisplayName(name);
                     }}
-                    placeholder={formatMessage({id: 'channel_settings.placeholder.name', defaultMessage: 'Enter channel name'})}
+                    onURLChange={handleURLChange}
+                    urlError={urlError}
+                    currentUrl={channel.name}
                 />
-                {/* URL line */}
-                <div className='ChannelSettingsModal__urlLine'>
-                    <span>
-                        {formatMessage({id: 'channel_settings.url', defaultMessage: 'URL:'})} {'https://your-mattermost-server.com/'}{channel?.team_id ?? 'team'}{'/'}
-                        {isEditingURL ? (
-                            <input
-                                data-testid='channelURLInput'
-                                className={classNames('ChannelSettingsModal__urlInput', {'with-error': urlError})}
-                                type='text'
-                                value={url}
-                                onChange={(e) => setURL(e.target.value)}
-                            />
-                        ) : (
-                            <span data-testid='channelURLLabel'>{url}</span>
-                        )}
-                    </span>
-                    {isEditingURL ? (
-                        <button
-                            type='button'
-                            className='btn btn-link ChannelSettingsModal__urlEditButton'
-                            onClick={() => {
-                                // Validate or finalize
-                                if (!url) {
-                                    setURLError(formatMessage({
-                                        id: 'channel_settings.error.url_required',
-                                        defaultMessage: 'URL cannot be empty',
-                                    }));
-                                    return;
-                                }
 
-                                // e.g. Additional validations on URL
-                                setIsEditingURL(false);
-                            }}
-                        >
-                            {formatMessage({id: 'channel_settings.url.done', defaultMessage: 'Done'})}
-                        </button>
-                    ) : (
-                        <button
-                            type='button'
-                            className='btn btn-link ChannelSettingsModal__urlEditButton'
-                            onClick={() => {
-                                setIsEditingURL(true);
-                                setURLError('');
-                            }}
-                        >
-                            {formatMessage({id: 'channel_settings.url.edit', defaultMessage: 'Edit'})}
-                        </button>
-                    )}
-                    {urlError && (
-                        <div className='ChannelSettingsModal__urlError'>
-                            {urlError}
-                        </div>
-                    )}
-                </div>
-
-                {/* Public/Private Selector */}
                 <PublicPrivateSelector
                     className='ChannelSettingsModal__typeSelector'
                     selected={channelType}
@@ -372,41 +315,47 @@ function ChannelSettingsModal(props: ChannelSettingsModalProps) {
                 />
 
                 {/* Purpose */}
+                <label className='Input_legend'>{formatMessage({id: 'channel_settings.label.purpose', defaultMessage: 'Channel Purpose'})}</label>
                 <div className='ChannelSettingsModal__purposeContainer'>
-                    <label className='Input_legend'>{formatMessage({id: 'channel_settings.label.purpose', defaultMessage: 'Channel Purpose'})}</label>
                     <textarea
-                        className={classNames('form-control', {'with-error': purposeError})}
-                        placeholder={formatMessage({id: 'channel_settings.placeholder.purpose', defaultMessage: 'Enter channel purpose (optional)'})}
-                        value={purpose}
+                        className={classNames('channel-settings-modal__purpose-input')}
+                        placeholder={formatMessage({
+                            id: 'channel_settings_modal.purpose.placeholder',
+                            defaultMessage: 'Enter a purpose for this channel (optional)',
+                        })}
+                        rows={4}
+                        maxLength={Constants.MAX_CHANNELPURPOSE_LENGTH}
+                        value={channelPurpose}
                         onChange={(e) => {
-                            setPurpose(e.target.value);
-                            setPurposeError('');
-                            setServerError('');
+                            setChannelPurpose(e.target.value);
                         }}
-                        rows={3}
                     />
-                    {purposeError ? (
-                        <div className='ChannelSettingsModal__purposeError'>
-                            {purposeError}
-                        </div>
-                    ) : (
-                        <div className='ChannelSettingsModal__purposeHelpText'>
-                            {formatMessage({id: 'channel_settings.purpose.helpText', defaultMessage: 'This will be displayed when browsing for channels.'})}
+                </div>
+                <div className='ChannelSettingsModal__headerContainer'>
+                    <div className='ChannelSettingsModal__headerContainer--preview-button'>
+                        <button
+                            onClick={() => setShowPreview(!showPreview)}
+                        >
+                            <i className='icon icon-eye-outline'/>
+                        </button>
+                    </div>
+                    <textarea
+                        className={classNames('channel-settings-modal__header-input')}
+                        placeholder={formatMessage({
+                            id: 'channel_settings_modal.header.placeholder',
+                            defaultMessage: 'Enter a header for this channel',
+                        })}
+                        rows={showPreview ? 2 : 4}
+                        value={channel.header}
+                        onChange={(e) => {
+                            setChannelHeader(e.target.value);
+                        }}
+                    />
+                    {showPreview && (
+                        <div className='channel-settings-modal__header-preview'>
+                            {/* Add markdown preview component here */}
                         </div>
                     )}
-                </div>
-
-                {/* Channel Header (Markdown with a preview icon) */}
-                <div className='ChannelSettingsModal__headerContainer'>
-                    <label className='Input_legend'>{formatMessage({id: 'channel_settings.label.header', defaultMessage: 'Channel Header'})}</label>
-                    {/* Example of a small “Preview” toggle button, or a subcomponent that shows live markdown */}
-                    {/* <MarkdownPreview
-                        value={header}
-                        onChange={(val: string) => {
-                            setHeader(val);
-                            setServerError('');
-                        }}
-                    /> */}
                 </div>
             </div>
         );
@@ -505,7 +454,7 @@ function ChannelSettingsModal(props: ChannelSettingsModalProps) {
             cancelButtonText={formatMessage({id: 'channel_settings.modal.cancel', defaultMessage: 'Cancel'})}
 
             // If there are no changes or any field is invalid, disable “Save”
-            isConfirmDisabled={!hasUnsavedChanges() || Boolean(urlError || serverError || purposeError)}
+            isConfirmDisabled={!hasUnsavedChanges() || Boolean(urlError || serverError)}
 
             // When user clicks “Save”
             handleConfirm={handleSave}

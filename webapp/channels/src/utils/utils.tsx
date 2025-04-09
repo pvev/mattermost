@@ -212,7 +212,35 @@ const removeQuerystringOrHash = (extin: string): string => {
 };
 
 export const getFileType = (extin: string): typeof FileTypes[keyof typeof FileTypes] => {
-    const ext = removeQuerystringOrHash(extin.toLowerCase());
+    // Handle null or undefined input
+    if (!extin) {
+        return FileTypes.OTHER;
+    }
+
+    // Ensure extin is a string
+    const input = String(extin);
+
+    // Special handling for image proxy URLs
+    // Check for various forms of image proxy URLs
+    if (input.includes('/api/v4/image') &&
+        (input.includes('?url=') || input.includes('&url='))) {
+        return FileTypes.IMAGE;
+    }
+
+    // Check for image file extensions in the URL path
+    const urlPath = input.split('?')[0]; // Remove query parameters
+    const pathParts = urlPath.split('/');
+    const lastPathPart = pathParts[pathParts.length - 1];
+
+    if (lastPathPart && lastPathPart.includes('.')) {
+        const urlExtension = lastPathPart.split('.').pop()?.toLowerCase();
+        if (urlExtension && Constants.IMAGE_TYPES.indexOf(urlExtension) > -1) {
+            return FileTypes.IMAGE;
+        }
+    }
+
+    // Standard extension-based detection
+    const ext = removeQuerystringOrHash(input.toLowerCase());
 
     if (Constants.TEXT_TYPES.indexOf(ext) > -1) {
         return FileTypes.TEXT;

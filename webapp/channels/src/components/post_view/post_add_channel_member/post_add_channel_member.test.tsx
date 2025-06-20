@@ -43,6 +43,8 @@ describe('components/post_view/PostAddChannelMember', () => {
             addChannelMember: jest.fn(),
         },
         noGroupsUsernames: [],
+        nonInvitableUsernames: [],
+        isPolicyEnforced: false,
     };
 
     test('should match snapshot, empty postId', () => {
@@ -139,5 +141,39 @@ describe('components/post_view/PostAddChannelMember', () => {
         };
         const wrapper = shallow(<PostAddChannelMember {...props}/>);
         expect(wrapper).toMatchSnapshot();
+    });
+
+    test('should match snapshot, with non-invitable usernames (ABAC policy violation)', () => {
+        const props: Props = {
+            ...requiredProps,
+            usernames: ['username_1', 'username_2', 'username_3'],
+            nonInvitableUsernames: ['username_2', 'username_3'],
+            isPolicyEnforced: true,
+        };
+        const wrapper = shallow(<PostAddChannelMember {...props}/>);
+        expect(wrapper).toMatchSnapshot();
+    });
+
+    test('should match snapshot, with mixed user types (invitable, non-invitable, out-of-groups)', () => {
+        const props: Props = {
+            ...requiredProps,
+            usernames: ['username_1', 'username_2', 'username_3', 'username_4'],
+            nonInvitableUsernames: ['username_2'],
+            noGroupsUsernames: ['username_3'],
+            isPolicyEnforced: true,
+        };
+        const wrapper = shallow(<PostAddChannelMember {...props}/>);
+        expect(wrapper).toMatchSnapshot();
+    });
+
+    test('should not show add link for non-invitable users when policy is enforced', () => {
+        const props: Props = {
+            ...requiredProps,
+            usernames: ['username_1', 'username_2'],
+            nonInvitableUsernames: ['username_1', 'username_2'],
+            isPolicyEnforced: true,
+        };
+        const wrapper = shallow(<PostAddChannelMember {...props}/>);
+        expect(wrapper.find('.PostBody_addChannelMemberLink')).toHaveLength(0);
     });
 });

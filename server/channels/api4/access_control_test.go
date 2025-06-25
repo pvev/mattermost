@@ -61,6 +61,120 @@ func TestCreateAccessControlPolicy(t *testing.T) {
 		CheckForbiddenStatus(t, resp)
 	})
 
+	t.Run("CreateAccessControlPolicy with channel admin for their channel", func(t *testing.T) {
+		ok := th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
+		require.True(t, ok, "SetLicense should return true")
+
+		// Create a private channel and make user channel admin
+		privateChannel := th.CreatePrivateChannel()
+		channelAdmin := th.CreateUser()
+		th.AddUserToChannel(channelAdmin, privateChannel)
+		th.MakeUserChannelAdmin(channelAdmin, privateChannel)
+		channelAdminClient := th.CreateClient()
+		th.LoginBasicWithClient(channelAdminClient)
+		channelAdminClient.Login(context.Background(), channelAdmin.Email, channelAdmin.Password)
+
+		// Create channel-specific policy
+		channelPolicy := &model.AccessControlPolicy{
+			ID:       privateChannel.Id,
+			Type:     model.AccessControlPolicyTypeChannel,
+			Version:  model.AccessControlPolicyVersionV0_1,
+			Revision: 1,
+			Rules: []model.AccessControlPolicyRule{
+				{
+					Expression: "user.attributes.team == 'engineering'",
+					Actions:    []string{"*"},
+				},
+			},
+		}
+
+		// Create and set up the mock
+		mockAccessControlService := &mocks.AccessControlServiceInterface{}
+		th.App.Srv().Channels().AccessControl = mockAccessControlService
+		mockAccessControlService.On("SavePolicy", mock.AnythingOfType("*request.Context"), mock.AnythingOfType("*model.AccessControlPolicy")).Return(channelPolicy, nil).Times(1)
+
+		th.App.UpdateConfig(func(cfg *model.Config) {
+			cfg.AccessControlSettings.EnableAttributeBasedAccessControl = model.NewPointer(true)
+		})
+
+		_, resp, err := channelAdminClient.CreateAccessControlPolicy(context.Background(), channelPolicy)
+		require.NoError(t, err)
+		CheckOKStatus(t, resp)
+	})
+
+	t.Run("CreateAccessControlPolicy with channel admin for another channel should fail", func(t *testing.T) {
+		ok := th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
+		require.True(t, ok, "SetLicense should return true")
+
+		// Create two private channels
+		privateChannel1 := th.CreatePrivateChannel()
+		privateChannel2 := th.CreatePrivateChannel()
+		channelAdmin := th.CreateUser()
+		th.AddUserToChannel(channelAdmin, privateChannel1)
+		th.MakeUserChannelAdmin(channelAdmin, privateChannel1)
+		channelAdminClient := th.CreateClient()
+		th.LoginBasicWithClient(channelAdminClient)
+		channelAdminClient.Login(context.Background(), channelAdmin.Email, channelAdmin.Password)
+
+		// Try to create policy for different channel
+		channelPolicy := &model.AccessControlPolicy{
+			ID:       privateChannel2.Id,
+			Type:     model.AccessControlPolicyTypeChannel,
+			Version:  model.AccessControlPolicyVersionV0_1,
+			Revision: 1,
+			Rules: []model.AccessControlPolicyRule{
+				{
+					Expression: "user.attributes.team == 'engineering'",
+					Actions:    []string{"*"},
+				},
+			},
+		}
+
+		th.App.UpdateConfig(func(cfg *model.Config) {
+			cfg.AccessControlSettings.EnableAttributeBasedAccessControl = model.NewPointer(true)
+		})
+
+		_, resp, err := channelAdminClient.CreateAccessControlPolicy(context.Background(), channelPolicy)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+	})
+
+	t.Run("CreateAccessControlPolicy with channel admin creating parent policy should fail", func(t *testing.T) {
+		ok := th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
+		require.True(t, ok, "SetLicense should return true")
+
+		// Create a private channel and make user channel admin
+		privateChannel := th.CreatePrivateChannel()
+		channelAdmin := th.CreateUser()
+		th.AddUserToChannel(channelAdmin, privateChannel)
+		th.MakeUserChannelAdmin(channelAdmin, privateChannel)
+		channelAdminClient := th.CreateClient()
+		th.LoginBasicWithClient(channelAdminClient)
+		channelAdminClient.Login(context.Background(), channelAdmin.Email, channelAdmin.Password)
+
+		// Try to create parent-type policy
+		parentPolicy := &model.AccessControlPolicy{
+			ID:       model.NewId(),
+			Type:     model.AccessControlPolicyTypeParent,
+			Version:  model.AccessControlPolicyVersionV0_1,
+			Revision: 1,
+			Rules: []model.AccessControlPolicyRule{
+				{
+					Expression: "user.attributes.team == 'engineering'",
+					Actions:    []string{"*"},
+				},
+			},
+		}
+
+		th.App.UpdateConfig(func(cfg *model.Config) {
+			cfg.AccessControlSettings.EnableAttributeBasedAccessControl = model.NewPointer(true)
+		})
+
+		_, resp, err := channelAdminClient.CreateAccessControlPolicy(context.Background(), parentPolicy)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+	})
+
 	th.TestForSystemAdminAndLocal(t, func(t *testing.T, client *model.Client4) {
 		// Set up a test license with Data Retention enabled
 		ok := th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))

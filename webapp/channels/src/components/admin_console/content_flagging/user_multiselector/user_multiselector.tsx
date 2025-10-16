@@ -8,11 +8,21 @@ import {useDispatch, useSelector} from 'react-redux';
 import type {MultiValue, SingleValue} from 'react-select';
 import AsyncSelect from 'react-select/async';
 
+import type {Group} from '@mattermost/types/groups';
 import type {UserProfile} from '@mattermost/types/users';
 
 import {debounce} from 'mattermost-redux/actions/helpers';
 import {getMissingProfilesByIds, searchProfiles} from 'mattermost-redux/actions/users';
+import {getLicense} from 'mattermost-redux/selectors/entities/general';
+import {isCustomGroupsEnabled} from 'mattermost-redux/selectors/entities/preferences';
+import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {makeGetUsersByIds} from 'mattermost-redux/selectors/entities/users';
+import type {ActionResult} from 'mattermost-redux/types/actions';
+import {displayUsername} from 'mattermost-redux/utils/user_utils';
+
+import {searchAssociatedGroupsForReference} from 'actions/views/group';
+
+import {sortUsersAndGroups} from 'utils/utils';
 
 import type {GlobalState} from 'types/store';
 
@@ -53,12 +63,26 @@ type Props = MultiSelectProps & SingleSelectProps & {
     placeholder?: React.ReactNode;
     showDropdownIndicator?: boolean;
     searchFunc?: (term: string) => Promise<UserProfile[]>;
+    enableGroups?: boolean;
+    disabled?: boolean;
 };
 
-export function UserSelector({id, isMulti, className, multiSelectOnChange, multiSelectInitialValue, singleSelectOnChange, singleSelectInitialValue, hasError, placeholder, showDropdownIndicator, searchFunc}: Props) {
+export function UserSelector({id, isMulti, className, multiSelectOnChange, multiSelectInitialValue, singleSelectOnChange, singleSelectInitialValue, hasError, placeholder, showDropdownIndicator, searchFunc, enableGroups = false, disabled = false}: Props) {
     const dispatch = useDispatch();
     const {formatMessage} = useIntl();
     const initialDataLoaded = useRef<boolean>(false);
+
+    // Check if groups are enabled
+    const currentTeamId = useSelector((state: GlobalState) => getCurrentTeamId(state));
+    const currentLicense = useSelector((state: GlobalState) => getLicense(state));
+    const isGroupsEnabled = useSelector((state: GlobalState) => {
+        if (!enableGroups) {
+            return false;
+        }
+        const customGroupsEnabled = isCustomGroupsEnabled(state);
+        const ldapGroupsEnabled = currentLicense?.IsLicensed === 'true' && currentLicense?.LDAPGroups === 'true';
+        return customGroupsEnabled || ldapGroupsEnabled;
+    });
 
     const initialValue = useMemo(() => {
         return isMulti ? multiSelectInitialValue : [singleSelectInitialValue || ''];
@@ -84,7 +108,7 @@ export function UserSelector({id, isMulti, className, multiSelectOnChange, multi
             value: userProfile.id,
             label: userProfile.username,
             raw: userProfile,
-        } as AutocompleteOptionType<UserProfile>));
+        } as AutocompleteOptionType<UserProfile | Group>));
 
     const userLoadingMessage = useCallback(() => formatMessage({id: 'admin.userMultiSelector.loading', defaultMessage: 'Loading users'}), [formatMessage]);
     const noUsersMessage = useCallback(() => formatMessage({id: 'admin.userMultiSelector.noUsers', defaultMessage: 'No users found'}), [formatMessage]);
@@ -92,26 +116,92 @@ export function UserSelector({id, isMulti, className, multiSelectOnChange, multi
 
     const generalSearchUsers = useMemo(() => debounce(async (searchTerm: string, callback) => {
         try {
-            const response = await dispatch(searchProfiles(searchTerm, {page: 0}));
-            if (response && response.data && response.data.length > 0) {
-                const users = response.data.
-                    filter((userProfile) => !userProfile.is_bot).
+            const userSearchOptions = {
+                team_id: currentTeamId,
+                page: 0,
+            };
+
+            const promises: Array<Promise<ActionResult<UserProfile[] | Group[]>>> = [
+                dispatch(searchProfiles(searchTerm, userSearchOptions)),
+            ];
+
+            // Search for groups if enabled
+            if (isGroupsEnabled) {
+                const groupSearchOpts = {
+                    q: searchTerm,
+                    filter_allow_reference: true,
+                    page: 0,
+                    per_page: 100,
+                    include_member_count: true,
+                    include_member_ids: false,
+                };
+
+                promises.push(
+                    dispatch(searchAssociatedGroupsForReference(
+                        searchTerm,
+                        currentTeamId || '',
+                        undefined,
+                        groupSearchOpts,
+                    )) as Promise<ActionResult<Group[]>>,
+                );
+            }
+
+            const results = await Promise.all(promises);
+            const userResults = results[0] as ActionResult<UserProfile[]>;
+            const groupResults = results[1] as ActionResult<Group[]> | undefined;
+
+            let options: Array<AutocompleteOptionType<UserProfile | Group>> = [];
+
+            // Process user results
+            if (userResults && userResults.data && userResults.data.length > 0) {
+                const userOptions = userResults.data.
+                    filter((userProfile) => !userProfile.is_bot && userProfile.delete_at === 0).
                     map((user) => ({
                         value: user.id,
-                        label: user.username,
+                        label: displayUsername(user, ''),
                         raw: user,
                     }));
 
-                callback(users);
-            } else {
-                callback([]);
+                options = [...options, ...userOptions];
             }
+
+            // Process group results
+            if (groupResults && groupResults.data && groupResults.data.length > 0) {
+                const groupOptions = groupResults.data.
+                    filter((group) => group.delete_at === 0).
+                    map((group) => ({
+                        value: group.id,
+                        label: group.display_name || group.name,
+                        raw: group,
+                    }));
+
+                options = [...options, ...groupOptions];
+            }
+
+            // Sort results (users and/or groups)
+            if (options.length > 0) {
+                options.sort((a, b) => {
+                    if (!a.raw || !b.raw) {
+                        return 0;
+                    }
+
+                    // For users only, sort by username
+                    if ('username' in a.raw && 'username' in b.raw) {
+                        return (a.raw.username || '').localeCompare(b.raw.username || '');
+                    }
+
+                    // For mixed or groups, use the utility function
+                    return sortUsersAndGroups(a.raw, b.raw);
+                });
+            }
+
+            callback(options);
         } catch (error) {
             // eslint-disable-next-line no-console
             console.error(error);
             callback([]);
         }
-    }, 200), [dispatch]);
+    }, 200), [dispatch, currentTeamId, isGroupsEnabled]);
 
     const customSearchFunc = useMemo(() => debounce(async (searchTerm: string, callback) => {
         if (!searchFunc) {
@@ -139,12 +229,12 @@ export function UserSelector({id, isMulti, className, multiSelectOnChange, multi
 
     const searchUsers = searchFunc ? customSearchFunc : generalSearchUsers;
 
-    const multiSelectHandleOnChange = useCallback((value: MultiValue<AutocompleteOptionType<UserProfile>>) => {
+    const multiSelectHandleOnChange = useCallback((value: MultiValue<AutocompleteOptionType<UserProfile | Group>>) => {
         const selectedUserIds = value.map((option) => option.value);
         multiSelectOnChange?.(selectedUserIds);
     }, [multiSelectOnChange]);
 
-    const singleSelectHandleOnChange = useCallback((value: SingleValue<AutocompleteOptionType<UserProfile>>) => {
+    const singleSelectHandleOnChange = useCallback((value: SingleValue<AutocompleteOptionType<UserProfile | Group>>) => {
         const selectedUserIds = value?.value || '';
         singleSelectOnChange?.(selectedUserIds);
     }, [singleSelectOnChange]);
@@ -193,8 +283,9 @@ export function UserSelector({id, isMulti, className, multiSelectOnChange, multi
             noOptionsMessage: noUsersMessage,
             loadOptions: searchUsers,
             menuPortalTarget: document.body,
+            isDisabled: disabled,
         };
-    }, [className, defaultPlaceholder, hasError, id, noUsersMessage, placeholder, searchUsers, userLoadingMessage]);
+    }, [className, defaultPlaceholder, disabled, hasError, id, noUsersMessage, placeholder, searchUsers, userLoadingMessage]);
 
     const containerClassName = classNames('UserMultiSelector', {multiSelect: isMulti, singleSelect: !isMulti});
 

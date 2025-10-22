@@ -1,0 +1,71 @@
+import {Meta} from '@storybook/blocks';
+
+<Meta title="Introduction" />
+
+# Mattermost Webapp Storybook
+
+Welcome to the Mattermost Webapp component library! This Storybook showcases reusable UI components used throughout the Mattermost web application.
+
+## Overview
+
+This Storybook is configured to provide:
+
+- **Component Documentation**: Interactive documentation for all reusable UI components
+- **Live Examples**: Real-time component previews with adjustable props
+- **Accessibility Testing**: Built-in a11y validation using the Accessibility addon
+- **Responsive Design**: Test components across different viewport sizes
+- **Theme Integration**: Components render with the Mattermost theme system
+
+## Architecture
+
+The Mattermost webapp uses:
+
+- **React 18** for UI components
+- **Redux Toolkit** for state management
+- **TypeScript** for type safety
+- **SCSS Modules** for styling
+- **React Intl** for internationalization
+- **Styled Components** for dynamic styling
+
+## Component Categories
+
+### Widgets
+Atomic UI components that can be composed to build larger features:
+- Tags (BotTag, GuestTag)
+- Icons
+- Inputs
+- Menus
+- Modals
+- Settings components
+
+### Admin Console
+Components specific to the administration interface.
+
+### Common Components
+Shared components used across multiple features.
+
+## Getting Started
+
+Browse the component categories in the sidebar to explore available components. Each component includes:
+
+- **Canvas**: Interactive preview with editable props
+- **Docs**: Auto-generated documentation with prop tables
+- **Controls**: Adjust component props in real-time
+- **Actions**: Monitor event handlers and callbacks
+
+## Development Guidelines
+
+When creating new stories:
+
+1. Place stories in the `stories/` directory, mirroring the component structure
+2. Use `.stories.tsx` extension for TypeScript story files
+3. Include multiple story variants to showcase different use cases
+4. Document props using JSDoc comments
+5. Add accessibility tests where applicable
+6. Follow existing Mattermost component patterns
+
+## Resources
+
+- [Mattermost Developer Documentation](https://developers.mattermost.com/)
+- [React Component Guidelines](https://developers.mattermost.com/contribute/webapp/developer-workflow/)
+- [Storybook Documentation](https://storybook.js.org/docs/react/get-started/introduction)

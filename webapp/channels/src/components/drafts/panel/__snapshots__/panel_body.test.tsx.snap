@@ -630,15 +630,12 @@ exports[`components/drafts/panel/panel_body should match snapshot for priority 1
                               uppercase={true}
                               variant="info"
                             >
-                              <TagWrapper
-                                as="div"
-                                className="Tag Tag--info Tag--xs"
+                              <span
+                                className="Tag Tag--xs Tag--info Tag--uppercase"
                                 data-testid="post-priority-label"
-                                uppercase={true}
                               >
-                                <div
-                                  className="TagWrapper-kezsCu cA-dXXM Tag Tag--info Tag--xs"
-                                  data-testid="post-priority-label"
+                                <span
+                                  className="Tag__icon"
                                 >
                                   <AlertCircleOutlineIcon
                                     size={10}
@@ -656,15 +653,13 @@ exports[`components/drafts/panel/panel_body should match snapshot for priority 1
                                       />
                                     </svg>
                                   </AlertCircleOutlineIcon>
-                                  <TagText>
-                                    <span
-                                      className="TagText-bWoQAI beIloY"
-                                    >
-                                      Important
-                                    </span>
-                                  </TagText>
-                                </div>
-                              </TagWrapper>
+                                </span>
+                                <span
+                                  className="Tag__text"
+                                >
+                                  Important
+                                </span>
+                              </span>
                             </Memo(Tag)>
                           </PriorityLabel>
                         </div>

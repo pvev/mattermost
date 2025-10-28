@@ -3,145 +3,82 @@
 
 import classNames from 'classnames';
 import React, {memo, useMemo} from 'react';
-import type {MouseEventHandler} from 'react';
-import styled, {css} from 'styled-components';
+import type {MouseEventHandler, ReactNode} from 'react';
+import {useIntl} from 'react-intl';
+import {useSelector} from 'react-redux';
 
 import glyphMap from '@mattermost/compass-icons/components';
 import type {IconGlyphTypes} from '@mattermost/compass-icons/IconGlyphs';
+import WithTooltip from '@mattermost/design-system/src/components/primitives/with_tooltip';
+import type {GlobalState} from '@mattermost/types/store';
+
+import {getConfig} from 'mattermost-redux/selectors/entities/general';
+
+import './tag.scss';
 
 export type TagVariant = 'info' | 'success' | 'warning' | 'danger' | 'dangerDim' | 'default';
 
-export type TagSize = 'xs' | 'sm' | 'md' | 'lg'
+export type TagSize = 'xs' | 'sm' | 'md' | 'lg';
+
+export type TagPreset = 'bot' | 'guest' | 'beta';
 
 type Props = {
-    text: React.ReactNode;
+    text?: React.ReactNode;
+    preset?: TagPreset;
     uppercase?: boolean;
     icon?: IconGlyphTypes;
     variant?: TagVariant;
     size?: TagSize;
     onClick?: MouseEventHandler;
     className?: string;
+    tooltipTitle?: string | ReactNode;
 };
 
-type TagWrapperProps = Required<Pick<Props, 'uppercase'>>;
-
-const TagWrapper = styled.div<TagWrapperProps>`
-    appearance: none;
-
-    display: inline-flex;
-    align-items: center;
-    align-content: center;
-    align-self: center;
-    gap: 4px;
-    max-width: 100%;
-    margin: 0;
-    overflow: hidden;
-
-    border: none;
-    border-radius: 4px;
-
-    font-family: 'Open Sans', sans-serif;
-    font-weight: 600;
-    line-height: 16px;
-    ${({uppercase}) => (
-        uppercase ? css`
-            letter-spacing: 0.02em;
-            text-transform: uppercase;
-        ` : css`
-            text-transform: none;
-        `
-    )}
-
-    &.Tag--xs {
-        height: 16px;
-        font-size: 10px;
-        line-height: 12px;
-        padding: 1px 4px;
-    }
-
-    &.Tag--sm {
-        height: 20px;
-        font-size: 12px;
-        line-height: 16px;
-        padding: 2px 5px;
-    }
-
-    &.Tag--md {
-        height: 24px;
-        font-size: 14px;
-        line-height: 20px;
-        padding: 2px 5px;
-    }
-
-    &.Tag--lg {
-        height: 28px;
-        font-size: 16px;
-        line-height: 22px;
-        padding: 2px 5px;
-    }
-
-    background: rgba(var(--semantic-color-general), 0.08);
-    color: rgb(var(--semantic-color-general));
-
-    &.Tag--info {
-        background: rgba(var(--semantic-color-info), 1);
-        color: rgb(255, 255, 255);
-    }
-
-    &.Tag--success {
-        background: rgba(var(--semantic-color-success), 1);
-        color: rgb(255, 255, 255);
-    }
-
-    &.Tag--warning {
-        background: rgba(var(--semantic-color-warning), 1);
-        color: rgb(255, 255, 255);
-    }
-
-    &.Tag--danger {
-        background: rgba(var(--semantic-color-danger), 1);
-        color: rgb(255, 255, 255);
-    }
-
-    &.Tag--dangerDim {
-        background: rgba(var(--semantic-color-danger), 0.08);
-        color: rgb(var(--semantic-color-danger));
-    }
-
-    ${({onClick}) => typeof onClick === 'function' && (
-        css`
-            &:hover,
-            &:focus {
-                background: rgba(var(--semantic-color-general), 0.08);
-                cursor: pointer;
-            }
-        `
-    )}
-
-`;
-
-const TagText = styled.span`
-    max-width: 100%;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-`;
-
 const Tag = ({
-    variant,
+    preset,
+    variant: variantProp,
     onClick,
-    className,
-    text,
+    className: classNameProp,
+    text: textProp,
     icon: iconName,
-    size = 'xs',
-    uppercase = false,
+    size: sizeProp = 'xs',
+    uppercase: uppercaseProp,
+    tooltipTitle,
     ...rest
 }: Props) => {
-    const Icon = iconName ? glyphMap[iconName] : null;
-    const element = onClick ? 'button' : 'div';
+    // All hooks MUST be called unconditionally at the top
+    const {formatMessage} = useIntl();
+    const shouldHideGuestTag = useSelector((state: GlobalState) => getConfig(state).HideGuestTags === 'true');
+
+    // Determine preset configuration
+    const presetConfig = useMemo(() => {
+        switch (preset) {
+        case 'bot':
+            return {
+                text: formatMessage({id: 'tag.default.bot', defaultMessage: 'BOT'}),
+                uppercase: true,
+                className: 'BotTag',
+            };
+        case 'guest':
+            return {
+                text: formatMessage({id: 'tag.default.guest', defaultMessage: 'GUEST'}),
+                uppercase: false,
+                className: 'GuestTag',
+            };
+        case 'beta':
+            return {
+                text: formatMessage({id: 'tag.default.beta', defaultMessage: 'BETA'}),
+                uppercase: true,
+                variant: 'info' as TagVariant,
+                className: 'BetaTag',
+            };
+        default:
+            return {};
+        }
+    }, [preset, formatMessage]);
 
     const iconSize = useMemo(() => {
-        switch (size) {
+        switch (sizeProp) {
         case 'lg':
             return 16;
         case 'md':
@@ -152,20 +89,77 @@ const Tag = ({
         default:
             return 10;
         }
-    }, [size]);
+    }, [sizeProp]);
 
-    return (
-        <TagWrapper
-            {...rest}
-            as={element}
-            uppercase={uppercase}
-            onClick={onClick}
-            className={classNames('Tag', {[`Tag--${variant}`]: variant, [`Tag--${size}`]: size}, className)}
-        >
-            {Icon && <Icon size={iconSize}/>}
-            <TagText>{text}</TagText>
-        </TagWrapper>
+    // Handle guest preset special case: hide if config says so
+    // This conditional return MUST come after all hooks
+    if (preset === 'guest' && shouldHideGuestTag) {
+        return null;
+    }
+
+    // Merge preset config with explicit props (explicit props take precedence)
+    const text = textProp ?? presetConfig.text;
+    const uppercase = uppercaseProp ?? presetConfig.uppercase ?? false;
+    const variant = variantProp ?? presetConfig.variant;
+    const size = sizeProp;
+
+    // Build className using BEM convention
+    const className = classNames(
+        'Tag',
+        `Tag--${size}`,
+        {
+            [`Tag--${variant}`]: variant,
+            'Tag--uppercase': uppercase,
+            'Tag--clickable': Boolean(onClick),
+        },
+        presetConfig.className,
+        classNameProp,
     );
+
+    const Icon = iconName ? glyphMap[iconName] : null;
+
+    const tagElement = onClick ? (
+        <button
+            {...rest}
+            type='button'
+            onClick={onClick}
+            className={className}
+        >
+            {Icon && (
+                <span className='Tag__icon'>
+                    <Icon size={iconSize}/>
+                </span>
+            )}
+            <span className='Tag__text'>
+                {text}
+            </span>
+        </button>
+    ) : (
+        <div
+            {...rest}
+            className={className}
+        >
+            {Icon && (
+                <span className='Tag__icon'>
+                    <Icon size={iconSize}/>
+                </span>
+            )}
+            <span className='Tag__text'>
+                {text}
+            </span>
+        </div>
+    );
+
+    // Wrap with tooltip if tooltipTitle is provided
+    if (tooltipTitle) {
+        return (
+            <WithTooltip title={tooltipTitle}>
+                {tagElement}
+            </WithTooltip>
+        );
+    }
+
+    return tagElement;
 };
 
 export default memo(Tag);

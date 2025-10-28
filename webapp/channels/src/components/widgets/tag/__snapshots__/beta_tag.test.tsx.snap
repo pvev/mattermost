@@ -2,10 +2,8 @@
 
 exports[`components/widgets/tag/BetaTag should match the snapshot 1`] = `
 <Memo(Tag)
-  className="BetaTag test"
+  className="test"
+  preset="beta"
   size="xs"
-  text="BETA"
-  uppercase={true}
-  variant="info"
 />
 `;

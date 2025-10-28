@@ -5,6 +5,7 @@ import {shallow} from 'enzyme';
 import React from 'react';
 
 import {AlertCircleOutlineIcon} from '@mattermost/compass-icons/components';
+import WithTooltip from '@mattermost/design-system/src/components/primitives/with_tooltip';
 
 import Tag from './tag';
 
@@ -90,5 +91,43 @@ describe('components/widgets/tag/Tag', () => {
         wrapper.simulate('click');
         expect(click).toBeCalled();
         expect(wrapper).toMatchSnapshot();
+    });
+
+    test('should wrap with tooltip when tooltipTitle is provided', () => {
+        const wrapper = shallow(
+            <Tag
+                className={'test'}
+                text={'Test text'}
+                tooltipTitle={'Tooltip text'}
+            />,
+        );
+
+        // Should wrap with WithTooltip component
+        expect(wrapper.find(WithTooltip).exists()).toBe(true);
+        expect(wrapper.find(WithTooltip).prop('title')).toBe('Tooltip text');
+
+        // Tag element should still be inside
+        expect(wrapper.text()).toContain('Test text');
+    });
+
+    test('should use preset="bot" with correct text', () => {
+        const wrapper = shallow(<Tag preset='bot'/>);
+        expect(wrapper.text()).toContain('BOT');
+        expect(wrapper.props()).toEqual(expect.objectContaining({uppercase: true}));
+    });
+
+    test('should use preset="guest" with correct text', () => {
+        const wrapper = shallow(<Tag preset='guest'/>);
+        expect(wrapper.text()).toContain('GUEST');
+        expect(wrapper.props()).toEqual(expect.objectContaining({uppercase: false}));
+    });
+
+    test('should use preset="beta" with correct text and variant', () => {
+        const wrapper = shallow(<Tag preset='beta'/>);
+        expect(wrapper.text()).toContain('BETA');
+        expect(wrapper.props()).toEqual(expect.objectContaining({
+            uppercase: true,
+            className: expect.stringContaining('Tag--info'),
+        }));
     });
 });

@@ -27,9 +27,9 @@ import MultiSelect from 'components/multiselect/multiselect';
 import type {Value} from 'components/multiselect/multiselect';
 import ProfilePicture from 'components/profile_picture';
 import ToggleModalButton from 'components/toggle_modal_button';
-import AlertTag from 'components/widgets/tag/alert_tag';
 import BotTag from 'components/widgets/tag/bot_tag';
 import GuestTag from 'components/widgets/tag/guest_tag';
+import Tag from 'components/widgets/tag/tag';
 import TagGroup from 'components/widgets/tag/tag_group';
 
 import Constants, {ModalIdentifiers} from 'utils/constants';
@@ -670,10 +670,11 @@ const ChannelInviteModalComponent = (props: Props) => {
                                 <TagGroup>
                                     {structuredAttributes.flatMap((attribute) =>
                                         attribute.values.map((value) => (
-                                            <AlertTag
+                                            <Tag
                                                 key={`${attribute.name}-${value}`}
                                                 tooltipTitle={formatAttributeName(attribute.name)}
                                                 text={value}
+                                                size='sm'
                                             />
                                         )),
                                     )}

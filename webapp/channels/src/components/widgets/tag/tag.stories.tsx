@@ -4,8 +4,6 @@
 import type {Meta, StoryObj} from '@storybook/react';
 import React from 'react';
 
-import BotTag from './bot_tag';
-import GuestTag from './guest_tag';
 import Tag from './tag';
 
 const meta: Meta<typeof Tag> = {
@@ -17,23 +15,32 @@ const meta: Meta<typeof Tag> = {
             control: 'text',
             description: 'The text content of the tag',
         },
+        preset: {
+            control: 'select',
+            options: ['bot', 'guest', 'beta'],
+            description: 'Predefined tag presets (bot, guest, beta)',
+        },
         variant: {
             control: 'select',
-            options: ['info', 'success', 'warning', 'danger', 'dangerDim', 'default'],
-            description: 'The visual variant of the tag',
+            options: ['default', 'info', 'success', 'warning', 'danger', 'dangerDim'],
+            description: 'Visual color variant',
         },
         size: {
             control: 'select',
             options: ['xs', 'sm', 'md', 'lg'],
-            description: 'The size of the tag',
+            description: 'Size of the tag',
         },
         uppercase: {
             control: 'boolean',
-            description: 'Whether to display text in uppercase',
+            description: 'Display text in uppercase',
         },
         icon: {
             control: 'text',
             description: 'Icon name from Compass Icons',
+        },
+        tooltipTitle: {
+            control: 'text',
+            description: 'Tooltip text to display on hover',
         },
         onClick: {
             action: 'clicked',
@@ -45,21 +52,20 @@ const meta: Meta<typeof Tag> = {
 export default meta;
 type Story = StoryObj<typeof Tag>;
 
+// Basic example
 export const Default: Story = {
     args: {
-        text: 'Default Tag',
-        variant: 'default',
+        text: 'Tag',
         size: 'xs',
-        uppercase: false,
     },
 };
 
+// Individual variant examples
 export const Info: Story = {
     args: {
         text: 'Info',
         variant: 'info',
         size: 'sm',
-        uppercase: true,
     },
 };
 
@@ -68,7 +74,6 @@ export const Success: Story = {
         text: 'Success',
         variant: 'success',
         size: 'sm',
-        uppercase: true,
     },
 };
 
@@ -77,7 +82,6 @@ export const Warning: Story = {
         text: 'Warning',
         variant: 'warning',
         size: 'sm',
-        uppercase: true,
     },
 };
 
@@ -86,46 +90,34 @@ export const Danger: Story = {
         text: 'Danger',
         variant: 'danger',
         size: 'sm',
-        uppercase: true,
     },
 };
 
-export const DangerDim: Story = {
-    args: {
-        text: 'Danger Dim',
-        variant: 'dangerDim',
-        size: 'sm',
-        uppercase: true,
-    },
-};
-
+// Show all size variants
 export const Sizes: Story = {
     render: () => (
-        <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
+        <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
             <Tag
                 text='Extra Small'
                 size='xs'
-                variant='info'
             />
             <Tag
                 text='Small'
                 size='sm'
-                variant='info'
             />
             <Tag
                 text='Medium'
                 size='md'
-                variant='info'
             />
             <Tag
                 text='Large'
                 size='lg'
-                variant='info'
             />
         </div>
     ),
 };
 
+// Show all color variants
 export const Variants: Story = {
     render: () => (
         <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
@@ -133,91 +125,157 @@ export const Variants: Story = {
                 text='Default'
                 variant='default'
                 size='sm'
-                uppercase={true}
             />
             <Tag
                 text='Info'
                 variant='info'
                 size='sm'
-                uppercase={true}
             />
             <Tag
                 text='Success'
                 variant='success'
                 size='sm'
-                uppercase={true}
             />
             <Tag
                 text='Warning'
                 variant='warning'
                 size='sm'
-                uppercase={true}
             />
             <Tag
                 text='Danger'
                 variant='danger'
                 size='sm'
-                uppercase={true}
             />
             <Tag
                 text='Danger Dim'
                 variant='dangerDim'
                 size='sm'
-                uppercase={true}
             />
         </div>
     ),
 };
 
+// Tag with icon
 export const WithIcon: Story = {
     args: {
         text: 'With Icon',
         variant: 'info',
         size: 'md',
         icon: 'check',
-        uppercase: false,
     },
 };
 
+// Tag with tooltip (NEW feature)
+export const WithTooltip: Story = {
+    args: {
+        text: 'Hover Me',
+        variant: 'info',
+        size: 'md',
+        tooltipTitle: 'This is a tooltip!',
+    },
+};
+
+// Interactive clickable tag
 export const Clickable: Story = {
     args: {
         text: 'Click Me',
         variant: 'info',
         size: 'md',
-        uppercase: false,
         // eslint-disable-next-line no-alert
         onClick: () => alert('Tag clicked!'),
     },
 };
 
-// Specialized Tag Components
-export const Bot: StoryObj<typeof BotTag> = {
-    render: () => <BotTag/>,
-};
-
-export const BotSizes: StoryObj<typeof BotTag> = {
+// Preset tags: bot, guest, beta
+export const Presets: Story = {
     render: () => (
-        <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
-            <BotTag size='xs'/>
-            <BotTag size='sm'/>
-            <BotTag size='md'/>
-            <BotTag size='lg'/>
+        <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+            <div>
+                <strong>{'Bot preset:'}</strong>
+                <div style={{marginTop: '8px', display: 'flex', gap: '8px'}}>
+                    <Tag preset='bot'/>
+                    <Tag
+                        preset='bot'
+                        size='sm'
+                    />
+                    <Tag
+                        preset='bot'
+                        size='md'
+                    />
+                    <Tag
+                        preset='bot'
+                        size='lg'
+                    />
+                </div>
+            </div>
+            <div>
+                <strong>{'Guest preset:'}</strong>
+                <div style={{marginTop: '8px', display: 'flex', gap: '8px'}}>
+                    <Tag preset='guest'/>
+                    <Tag
+                        preset='guest'
+                        size='sm'
+                    />
+                    <Tag
+                        preset='guest'
+                        size='md'
+                    />
+                    <Tag
+                        preset='guest'
+                        size='lg'
+                    />
+                </div>
+            </div>
+            <div>
+                <strong>{'Beta preset:'}</strong>
+                <div style={{marginTop: '8px', display: 'flex', gap: '8px'}}>
+                    <Tag preset='beta'/>
+                    <Tag
+                        preset='beta'
+                        size='sm'
+                    />
+                    <Tag
+                        preset='beta'
+                        size='md'
+                    />
+                    <Tag
+                        preset='beta'
+                        size='lg'
+                    />
+                </div>
+            </div>
         </div>
     ),
 };
 
-export const Guest: StoryObj<typeof GuestTag> = {
-    render: () => <GuestTag/>,
-};
-
-export const GuestSizes: StoryObj<typeof GuestTag> = {
+// Preset overrides: customize preset defaults
+export const PresetOverrides: Story = {
     render: () => (
-        <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
-            <GuestTag size='xs'/>
-            <GuestTag size='sm'/>
-            <GuestTag size='md'/>
-            <GuestTag size='lg'/>
+        <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+            <div>
+                <strong>{'Override preset text:'}</strong>
+                <div style={{marginTop: '8px', display: 'flex', gap: '8px'}}>
+                    <Tag preset='bot'/>
+                    <Tag
+                        preset='bot'
+                        text='Custom Bot'
+                    />
+                </div>
+            </div>
+            <div>
+                <strong>{'Override preset variant:'}</strong>
+                <div style={{marginTop: '8px', display: 'flex', gap: '8px'}}>
+                    <Tag preset='beta'/>
+                    <Tag
+                        preset='beta'
+                        variant='success'
+                    />
+                    <Tag
+                        preset='beta'
+                        variant='warning'
+                    />
+                </div>
+            </div>
         </div>
     ),
 };
-

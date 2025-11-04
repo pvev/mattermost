@@ -157,10 +157,11 @@ describe('AdminDefinition - Burn-on-Read Settings', () => {
         expect(burnOnReadSection?.componentProps?.featureDiscoveryConfig).toBeDefined();
         expect(burnOnReadSection?.componentProps?.featureDiscoveryConfig?.featureName).toBe('burn_on_read');
 
-        // User selector should have visibility logic based on EnableBurnOnRead and AllowedUsers settings
+        // User selector and radio buttons should be hidden for MVP (no user granularity)
         const allSettings = getAllSettings();
         const usersListSetting = allSettings.find((s: AdminDefinitionSetting) => s.key === 'ServiceSettings.BurnOnReadAllowedUsersList');
-        expect(usersListSetting?.isHidden).toBeDefined();
-        expect(typeof usersListSetting?.isHidden).toBe('function');
+        const allowedUsersSetting = allSettings.find((s: AdminDefinitionSetting) => s.key === 'ServiceSettings.BurnOnReadAllowedUsers');
+        expect(usersListSetting?.isHidden).toBe(true);
+        expect(allowedUsersSetting?.isHidden).toBe(true);
     });
 });

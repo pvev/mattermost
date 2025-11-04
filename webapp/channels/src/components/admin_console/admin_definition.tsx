@@ -3218,6 +3218,7 @@ const AdminDefinition: AdminDefinitionType = {
                                         it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.SITE.POSTS)),
                                         it.stateIsFalse('ServiceSettings.EnableBurnOnRead'),
                                     ),
+                                    isHidden: true,
                                 },
                                 {
                                     type: 'custom',
@@ -3229,10 +3230,7 @@ const AdminDefinition: AdminDefinitionType = {
                                         it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.SITE.POSTS)),
                                         it.stateIsFalse('ServiceSettings.EnableBurnOnRead'),
                                     ),
-                                    isHidden: it.any(
-                                        it.stateEqualsOrDefault('ServiceSettings.BurnOnReadAllowedUsers', 'all', 'all'),
-                                        it.stateIsFalse('ServiceSettings.EnableBurnOnRead'),
-                                    ),
+                                    isHidden: true,
                                     validate: (value) => {
                                         const isEmpty = !value ||
                                             (typeof value === 'string' && value.trim() === '') ||

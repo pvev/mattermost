@@ -84,6 +84,8 @@ import usePriority from './use_priority';
 import useSubmit from './use_submit';
 import useTextboxFocus from './use_textbox_focus';
 import useUploadFiles from './use_upload_files';
+import useBurnOnRead from './use_burn_on_read';
+import UnifiedLabelsWrapper from './unified_labels_wrapper';
 
 import './advanced_text_editor.scss';
 
@@ -342,7 +344,14 @@ const AdvancedTextEditor = ({
         additionalControl: priorityAdditionalControl,
         isValidPersistentNotifications,
         onSubmitCheck: prioritySubmitCheck,
-    } = usePriority(draft, handleDraftChange, focusTextbox, showPreview);
+        handleRemovePriority,
+    } = usePriority(draft, handleDraftChange, focusTextbox, showPreview, false);
+    const {
+        labels: burnOnReadLabels,
+        additionalControl: burnOnReadAdditionalControl,
+        handleBurnOnReadApply,
+        handleRemoveBurnOnRead,
+    } = useBurnOnRead(draft, handleDraftChange, focusTextbox, showPreview, false);
     const [handleSubmit, errorClass] = useSubmit(
         draft,
         postError,
@@ -387,6 +396,21 @@ const AdvancedTextEditor = ({
             metadata: {},
         });
     }, [handleDraftChange, channelId, rootId]);
+
+    // Unified handler to remove all labels (priority + burn on read)
+    const handleRemoveAllLabels = useCallback(() => {
+        // Remove both priority and burn_on_read in a single draft update
+        const updatedDraft = {
+            ...draft,
+        };
+
+        // Remove both priority and burn_on_read from metadata
+        const {priority, burn_on_read, ...restMetadata} = updatedDraft.metadata || {};
+        updatedDraft.metadata = restMetadata;
+
+        handleDraftChange(updatedDraft, {instant: true});
+        focusTextbox();
+    }, [draft, handleDraftChange, focusTextbox]);
 
     const handleSubmitWrapper = useCallback(() => {
         const isEmptyPost = isPostDraftEmpty(draft);
@@ -678,8 +702,9 @@ const AdvancedTextEditor = ({
 
     const additionalControls = useMemo(() => [
         !isInEditMode && priorityAdditionalControl,
+        !isInEditMode && burnOnReadAdditionalControl,
         ...(pluginItems || []),
-    ].filter(Boolean), [pluginItems, priorityAdditionalControl, isInEditMode]);
+    ].filter(Boolean), [pluginItems, priorityAdditionalControl, burnOnReadAdditionalControl, isInEditMode]);
 
     const formattingBar = (
         <AutoHeightSwitcher
@@ -775,9 +800,18 @@ const AdvancedTextEditor = ({
                         tabIndex={-1}
                         className='AdvancedTextEditor__cell a11y__region'
                     >
-                        {!isInEditMode && priorityLabels}
+                        {!isInEditMode && (priorityLabels || burnOnReadLabels) && (
+                            <div className='AdvancedTextEditor__labels'>
+                                <UnifiedLabelsWrapper
+                                    priorityLabels={priorityLabels}
+                                    burnOnReadLabels={burnOnReadLabels}
+                                    onRemoveAll={handleRemoveAllLabels}
+                                    canRemove={!showPreview}
+                                />
+                            </div>
+                        )}
                         <Textbox
-                            hasLabels={isInEditMode ? false : Boolean(priorityLabels)}
+                            hasLabels={isInEditMode ? false : Boolean(priorityLabels || burnOnReadLabels)}
                             suggestionList={location === Locations.RHS_COMMENT ? RhsSuggestionList : SuggestionList}
                             onChange={handleChange}
                             onKeyPress={postMsgKeyPress}

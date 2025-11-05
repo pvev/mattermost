@@ -94,34 +94,34 @@
         color: var(--sidebar-text);
     }
 
-    // Info variant (solid info color)
+    // Info variant (solid info color) - Uses semantic-color-info
     &--info {
-        background: rgb(var(--dnd-indicator-rgb));
+        background: rgb(var(--semantic-color-info));
         color: #fff;
     }
 
-    // Success variant (solid success color)
+    // Success variant (solid success color) - Uses semantic-color-success
     &--success {
-        background: rgb(var(--online-indicator-rgb));
+        background: rgb(var(--semantic-color-success));
         color: #fff;
     }
 
-    // Warning variant (solid warning color)
+    // Warning variant (solid warning color) - Uses semantic-color-warning
     &--warning {
-        background: rgb(var(--away-indicator-rgb));
+        background: rgb(var(--semantic-color-warning));
         color: #fff;
     }
 
-    // Danger variant (solid danger color)
+    // Danger variant (solid danger color) - Uses semantic-color-danger
     &--danger {
-        background: rgb(var(--error-text-color-rgb));
+        background: rgb(var(--semantic-color-danger));
         color: #fff;
     }
 
     // Danger Dim variant (transparent background)
     &--dangerDim {
-        background: rgba(var(--error-text-color-rgb), 0.08);
-        color: var(--error-text);
+        background: rgba(var(--semantic-color-danger), 0.08);
+        color: rgb(var(--semantic-color-danger));
     }
 
     // Clickable state

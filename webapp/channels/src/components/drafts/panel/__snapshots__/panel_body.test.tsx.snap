@@ -622,19 +622,21 @@ exports[`components/drafts/panel/panel_body should match snapshot for priority 1
                             priority="important"
                             size="xs"
                           >
-                            <Memo(Tag)
+                            <Tag
                               data-testid="post-priority-label"
-                              icon="alert-circle-outline"
+                              icon={<AlertCircleOutlineIcon />}
                               size="xs"
                               text="Important"
                               uppercase={true}
                               variant="info"
                             >
-                              <span
+                              <div
+                                aria-label="Important"
                                 className="Tag Tag--xs Tag--info Tag--uppercase"
                                 data-testid="post-priority-label"
                               >
                                 <span
+                                  aria-hidden="true"
                                   className="Tag__icon"
                                 >
                                   <AlertCircleOutlineIcon
@@ -659,8 +661,8 @@ exports[`components/drafts/panel/panel_body should match snapshot for priority 1
                                 >
                                   Important
                                 </span>
-                              </span>
-                            </Memo(Tag)>
+                              </div>
+                            </Tag>
                           </PriorityLabel>
                         </div>
                       </Memo(PriorityLabels)>

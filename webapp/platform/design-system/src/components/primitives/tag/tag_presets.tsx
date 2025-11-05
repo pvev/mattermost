@@ -2,13 +2,9 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {useIntl} from 'react-intl';
-import {useSelector} from 'react-redux';
-
-import type {GlobalState} from '@mattermost/types/store';
 
 import Tag from './tag';
-import type {TagProps, TagSize, TagVariant} from './tag';
+import type {TagSize, TagVariant} from './tag';
 
 /**
  * Internationalized Beta Tag
@@ -25,14 +21,9 @@ export const BetaTag: React.FC<BetaTagProps> = ({
     size = 'xs',
     variant = 'info',
 }) => {
-    const {formatMessage} = useIntl();
     return (
         <Tag
-            text={formatMessage({
-                id: 'tag.default.beta',
-                defaultMessage: 'BETA',
-            })}
-            uppercase={true}
+            preset='beta'
             size={size}
             variant={variant}
             className={className}
@@ -53,14 +44,9 @@ export const BotTag: React.FC<BotTagProps> = ({
     className = '',
     size = 'xs',
 }) => {
-    const {formatMessage} = useIntl();
     return (
         <Tag
-            text={formatMessage({
-                id: 'tag.default.bot',
-                defaultMessage: 'BOT',
-            })}
-            uppercase={true}
+            preset='bot'
             size={size}
             className={className}
         />
@@ -68,72 +54,63 @@ export const BotTag: React.FC<BotTagProps> = ({
 };
 
 /**
- * Internationalized Guest Tag
- * Replacement for guest_tag.tsx with i18n support and config-based visibility
+ * Pure Guest Tag Component
+ *
+ * This is a pure presentation component without Redux dependencies.
+ * For automatic config-based hiding, use the container component from:
+ * `webapp/channels/src/components/guest_tag`
+ *
+ * This component is part of the design system and should remain pure and reusable.
+ *
+ * @example
+ * ```tsx
+ * // Direct usage (you control visibility)
+ * <GuestTag size="sm" hide={shouldHide} />
+ *
+ * // Or use the Redux-connected container (automatic hiding based on config)
+ * import GuestTag from 'components/guest_tag';
+ * <GuestTag size="sm" />
+ * ```
  */
 interface GuestTagProps {
     className?: string;
     size?: TagSize;
+    /** Whether to hide the tag. Defaults to false. */
+    hide?: boolean;
 }
 
 export const GuestTag: React.FC<GuestTagProps> = ({
     className = '',
     size = 'xs',
+    hide = false,
 }) => {
-    const {formatMessage} = useIntl();
-    
-    // This selector function should be imported from the appropriate Redux module
-    // For now, we're using a generic approach that works with the Mattermost Redux structure
-    const shouldHideTag = useSelector((state: GlobalState) => {
-        // Access config from Redux state
-        // This assumes the standard Mattermost Redux structure
-        const config = (state as any).entities?.general?.config;
-        return config?.HideGuestTags === 'true';
-    });
-
-    // Don't render if the config says to hide guest tags
-    if (shouldHideTag) {
-        return null;
-    }
-
     return (
         <Tag
-            text={formatMessage({
-                id: 'tag.default.guest',
-                defaultMessage: 'GUEST',
-            })}
-            uppercase={true}
+            preset='guest'
             size={size}
             className={className}
+            hide={hide}
         />
     );
 };
 
 /**
- * Generic internationalized tag that uses the unified Tag component
- * Useful for creating custom preset tags with i18n support
+ * NOTE: For custom internationalized tags, use the Tag component directly with useIntl():
+ *
+ * @example
+ * const MyCustomTag = () => {
+ *     const {formatMessage} = useIntl();
+ *     return (
+ *         <Tag
+ *             text={formatMessage({
+ *                 id: 'my.custom.tag',
+ *                 defaultMessage: 'Custom Tag'
+ *             })}
+ *             variant="info"
+ *         />
+ *     );
+ * };
+ *
+ * This approach ensures babel-plugin-formatjs can statically analyze messages for extraction.
  */
-interface I18nTagProps extends Omit<TagProps, 'text'> {
-    /** i18n message ID */
-    messageId: string;
-    /** Default message for i18n */
-    defaultMessage: string;
-}
-
-export const I18nTag: React.FC<I18nTagProps> = ({
-    messageId,
-    defaultMessage,
-    ...tagProps
-}) => {
-    const {formatMessage} = useIntl();
-    return (
-        <Tag
-            text={formatMessage({
-                id: messageId,
-                defaultMessage,
-            })}
-            {...tagProps}
-        />
-    );
-};
 

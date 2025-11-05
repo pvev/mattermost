@@ -3,13 +3,23 @@
 
 import React from 'react';
 import {render, screen} from '@testing-library/react';
+import {IntlProvider} from 'react-intl';
 
 import Tag from './tag';
 import TagGroup from './tag_group';
 
+// Test wrapper with IntlProvider
+const renderWithIntl = (ui: React.ReactElement) => {
+    return render(
+        <IntlProvider locale="en" messages={{}}>
+            {ui}
+        </IntlProvider>,
+    );
+};
+
 describe('TagGroup', () => {
     it('should render children', () => {
-        render(
+        renderWithIntl(
             <TagGroup>
                 <Tag text="Tag 1" testId="tag-1"/>
                 <Tag text="Tag 2" testId="tag-2"/>
@@ -20,7 +30,7 @@ describe('TagGroup', () => {
     });
 
     it('should apply base TagGroup class', () => {
-        const {container} = render(
+        const {container} = renderWithIntl(
             <TagGroup>
                 <Tag text="Test"/>
             </TagGroup>,
@@ -30,7 +40,7 @@ describe('TagGroup', () => {
     });
 
     it('should apply custom className', () => {
-        const {container} = render(
+        const {container} = renderWithIntl(
             <TagGroup className="custom-group">
                 <Tag text="Test"/>
             </TagGroup>,
@@ -41,7 +51,7 @@ describe('TagGroup', () => {
     });
 
     it('should apply testId attribute', () => {
-        render(
+        renderWithIntl(
             <TagGroup testId="my-tag-group">
                 <Tag text="Test"/>
             </TagGroup>,
@@ -50,7 +60,7 @@ describe('TagGroup', () => {
     });
 
     it('should render multiple tags', () => {
-        render(
+        renderWithIntl(
             <TagGroup>
                 <Tag preset="beta"/>
                 <Tag preset="bot"/>
@@ -65,12 +75,12 @@ describe('TagGroup', () => {
     });
 
     it('should handle empty children', () => {
-        const {container} = render(<TagGroup/>);
+        const {container} = renderWithIntl(<TagGroup/>);
         expect(container.firstChild).toBeInTheDocument();
     });
 
     it('should render as div element', () => {
-        const {container} = render(
+        const {container} = renderWithIntl(
             <TagGroup>
                 <Tag text="Test"/>
             </TagGroup>,

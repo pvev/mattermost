@@ -296,9 +296,9 @@ export const MixedSizesInGroup: Story = {
     ),
 };
 
-// Example: Status Indicators
+// Real-World Use Cases
 export const StatusIndicators: Story = {
-    name: 'Status Indicators',
+    name: 'Example: Status Indicators',
     render: () => (
         <div style={{padding: '20px'}}>
             <TagGroup>
@@ -310,4 +310,117 @@ export const StatusIndicators: Story = {
         </div>
     ),
 };
+
+export const ChannelTags: Story = {
+    name: 'Example: Channel Tags',
+    render: () => (
+        <div style={{padding: '20px'}}>
+            <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <span style={{fontWeight: 'bold'}}>general</span>
+                    <Tag text="Public" variant="info" size="xs"/>
+                </div>
+                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <span style={{fontWeight: 'bold'}}>engineering</span>
+                    <Tag text="Private" variant="default" size="xs"/>
+                </div>
+                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <span style={{fontWeight: 'bold'}}>announcements</span>
+                    <Tag text="Read-Only" variant="warning" size="xs"/>
+                </div>
+                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <span style={{fontWeight: 'bold'}}>archived-project</span>
+                    <Tag text="Archived" variant="default" size="xs"/>
+                </div>
+            </div>
+        </div>
+    ),
+};
+
+export const UserBadges: Story = {
+    name: 'Example: User Badges',
+    render: () => (
+        <div style={{padding: '20px'}}>
+            <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <span>john.doe</span>
+                    <TagGroup>
+                        <Tag preset="bot" size="xs"/>
+                        <Tag text="Admin" variant="primary" size="xs" uppercase={true}/>
+                    </TagGroup>
+                </div>
+                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <span>jane.smith</span>
+                    <TagGroup>
+                        <Tag preset="guest" size="xs"/>
+                    </TagGroup>
+                </div>
+                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <span>assistant</span>
+                    <TagGroup>
+                        <Tag preset="bot" size="xs"/>
+                    </TagGroup>
+                </div>
+                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <span>new-feature</span>
+                    <TagGroup>
+                        <Tag preset="beta" size="xs"/>
+                    </TagGroup>
+                </div>
+            </div>
+        </div>
+    ),
+};
+
+export const MessageActions: Story = {
+    name: 'Example: Message Actions',
+    render: () => (
+        <div style={{padding: '20px', background: '#fff', borderRadius: '4px', border: '1px solid #ddd'}}>
+            <div style={{marginBottom: '12px'}}>
+                <strong>john.doe</strong>
+                <span style={{color: '#888', marginLeft: '8px', fontSize: '12px'}}>2:30 PM</span>
+            </div>
+            <div style={{marginBottom: '12px'}}>
+                Hey team, the new authentication system is ready for testing!
+            </div>
+            <TagGroup>
+                <Tag text="Pinned" icon={<MockIcon/>} variant="info" size="xs"/>
+                <Tag text="Edited" variant="default" size="xs"/>
+            </TagGroup>
+        </div>
+    ),
+};
+
+export const FeatureFlags: Story = {
+    name: 'Example: Feature Flags',
+    render: () => (
+        <div style={{padding: '20px'}}>
+            <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', border: '1px solid #ddd', borderRadius: '4px'}}>
+                    <div>
+                        <div style={{fontWeight: 'bold', marginBottom: '4px'}}>AI Assistant</div>
+                        <div style={{fontSize: '12px', color: '#888'}}>Enable AI-powered chat assistance</div>
+                    </div>
+                    <Tag preset="beta" size="sm"/>
+                </div>
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', border: '1px solid #ddd', borderRadius: '4px'}}>
+                    <div>
+                        <div style={{fontWeight: 'bold', marginBottom: '4px'}}>New Message Editor</div>
+                        <div style={{fontSize: '12px', color: '#888'}}>Try the redesigned message composer</div>
+                    </div>
+                    <Tag text="Experimental" variant="warning" size="sm" uppercase={true}/>
+                </div>
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', border: '1px solid #ddd', borderRadius: '4px'}}>
+                    <div>
+                        <div style={{fontWeight: 'bold', marginBottom: '4px'}}>Video Calls</div>
+                        <div style={{fontSize: '12px', color: '#888'}}>Start video calls from channels</div>
+                    </div>
+                    <Tag text="Stable" variant="success" size="sm" uppercase={true}/>
+                </div>
+            </div>
+        </div>
+    ),
+};
+
+// Backward compatibility removed - all consumers use new size names (xs, sm, md, lg)
 

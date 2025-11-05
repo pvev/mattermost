@@ -7,5 +7,7 @@ export type {TagProps, TagSize, TagVariant, TagPreset} from './tag';
 export {default as TagGroup} from './tag_group';
 export type {TagGroupProps} from './tag_group';
 
-export {BetaTag, BotTag, GuestTag, I18nTag} from './tag_presets';
+export {BetaTag, BotTag, GuestTag} from './tag_presets';
+
+export {default as SkuTag, LicenseSkus} from './sku_tag';
 

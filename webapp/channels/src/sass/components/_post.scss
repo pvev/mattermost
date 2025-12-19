@@ -685,6 +685,59 @@
         }
     }
 
+    &.post--burn-on-read-revealed {
+        // Disable text selection for revealed BoR messages
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        
+        // Prevent text selection on all child elements
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+        
+        // Allow selection for interactive elements (buttons, inputs, etc.)
+        button,
+        input,
+        textarea,
+        select,
+        a,
+        [role="button"],
+        [tabindex] {
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+        }
+    }
+
+    // Blur revealed BoR messages when printing
+    @media print {
+        &.post--burn-on-read-revealed {
+            filter: blur(8px);
+            -webkit-filter: blur(8px);
+            
+            // Make it even harder to read
+            opacity: 0.3;
+            
+            // Prevent printing of revealed BoR messages entirely (alternative approach)
+            // display: none;
+        }
+    }
+
+    // Blur revealed BoR messages when window loses focus (screenshot protection)
+    .bor-window-blurred &.post--burn-on-read-revealed {
+        .post__body {
+            filter: blur(10px);
+            -webkit-filter: blur(10px);
+            transition: filter 0.1s ease-in-out;
+        }
+    }
+
     &.post--thread {
         &.same--user {
             .post__header,

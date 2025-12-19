@@ -308,6 +308,7 @@ function PostComponent(props: Props) {
         const isMeMessage = checkIsMeMessage(post);
         const hovered =
             hover || fileDropdownOpened || dropdownOpened || a11yActive || props.isPostBeingEdited;
+        
         return classNames('a11y__section post', {
             'post--highlight': shouldHighlight && !fadeOutHighlight,
             'same--root': hasSameRoot(props),
@@ -328,6 +329,7 @@ function PostComponent(props: Props) {
             'mention-comment': props.isCommentMention,
             'post--thread': isRHS,
             'post--modal': isModal,
+            'post--burn-on-read-revealed': isRevealedBoR,
         });
     };
 
@@ -349,6 +351,46 @@ function PostComponent(props: Props) {
         setHover(false);
         setAlt(false);
     }, []);
+
+    // Determine if we should show concealed placeholder for burn-on-read posts
+    // Defined early so it can be used in isRevealedBoR calculation
+    const showConcealedPlaceholder = props.shouldDisplayBurnOnReadConcealed && post.type === PostTypes.BURN_ON_READ;
+
+    // Calculate if this is a revealed BoR message (for copy prevention)
+    // Must be defined before callbacks that use it
+    const isRevealedBoR = post.type === PostTypes.BURN_ON_READ &&
+        post.user_id !== props.currentUserId &&
+        typeof post.metadata?.expire_at === 'number' &&
+        !showConcealedPlaceholder;
+
+    // Prevent copy/cut operations on revealed BoR messages
+    const handleCopy = useCallback((e: React.ClipboardEvent) => {
+        if (isRevealedBoR) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, [isRevealedBoR]);
+
+    const handleCut = useCallback((e: React.ClipboardEvent) => {
+        if (isRevealedBoR) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, [isRevealedBoR]);
+
+    const handleContextMenu = useCallback((e: React.MouseEvent) => {
+        if (isRevealedBoR) {
+            // Disable right-click context menu on revealed BoR messages
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, [isRevealedBoR]);
+
+    const handleSelectStart = useCallback((e: React.SyntheticEvent) => {
+        if (isRevealedBoR) {
+            e.preventDefault();
+        }
+    }, [isRevealedBoR]);
 
     const handleCardClick = (post?: Post) => {
         if (!post) {
@@ -560,8 +602,7 @@ function PostComponent(props: Props) {
         }
     }
 
-    // Determine if we should show concealed placeholder for burn-on-read posts
-    const showConcealedPlaceholder = props.shouldDisplayBurnOnReadConcealed && post.type === PostTypes.BURN_ON_READ;
+    // Note: showConcealedPlaceholder and isRevealedBoR are already defined earlier (before callbacks) to avoid hoisting issues
 
     let message;
     if (showConcealedPlaceholder) {
@@ -729,6 +770,10 @@ function PostComponent(props: Props) {
                 onMouseOver={handleMouseOver}
                 onMouseLeave={handleMouseLeave}
                 autotranslated={props.isChannelAutotranslated}
+                onCopy={handleCopy}
+                onCut={handleCut}
+                onContextMenu={handleContextMenu}
+                onSelectStart={handleSelectStart}
             >
                 {props.isChannelAutotranslated && isTranslating && (
                     <div className='post-message__shimmer'/>

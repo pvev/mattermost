@@ -150,8 +150,9 @@ const HelpMessaging = (): JSX.Element => {
                     <p>
                         <FormattedMessage
                             id='help.messaging.emoji.description'
-                            defaultMessage={'Type ":" to open an emoji autocomplete. If the existing emojis don\'t say what you want to express, you can also create your own <link>Custom Emoji</link>.'}
+                            defaultMessage={'Type <code>:</code> to open an emoji autocomplete. If the existing emojis don\'t say what you want to express, you can also create your own <link>Custom Emoji</link>.'}
                             values={{
+                                code: (chunks: React.ReactNode) => <code>{chunks}</code>,
                                 link: (chunks: React.ReactNode) => (
                                     <ExternalLink
                                         href='https://docs.mattermost.com/end-user-guide/collaborate/react-with-emojis-gifs.html#upload-custom-emojis'

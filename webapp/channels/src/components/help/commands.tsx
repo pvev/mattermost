@@ -26,7 +26,10 @@ const HelpCommands = (): JSX.Element => {
                 <p>
                     <FormattedMessage
                         id='help.commands.intro'
-                        defaultMessage='You can execute commands, called slash commands, by typing into the text input box to perform operations in Mattermost. To run a slash command, type / followed by a command and some arguments to perform actions.'
+                        defaultMessage='You can execute commands, called slash commands, by typing into the text input box to perform operations in Mattermost. To run a slash command, type <code>/</code> followed by a command and some arguments to perform actions.'
+                        values={{
+                            code: (chunks: React.ReactNode) => <code>{chunks}</code>,
+                        }}
                     />
                 </p>
 
@@ -118,7 +121,7 @@ const HelpCommands = (): JSX.Element => {
                     <p>
                         <FormattedMessage
                             id='help.commands.custom.description'
-                            defaultMessage='Custom slash commands can integrate with external applications. For example, a team might configure a custom slash command to check internal health records with <code>/patient joe smith</code> or check the weekly weather forecast in a city with <code>/weather toronto week</code>. Check with your System Admin, or open the autocomplete list by typing /, to determine whether custom slash commands are available for your organization.'
+                            defaultMessage='Custom slash commands can integrate with external applications. For example, a team might configure a custom slash command to check internal health records with <code>/patient joe smith</code> or check the weekly weather forecast in a city with <code>/weather toronto week</code>. Check with your System Admin, or open the autocomplete list by typing <code>/</code>, to determine whether custom slash commands are available for your organization.'
                             values={{
                                 code: (chunks: React.ReactNode) => <code>{chunks}</code>,
                             }}

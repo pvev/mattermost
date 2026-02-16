@@ -56,13 +56,32 @@ const MAP_WIDE_MODE_TO_CONTROLS_QUANTITY: {[key in WideMode]: number} = {
     min: 1,
 };
 
-export function splitFormattingBarControls(wideMode: WideMode) {
+// When additional controls (priority, AI, burn-on-read) are present,
+// reduce base formatting icons to prevent overlap with actions bar
+const MAP_WIDE_MODE_WITH_ADDITIONAL_CONTROLS: {[key in WideMode]: number} = {
+    wide: 7,
+    normal: 3,
+    narrow: 1,
+    min: 0,
+};
+
+const NARROW_MODE_MIN_ADDITIONAL_CONTROLS = 2;
+
+export function splitFormattingBarControls(wideMode: WideMode, additionalControlsCount: number = 0) {
     const allControls: MarkdownMode[] = ['bold', 'italic', 'strike', 'heading', 'link', 'code', 'quote', 'ul', 'ol'];
 
-    const controlsLength = MAP_WIDE_MODE_TO_CONTROLS_QUANTITY[wideMode];
+    let visibleControlsCount = MAP_WIDE_MODE_TO_CONTROLS_QUANTITY[wideMode];
 
-    const controls = allControls.slice(0, controlsLength);
-    const hiddenControls = allControls.slice(controlsLength);
+    if (additionalControlsCount > 0) {
+        if (wideMode === 'narrow' && additionalControlsCount < NARROW_MODE_MIN_ADDITIONAL_CONTROLS) {
+            visibleControlsCount = MAP_WIDE_MODE_TO_CONTROLS_QUANTITY.narrow;
+        } else {
+            visibleControlsCount = MAP_WIDE_MODE_WITH_ADDITIONAL_CONTROLS[wideMode];
+        }
+    }
+
+    const controls = allControls.slice(0, visibleControlsCount);
+    const hiddenControls = allControls.slice(visibleControlsCount);
 
     return {
         controls,
@@ -72,6 +91,7 @@ export function splitFormattingBarControls(wideMode: WideMode) {
 
 export const useFormattingBarControls = (
     formattingBarRef: React.RefObject<HTMLDivElement>,
+    additionalControlsCount: number = 0,
 ): {
     controls: MarkdownMode[];
     hiddenControls: MarkdownMode[];
@@ -79,7 +99,7 @@ export const useFormattingBarControls = (
 } => {
     const wideMode = useResponsiveFormattingBar(formattingBarRef);
 
-    const {controls, hiddenControls} = splitFormattingBarControls(wideMode);
+    const {controls, hiddenControls} = splitFormattingBarControls(wideMode, additionalControlsCount);
 
     return {
         controls,

@@ -116,10 +116,10 @@ describe('FormattingBar', () => {
 
             mockWithoutAdditional.mockRestore();
 
-            // Mock narrow mode WITH 2 additional controls (shows only 1 icon)
+            // Mock narrow mode WITH 2 additional controls (still shows 3 icons)
             jest.spyOn(Hooks, 'useFormattingBarControls').mockReturnValue({
                 wideMode: 'narrow',
-                ...splitFormattingBarControls('narrow', 2),
+                ...splitFormattingBarControls('narrow'),
             });
 
             const mockControl1 = <button key='priority-control'>{'Priority'}</button>;
@@ -132,13 +132,14 @@ describe('FormattingBar', () => {
                 />,
             );
 
-            // Should now show only bold (1 icon)
+            // Should still show bold, italic, strike (3 icons) - additional controls don't reduce formatting icons
             expect(screen.getByLabelText('bold')).toBeInTheDocument();
-            expect(screen.queryByLabelText('italic')).not.toBeInTheDocument();
+            expect(screen.getByLabelText('italic')).toBeInTheDocument();
+            expect(screen.getByLabelText('strike through')).toBeInTheDocument();
         });
 
-        test('should show only bold icon in narrow mode with 2+ additional controls', () => {
-            jest.spyOn(Hooks, 'useFormattingBarControls').mockReturnValue({wideMode: 'narrow', ...splitFormattingBarControls('narrow', 2)});
+        test('should show 3 icons in narrow mode with 2+ additional controls', () => {
+            jest.spyOn(Hooks, 'useFormattingBarControls').mockReturnValue({wideMode: 'narrow', ...splitFormattingBarControls('narrow')});
 
             const mockControl1 = <button key='priority-control'>{'Priority'}</button>;
             const mockControl2 = <button key='bor-control'>{'Burn-on-Read'}</button>;
@@ -151,11 +152,12 @@ describe('FormattingBar', () => {
             );
 
             expect(screen.getByLabelText('bold')).toBeInTheDocument();
-            expect(screen.queryByLabelText('italic')).not.toBeInTheDocument();
+            expect(screen.getByLabelText('italic')).toBeInTheDocument();
+            expect(screen.getByLabelText('strike through')).toBeInTheDocument();
         });
 
         test('should hide all base controls in min mode with additional controls', () => {
-            jest.spyOn(Hooks, 'useFormattingBarControls').mockReturnValue({wideMode: 'min', ...splitFormattingBarControls('min', 3)});
+            jest.spyOn(Hooks, 'useFormattingBarControls').mockReturnValue({wideMode: 'min', ...splitFormattingBarControls('min')});
 
             const mockControl1 = <button key='priority-control'>{'Priority'}</button>;
             const mockControl2 = <button key='ai-control'>{'AI Rewrite'}</button>;

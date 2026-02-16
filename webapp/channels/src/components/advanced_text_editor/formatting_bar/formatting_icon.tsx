@@ -30,13 +30,13 @@ import type {MarkdownMode} from 'utils/markdown/apply_markdown';
 
 export const IconContainer = styled.button`
     display: flex;
-    min-width: 32px;
-    height: 32px;
+    min-width: 28px;
+    height: 28px;
     place-items: center;
     place-content: center;
     border: none;
     background: transparent;
-    padding: 0 7px;
+    padding: 0 8px;
     border-radius: 4px;
     color: rgba(var(--center-channel-color-rgb), var(--icon-opacity));
 

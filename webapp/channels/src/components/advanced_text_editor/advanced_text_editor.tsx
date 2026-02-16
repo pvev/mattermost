@@ -71,7 +71,6 @@ import DoNotDisturbWarning from './do_not_disturb_warning';
 import EditPostFooter from './edit_post_footer';
 import Footer from './footer';
 import FormattingBar from './formatting_bar';
-import {FormattingBarSpacer, Separator} from './formatting_bar/formatting_bar';
 import MessageWithMentionsFooter from './message_with_mentions_footer';
 import SendButton from './send_button';
 import ShowFormat from './show_formatting';
@@ -222,12 +221,10 @@ const AdvancedTextEditor = ({
     const [serverError, setServerError] = useState<(ServerError & { submittedMessage?: string }) | null>(null);
     const [postError, setPostError] = useState<React.ReactNode>(null);
     const [showPreview, setShowPreview] = useState(false);
-    const [isMessageLong, setIsMessageLong] = useState(false);
     const [renderScrollbar, setRenderScrollbar] = useState(false);
     const [keepEditorInFocus, setKeepEditorInFocus] = useState(false);
 
     const readOnlyChannel = !canPost;
-    const hasDraftMessage = Boolean(draft.message);
     const showFormattingBar = !isFormattingBarHidden && !readOnlyChannel;
     const enableSharedChannelsDMs = useSelector((state: GlobalState) => getFeatureFlagValue(state, 'EnableSharedChannelsDMs') === 'true');
     const isDMOrGMRemote = isChannelShared && (channelType === Constants.DM_CHANNEL || channelType === Constants.GM_CHANNEL);
@@ -504,27 +501,6 @@ const AdvancedTextEditor = ({
         };
     }, [textboxRef]);
 
-    const handleWidthChange = useCallback((width: number) => {
-        const input = textboxRef.current?.getInputBox();
-        if (!editorBodyRef.current || !editorActionsRef.current || !input) {
-            return;
-        }
-
-        const maxWidth = editorBodyRef.current.offsetWidth - editorActionsRef.current.offsetWidth;
-
-        if (!hasDraftMessage) {
-            // if we do not have a message we can just render the default state
-            setIsMessageLong(false);
-            return;
-        }
-
-        if (width >= maxWidth) {
-            setIsMessageLong(true);
-        } else {
-            setIsMessageLong(false);
-        }
-    }, [hasDraftMessage]);
-
     const prefillMessage = useCallback((message: string) => {
         handleDraftChange({
             ...draft,
@@ -535,13 +511,6 @@ const AdvancedTextEditor = ({
         inputBox?.click();
         focusTextbox(true);
     }, [handleDraftChange, focusTextbox, draft, textboxRef]);
-
-    // Handle width change when there is no message.
-    useEffect(() => {
-        if (!hasDraftMessage) {
-            handleWidthChange(0);
-        }
-    }, [hasDraftMessage, handleWidthChange]);
 
     // Clear timeout on unmount
     useEffect(() => {
@@ -628,6 +597,14 @@ const AdvancedTextEditor = ({
         />
     );
 
+    const toggleFormattingBarButton = disableSendButton || readOnlyChannel ? null : (
+        <ToggleFormattingBar
+            onClick={toggleAdvanceTextEditor}
+            active={showFormattingBar}
+            disabled={false}
+        />
+    );
+
     let createMessage;
     if (placeholder) {
         createMessage = placeholder;
@@ -700,11 +677,26 @@ const AdvancedTextEditor = ({
                     getCurrentMessage={getCurrentValue}
                     getCurrentSelection={getCurrentSelection}
                     disableControls={showPreview}
+                    fileUpload={fileUploadJSX}
+                    emojiPicker={emojiPicker}
                     additionalControls={additionalControls}
                     location={location}
+                    showFormattingControls={true}
                 />
             )}
-            slot2={null}
+            slot2={(
+                <FormattingBar
+                    applyMarkdown={applyMarkdown}
+                    getCurrentMessage={getCurrentValue}
+                    getCurrentSelection={getCurrentSelection}
+                    disableControls={true}
+                    fileUpload={fileUploadJSX}
+                    emojiPicker={emojiPicker}
+                    additionalControls={additionalControls}
+                    location={location}
+                    showFormattingControls={false}
+                />
+            )}
             shouldScrollIntoView={keepEditorInFocus}
         />
     );
@@ -729,8 +721,6 @@ const AdvancedTextEditor = ({
             />
         );
     }, [isInEditMode, isRHS]);
-
-    const showFormattingSpacer = isMessageLong || showPreview || attachmentPreview || isRHS || isThreadView;
 
     const containsAtMentionsInMessage = allAtMentions(draft?.message)?.length > 0;
 
@@ -818,10 +808,9 @@ const AdvancedTextEditor = ({
                             badConnection={badConnection}
                             useChannelMentions={useChannelMentions}
                             rootId={rootId}
-                            onWidthChange={handleWidthChange}
                         />
                         {attachmentPreview}
-                        {!isDisabled && (showFormattingBar || showPreview) && (
+                        {!isDisabled && showPreview && (
                             <TexteditorActions
                                 placement='top'
                                 isScrollbarRendered={renderScrollbar}
@@ -829,24 +818,13 @@ const AdvancedTextEditor = ({
                                 {showFormatJSX}
                             </TexteditorActions>
                         )}
-                        {showFormattingSpacer ? (
-                            <FormattingBarSpacer>
-                                {formattingBar}
-                            </FormattingBarSpacer>
-                        ) : formattingBar}
+                        {formattingBar}
                         {!isDisabled && (
                             <TexteditorActions
                                 ref={editorActionsRef}
                                 placement='bottom'
                             >
-                                <ToggleFormattingBar
-                                    onClick={toggleAdvanceTextEditor}
-                                    active={showFormattingBar}
-                                    disabled={showPreview}
-                                />
-                                <Separator/>
-                                {fileUploadJSX}
-                                {emojiPicker}
+                                {toggleFormattingBarButton}
                                 {sendButton}
                             </TexteditorActions>
                         )}

@@ -3,7 +3,7 @@
 
 import {useFloating, offset, useClick, useDismiss, useInteractions} from '@floating-ui/react';
 import classNames from 'classnames';
-import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {memo, useCallback, useEffect, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {CSSTransition} from 'react-transition-group';
 import styled from 'styled-components';
@@ -25,17 +25,9 @@ export const Separator = styled.div`
     background: rgba(var(--center-channel-color-rgb), 0.16);
 `;
 
-export const FormattingBarSpacer = styled.div`
-    display: flex;
-    height: 48px;
-    transition: height 0.25s ease;
-    align-items: end;
-    background: var(--center-channel-bg);
-`;
-
 const FormattingBarContainer = styled.div`
     display: flex;
-    height: 48px;
+    height: 44px;
     padding-left: 7px;
     background: transparent;
     align-items: center;
@@ -126,10 +118,26 @@ interface FormattingBarProps {
     location: string;
 
     /**
+     * file upload button element
+     */
+    fileUpload?: React.ReactNode;
+
+    /**
+     * emoji picker button element
+     */
+    emojiPicker?: React.ReactNode;
+
+    /**
      * controls that enhance the message,
      * e.g: message priority picker
      */
     additionalControls?: React.ReactNodeArray;
+
+    /**
+     * whether to show base formatting controls (bold, italic, etc.)
+     * file/emoji/additional controls always shown
+     */
+    showFormattingControls?: boolean;
 }
 
 const DEFAULT_MIN_MODE_X_COORD = 55;
@@ -141,16 +149,15 @@ const FormattingBar = (props: FormattingBarProps): JSX.Element => {
         getCurrentMessage,
         disableControls,
         location,
+        fileUpload,
+        emojiPicker,
         additionalControls,
+        showFormattingControls = true,
     } = props;
     const [showHiddenControls, setShowHiddenControls] = useState(false);
     const formattingBarRef = useRef<HTMLDivElement>(null);
 
-    const additionalControlsCount = useMemo(() => {
-        return Array.isArray(additionalControls) ? additionalControls.filter(Boolean).length : 0;
-    }, [additionalControls]);
-
-    const {controls, hiddenControls, wideMode} = useFormattingBarControls(formattingBarRef, additionalControlsCount);
+    const {controls, hiddenControls, separatorAfter, wideMode} = useFormattingBarControls(formattingBarRef);
 
     const {formatMessage} = useIntl();
     const HiddenControlsButtonAriaLabel = formatMessage({id: 'accessibility.button.hidden_controls_button', defaultMessage: 'show hidden formatting options'});
@@ -219,14 +226,15 @@ const FormattingBar = (props: FormattingBarProps): JSX.Element => {
         left: leftPosition,
     };
 
-    const showSeparators = wideMode === 'wide';
-
     return (
         <FormattingBarContainer
             ref={formattingBarRef}
             data-testid='formattingBarContainer'
         >
-            {controls.map((mode) => {
+            {fileUpload}
+            {emojiPicker}
+            {(fileUpload || emojiPicker) && showFormattingControls && controls.length > 0 && <Separator/>}
+            {showFormattingControls && controls.map((mode) => {
                 return (
                     <React.Fragment key={mode}>
                         <FormattingIcon
@@ -235,70 +243,70 @@ const FormattingBar = (props: FormattingBarProps): JSX.Element => {
                             onClick={makeFormattingHandler(mode)}
                             disabled={disableControls}
                         />
-                        {mode === 'heading' && showSeparators && <Separator/>}
+                        {separatorAfter.has(mode) && <Separator/>}
                     </React.Fragment>
                 );
             })}
 
             {Array.isArray(additionalControls) && additionalControls.length > 0 && (
                 <>
-                    {showSeparators && <Separator/>}
+                    {((fileUpload || emojiPicker) && (!showFormattingControls || controls.length === 0)) && <Separator/>}
                     {additionalControls}
                 </>
             )}
 
-            {hasHiddenControls && (
-                <>
-                    <WithTooltip
-                        title={formatMessage({
-                            id: 'shortcuts.msgs.formatting_bar.more_formatting_options',
-                            defaultMessage: 'More formatting options',
-                        })}
-                        disabled={showHiddenControls}
+            {showFormattingControls && hasHiddenControls && (
+                <WithTooltip
+                    title={formatMessage({
+                        id: 'shortcuts.msgs.formatting_bar.more_formatting_options',
+                        defaultMessage: 'More formatting options',
+                    })}
+                    disabled={showHiddenControls}
+                >
+                    <IconContainer
+                        id={'HiddenControlsButton' + location}
+                        ref={setReference}
+                        className={classNames({active: showHiddenControls})}
+                        aria-label={HiddenControlsButtonAriaLabel}
+                        type='button'
+                        {...getClickReferenceProps()}
+                        {...getDismissReferenceProps()}
                     >
-                        <IconContainer
-                            id={'HiddenControlsButton' + location}
-                            ref={setReference}
-                            className={classNames({active: showHiddenControls})}
-                            aria-label={HiddenControlsButtonAriaLabel}
-                            type='button'
-                            {...getClickReferenceProps()}
-                            {...getDismissReferenceProps()}
-                        >
-                            <DotsHorizontalIcon
-                                color={'currentColor'}
-                                size={18}
-                            />
-                        </IconContainer>
-                    </WithTooltip>
-                </>
+                        <DotsHorizontalIcon
+                            color={'currentColor'}
+                            size={18}
+                        />
+                    </IconContainer>
+                </WithTooltip>
             )}
 
-            <CSSTransition
-                timeout={250}
-                classNames='scale'
-                in={showHiddenControls}
-                unmountOnExit={true}
-            >
-                <HiddenControlsContainer
-                    ref={setFloating}
-                    style={hiddenControlsContainerStyles}
-                    {...getClickFloatingProps()}
-                    {...getDismissFloatingProps()}
+            {showFormattingControls && (
+                <CSSTransition
+                    timeout={250}
+                    classNames='scale'
+                    in={showHiddenControls}
+                    unmountOnExit={true}
                 >
-                    {hiddenControls.map((mode) => {
-                        return (
-                            <FormattingIcon
-                                key={mode}
-                                mode={mode}
-                                className='control'
-                                onClick={makeFormattingHandler(mode)}
-                                disabled={disableControls}
-                            />
-                        );
-                    })}
-                </HiddenControlsContainer>
-            </CSSTransition>
+                    <HiddenControlsContainer
+                        ref={setFloating}
+                        style={hiddenControlsContainerStyles}
+                        {...getClickFloatingProps()}
+                        {...getDismissFloatingProps()}
+                    >
+                        {hiddenControls.map((mode) => {
+                            return (
+                                <FormattingIcon
+                                    key={mode}
+                                    mode={mode}
+                                    className='control'
+                                    onClick={makeFormattingHandler(mode)}
+                                    disabled={disableControls}
+                                />
+                            );
+                        })}
+                    </HiddenControlsContainer>
+                </CSSTransition>
+            )}
         </FormattingBarContainer>
     );
 };

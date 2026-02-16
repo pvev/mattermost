@@ -10,26 +10,31 @@ import type {MarkdownMode} from 'utils/markdown/apply_markdown';
 
 type WideMode = 'wide' | 'normal' | 'narrow' | 'min';
 
+// Debounce delay for ResizeObserver - balances responsiveness with performance
+const RESIZE_DEBOUNCE_MS = 10;
+
 const useResponsiveFormattingBar = (ref: React.RefObject<HTMLDivElement>): WideMode => {
     const [wideMode, setWideMode] = useState<WideMode>('wide');
     const handleResize = useMemo(() => debounce(() => {
         if (ref.current?.clientWidth == null) {
             return;
         }
-        if (ref.current.clientWidth > 640) {
+
+        // Breakpoints account for space needed by send button (~100px)
+        if (ref.current.clientWidth > 750) {
             setWideMode('wide');
         }
-        if (ref.current.clientWidth >= 424 && ref.current.clientWidth <= 640) {
+        if (ref.current.clientWidth >= 580 && ref.current.clientWidth <= 750) {
             setWideMode('normal');
         }
-        if (ref.current.clientWidth < 424) {
+        if (ref.current.clientWidth >= 420 && ref.current.clientWidth < 580) {
             setWideMode('narrow');
         }
 
-        if (ref.current.clientWidth < 310) {
+        if (ref.current.clientWidth < 420) {
             setWideMode('min');
         }
-    }, 10), [ref]);
+    }, RESIZE_DEBOUNCE_MS), [ref]);
 
     useLayoutEffect(() => {
         if (!ref.current) {
@@ -41,69 +46,83 @@ const useResponsiveFormattingBar = (ref: React.RefObject<HTMLDivElement>): WideM
         sizeObserver.observe(ref.current);
 
         return () => {
-            sizeObserver!.disconnect();
-            sizeObserver = null;
+            if (sizeObserver) {
+                sizeObserver.disconnect();
+                sizeObserver = null;
+            }
         };
     }, [handleResize, ref]);
 
     return wideMode;
 };
 
-const MAP_WIDE_MODE_TO_CONTROLS_QUANTITY: {[key in WideMode]: number} = {
-    wide: 9,
-    normal: 5,
-    narrow: 3,
-    min: 1,
-};
+// Formatting controls organized by section for proper separator placement
+// Section 1: bold, italic, strike, heading
+// Section 2: link, code
+// Section 3: quote, ul, ol
+const SECTION_1_CONTROLS: MarkdownMode[] = ['bold', 'italic', 'strike', 'heading'];
+const SECTION_2_CONTROLS: MarkdownMode[] = ['link', 'code'];
+const SECTION_3_CONTROLS: MarkdownMode[] = ['quote', 'ul', 'ol'];
 
-// When additional controls (priority, AI, burn-on-read) are present,
-// reduce base formatting icons to prevent overlap with actions bar
-const MAP_WIDE_MODE_WITH_ADDITIONAL_CONTROLS: {[key in WideMode]: number} = {
-    wide: 7,
-    normal: 3,
-    narrow: 1,
-    min: 0,
-};
+/**
+ * Split formatting controls based on available width
+ * @param wideMode - Current width mode (wide/normal/narrow/min)
+ * @returns Object with visible controls, hidden controls, and section separators
+ */
+export function splitFormattingBarControls(wideMode: WideMode) {
+    const allControls: MarkdownMode[] = [...SECTION_1_CONTROLS, ...SECTION_2_CONTROLS, ...SECTION_3_CONTROLS];
 
-const NARROW_MODE_MIN_ADDITIONAL_CONTROLS = 2;
+    let visibleControls: MarkdownMode[] = [];
+    const separatorAfter: Set<MarkdownMode> = new Set();
 
-export function splitFormattingBarControls(wideMode: WideMode, additionalControlsCount: number = 0) {
-    const allControls: MarkdownMode[] = ['bold', 'italic', 'strike', 'heading', 'link', 'code', 'quote', 'ul', 'ol'];
-
-    let visibleControlsCount = MAP_WIDE_MODE_TO_CONTROLS_QUANTITY[wideMode];
-
-    if (additionalControlsCount > 0) {
-        if (wideMode === 'narrow' && additionalControlsCount < NARROW_MODE_MIN_ADDITIONAL_CONTROLS) {
-            visibleControlsCount = MAP_WIDE_MODE_TO_CONTROLS_QUANTITY.narrow;
-        } else {
-            visibleControlsCount = MAP_WIDE_MODE_WITH_ADDITIONAL_CONTROLS[wideMode];
-        }
+    if (wideMode === 'wide') {
+        // Wide mode: Show all 9 icons in 3 sections
+        // [B, I, S, H] | [Link, Code] | [Quote, UL, OL]
+        visibleControls = allControls;
+        separatorAfter.add('heading'); // After section 1
+        separatorAfter.add('code'); // After section 2
+        separatorAfter.add('ol'); // After section 3 (before additional controls)
+    } else if (wideMode === 'normal') {
+        // Normal mode: Show 6 icons in 1 section
+        // [B, I, S, H, Link, Code] | (hidden: Quote, UL, OL)
+        visibleControls = [...SECTION_1_CONTROLS, ...SECTION_2_CONTROLS];
+        separatorAfter.add('code'); // After all visible controls (before additional controls)
+    } else if (wideMode === 'narrow') {
+        // Narrow mode: Show 3 icons
+        // [B, I, S] | (hidden: H, Link, Code, Quote, UL, OL)
+        visibleControls = SECTION_1_CONTROLS.slice(0, 3);
+        separatorAfter.add('strike'); // After all visible controls (before additional controls)
+    } else {
+        // Min mode: Show 0 icons
+        // (hidden: all)
+        visibleControls = [];
     }
 
-    const controls = allControls.slice(0, visibleControlsCount);
-    const hiddenControls = allControls.slice(visibleControlsCount);
+    const hiddenControls = allControls.filter((control) => !visibleControls.includes(control));
 
     return {
-        controls,
+        controls: visibleControls,
         hiddenControls,
+        separatorAfter,
     };
 }
 
 export const useFormattingBarControls = (
     formattingBarRef: React.RefObject<HTMLDivElement>,
-    additionalControlsCount: number = 0,
 ): {
     controls: MarkdownMode[];
     hiddenControls: MarkdownMode[];
+    separatorAfter: Set<MarkdownMode>;
     wideMode: WideMode;
 } => {
     const wideMode = useResponsiveFormattingBar(formattingBarRef);
 
-    const {controls, hiddenControls} = splitFormattingBarControls(wideMode, additionalControlsCount);
+    const {controls, hiddenControls, separatorAfter} = splitFormattingBarControls(wideMode);
 
     return {
         controls,
         hiddenControls,
+        separatorAfter,
         wideMode,
     };
 };

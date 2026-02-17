@@ -4,6 +4,13 @@
 import {memo} from 'react';
 import styled, {css} from 'styled-components';
 
+// Positioning and spacing constants
+const ACTIONS_Z_INDEX = 2;
+const ACTIONS_GAP = 2;
+const ACTIONS_OFFSET_STANDARD = 7;
+const ACTIONS_OFFSET_WITH_SCROLLBAR = 15;
+const ACTIONS_TRANSITION_DURATION = '0.3s';
+
 type TexteditorActionsProps = {
     placement: 'top' | 'bottom';
     show?: boolean;
@@ -11,24 +18,24 @@ type TexteditorActionsProps = {
 }
 
 const TexteditorActions = styled.span<TexteditorActionsProps>`
-    z-index: 2;
+    z-index: ${ACTIONS_Z_INDEX};
     display: flex;
     place-items: center;
-    gap: 2px;
+    gap: ${ACTIONS_GAP}px;
 
     /* define the position based on the placement prop */
     ${({placement, isScrollbarRendered}) => (placement === 'top' ? css`
         position: absolute;
-        top: 7px;
-        right: ${isScrollbarRendered ? 15 : 7}px;
+        top: ${ACTIONS_OFFSET_STANDARD}px;
+        right: ${isScrollbarRendered ? ACTIONS_OFFSET_WITH_SCROLLBAR : ACTIONS_OFFSET_STANDARD}px;
     ` : css`
         position: absolute;
-        right: 7px;
-        bottom: 7px;
+        right: ${ACTIONS_OFFSET_STANDARD}px;
+        bottom: ${ACTIONS_OFFSET_STANDARD}px;
     `)}
 
     opacity: ${({show = true}) => (show ? 1 : 0)};
-    transition: opacity 0.3s linear;
+    transition: opacity ${ACTIONS_TRANSITION_DURATION} linear;
     visibility: ${({show = true}) => (show ? 'visible' : 'hidden')};
 
     .btn-file__disabled {

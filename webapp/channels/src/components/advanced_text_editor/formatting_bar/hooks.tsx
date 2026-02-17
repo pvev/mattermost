@@ -13,6 +13,12 @@ type WideMode = 'wide' | 'normal' | 'narrow' | 'min';
 // Debounce delay for ResizeObserver - balances responsiveness with performance
 const RESIZE_DEBOUNCE_MS = 10;
 
+// Responsive breakpoints for formatting bar
+// These account for space needed by toggle button + send button (~100px)
+const BREAKPOINT_WIDE = 750;
+const BREAKPOINT_NORMAL = 580;
+const BREAKPOINT_NARROW = 420;
+
 const useResponsiveFormattingBar = (ref: React.RefObject<HTMLDivElement>): WideMode => {
     const [wideMode, setWideMode] = useState<WideMode>('wide');
     const handleResize = useMemo(() => debounce(() => {
@@ -21,17 +27,17 @@ const useResponsiveFormattingBar = (ref: React.RefObject<HTMLDivElement>): WideM
         }
 
         // Breakpoints account for space needed by send button (~100px)
-        if (ref.current.clientWidth > 750) {
+        if (ref.current.clientWidth > BREAKPOINT_WIDE) {
             setWideMode('wide');
         }
-        if (ref.current.clientWidth >= 580 && ref.current.clientWidth <= 750) {
+        if (ref.current.clientWidth >= BREAKPOINT_NORMAL && ref.current.clientWidth <= BREAKPOINT_WIDE) {
             setWideMode('normal');
         }
-        if (ref.current.clientWidth >= 420 && ref.current.clientWidth < 580) {
+        if (ref.current.clientWidth >= BREAKPOINT_NARROW && ref.current.clientWidth < BREAKPOINT_NORMAL) {
             setWideMode('narrow');
         }
 
-        if (ref.current.clientWidth < 420) {
+        if (ref.current.clientWidth < BREAKPOINT_NARROW) {
             setWideMode('min');
         }
     }, RESIZE_DEBOUNCE_MS), [ref]);

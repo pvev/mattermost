@@ -17,22 +17,29 @@ import type {ApplyMarkdownOptions, MarkdownMode} from 'utils/markdown/apply_mark
 import FormattingIcon, {IconContainer} from './formatting_icon';
 import {useFormattingBarControls} from './hooks';
 
+// Dimensions and spacing constants
+const FORMATTING_BAR_HEIGHT = 44;
+const FORMATTING_BAR_PADDING_LEFT = 7;
+const FORMATTING_BAR_PADDING_RIGHT = 110; // Space for toggle button + send button + gaps
+const FORMATTING_BAR_GAP = 2;
+const SEPARATOR_HEIGHT = 24;
+
 export const Separator = styled.div`
     display: block;
     position: relative;
     width: 1px;
-    height: 24px;
+    height: ${SEPARATOR_HEIGHT}px;
     background: rgba(var(--center-channel-color-rgb), 0.16);
 `;
 
 const FormattingBarContainer = styled.div`
     display: flex;
-    height: 44px;
-    padding-left: 7px;
-    padding-right: 90px;
+    height: ${FORMATTING_BAR_HEIGHT}px;
+    padding-left: ${FORMATTING_BAR_PADDING_LEFT}px;
+    padding-right: ${FORMATTING_BAR_PADDING_RIGHT}px;
     background: transparent;
     align-items: center;
-    gap: 2px;
+    gap: ${FORMATTING_BAR_GAP}px;
     transform-origin: top;
     transition: height 0.25s ease;
 `;

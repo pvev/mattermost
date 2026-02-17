@@ -34,6 +34,8 @@ const FormattingBarContainer = styled.div`
     gap: 2px;
     transform-origin: top;
     transition: height 0.25s ease;
+    flex: 1;
+    min-width: 0;
 `;
 
 const HiddenControlsContainer = styled.div`

@@ -597,7 +597,7 @@ const AdvancedTextEditor = ({
         />
     );
 
-    const toggleFormattingBarButton = disableSendButton || readOnlyChannel ? null : (
+    const toggleFormattingBarButton = readOnlyChannel ? null : (
         <ToggleFormattingBar
             onClick={toggleAdvanceTextEditor}
             active={showFormattingBar}
@@ -818,16 +818,18 @@ const AdvancedTextEditor = ({
                                 {showFormatJSX}
                             </TexteditorActions>
                         )}
-                        {formattingBar}
-                        {!isDisabled && (
-                            <TexteditorActions
-                                ref={editorActionsRef}
-                                placement='bottom'
-                            >
-                                {toggleFormattingBarButton}
-                                {sendButton}
-                            </TexteditorActions>
-                        )}
+                        <div className='AdvancedTextEditor__formatting-wrapper'>
+                            {formattingBar}
+                            {!isDisabled && (
+                                <TexteditorActions
+                                    ref={editorActionsRef}
+                                    placement='bottom'
+                                >
+                                    {toggleFormattingBarButton}
+                                    {sendButton}
+                                </TexteditorActions>
+                            )}
+                        </div>
                     </div>
                     {showSendTutorialTip && (
                         <SendMessageTour

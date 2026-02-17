@@ -35,22 +35,10 @@
 
     .sidebar--right & {
         padding-top: 12px;
-
-        .AutoHeight {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-        }
     }
 
     .ThreadViewer & {
         padding-top: 0px;
-
-        .AutoHeight {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-        }
     }
 
     .custom-textarea {
@@ -164,6 +152,13 @@
         display: flex;
         flex-direction: column;
         vertical-align: top;
+    }
+
+    &__formatting-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        position: relative;
     }
 
     &__helper-text {

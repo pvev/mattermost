@@ -22,8 +22,9 @@ const TexteditorActions = styled.span<TexteditorActionsProps>`
         top: 7px;
         right: ${isScrollbarRendered ? 15 : 7}px;
     ` : css`
-        position: static;
-        padding-right: 7px;
+        position: absolute;
+        right: 7px;
+        bottom: 7px;
     `)}
 
     opacity: ${({show = true}) => (show ? 1 : 0)};

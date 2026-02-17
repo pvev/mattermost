@@ -29,13 +29,12 @@ const FormattingBarContainer = styled.div`
     display: flex;
     height: 44px;
     padding-left: 7px;
+    padding-right: 90px;
     background: transparent;
     align-items: center;
     gap: 2px;
     transform-origin: top;
     transition: height 0.25s ease;
-    flex: 1;
-    min-width: 0;
 `;
 
 const HiddenControlsContainer = styled.div`

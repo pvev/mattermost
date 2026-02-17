@@ -818,18 +818,16 @@ const AdvancedTextEditor = ({
                                 {showFormatJSX}
                             </TexteditorActions>
                         )}
-                        <div className='AdvancedTextEditor__formatting-wrapper'>
-                            {formattingBar}
-                            {!isDisabled && (
-                                <TexteditorActions
-                                    ref={editorActionsRef}
-                                    placement='bottom'
-                                >
-                                    {toggleFormattingBarButton}
-                                    {sendButton}
-                                </TexteditorActions>
-                            )}
-                        </div>
+                        {formattingBar}
+                        {!isDisabled && (
+                            <TexteditorActions
+                                ref={editorActionsRef}
+                                placement='bottom'
+                            >
+                                {toggleFormattingBarButton}
+                                {sendButton}
+                            </TexteditorActions>
+                        )}
                     </div>
                     {showSendTutorialTip && (
                         <SendMessageTour

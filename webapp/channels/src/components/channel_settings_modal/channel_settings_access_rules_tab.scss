@@ -22,6 +22,77 @@
         gap: 8px;
     }
 
+    &__accessRulesHeaderRow {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    &__accessRulesHeaderText {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    &__editorModeToggle {
+        display: flex;
+        flex-shrink: 0;
+        padding: 3px;
+        border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+        border-radius: 8px;
+        background: var(--center-channel-bg);
+        gap: 2px;
+    }
+
+    &__editorModeSegment {
+        display: flex;
+        align-items: center;
+        padding: 6px 14px;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--center-channel-color-75, rgba(63, 67, 80, 0.75));
+        cursor: pointer;
+        font-family: 'Open Sans', sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        gap: 6px;
+        line-height: 18px;
+        transition: all 150ms ease;
+        white-space: nowrap;
+
+        .icon {
+            font-size: 16px;
+        }
+
+        &:hover:not(:disabled):not(.active) {
+            color: rgba(var(--center-channel-color-rgb), 0.72);
+        }
+
+        &.active {
+            background: rgba(var(--button-bg-rgb), 0.08);
+            color: var(--button-bg);
+            cursor: default;
+        }
+
+        &:disabled:not(.active) {
+            cursor: not-allowed;
+            opacity: 0.4;
+        }
+    }
+
+    &__editorLoading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        color: rgba(var(--center-channel-color-rgb), 0.56);
+        font-size: 13px;
+        gap: 8px;
+    }
+
     &__accessRulesEditor {
         .table-editor__cell {
             button {
@@ -35,6 +106,17 @@
         .editor__help-text {
             width: 75%;
             color: rgba(var(--center-channel-color-rgb), 0.56) !important;
+        }
+
+        .cel-editor {
+            .cel-editor__container {
+                border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+                border-radius: 4px;
+            }
+
+            .cel-editor__footer {
+                padding: 8px 0 0;
+            }
         }
     }
 

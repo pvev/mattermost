@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useState, useEffect, useCallback, useMemo, useRef} from 'react';
+import React, {useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 
@@ -13,6 +13,7 @@ import {getChannelMessageCount} from 'mattermost-redux/selectors/entities/channe
 import {getCurrentUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 
 import TableEditor from 'components/admin_console/access_control/editors/table_editor/table_editor';
+const CELEditor = lazy(() => import('components/admin_console/access_control/editors/cel_editor/editor'));
 import ConfirmModal from 'components/confirm_modal';
 import SystemPolicyIndicator from 'components/system_policy_indicator';
 import SaveChangesPanel, {type SaveChangesPanelState} from 'components/widgets/modals/components/save_changes_panel';
@@ -41,6 +42,23 @@ type ChannelSettingsAccessRulesTabProps = {
     showTabSwitchError?: boolean;
 };
 
+// Determines if a CEL expression can be represented in the simple table editor.
+// An expression is "simple" if it only uses `user.attributes.X == "Y"` style conditions joined by &&.
+function isSimpleExpression(expr: string): boolean {
+    if (!expr) {
+        return true;
+    }
+    return expr.split('&&').every((condition) => {
+        const trimmed = condition.trim();
+        return trimmed.match(/^user\.attributes\.\w+\s*(==|!=)\s*['"][^'"]*['"]$/) ||
+               trimmed.match(/^user\.attributes\.\w+\s+in\s+\[.*?\]$/) ||
+               trimmed.match(/^((\[.*?\])||['"][^'"]*['"].*?)\s+in\s+user\.attributes\.\w+$/) ||
+               trimmed.match(/^user\.attributes\.\w+\.startsWith\(['"][^'"]*['"].*?\)$/) ||
+               trimmed.match(/^user\.attributes\.\w+\.endsWith\(['"][^'"]*['"].*?\)$/) ||
+               trimmed.match(/^user\.attributes\.\w+\.contains\(['"][^'"]*['"].*?\)$/);
+    });
+}
+
 function ChannelSettingsAccessRulesTab({
     channel,
     setAreThereUnsavedChanges,
@@ -55,6 +73,9 @@ function ChannelSettingsAccessRulesTab({
 
     // Check if current user is system admin (system admins should never be restricted)
     const isSystemAdmin = useSelector(isCurrentUserSystemAdmin);
+
+    // Editor mode state: 'table' (simple) or 'cel' (advanced)
+    const [editorMode, setEditorMode] = useState<'cel' | 'table'>('table');
 
     // State for the access control expression and user attributes
     const [expression, setExpression] = useState('');
@@ -129,6 +150,12 @@ function ChannelSettingsAccessRulesTab({
                     setOriginalExpression(existingExpression);
                     setAutoSyncMembers(existingAutoSync);
                     setOriginalAutoSyncMembers(existingAutoSync);
+
+                    // Auto-detect editor mode: if loaded expression is too complex
+                    // for the table editor, start in CEL mode
+                    if (existingExpression && !isSimpleExpression(existingExpression)) {
+                        setEditorMode('cel');
+                    }
                 }
             } catch (error) {
                 // If no policy exists (404), that's fine - use defaults
@@ -156,20 +183,45 @@ function ChannelSettingsAccessRulesTab({
         setSaveChangesPanelState(undefined);
     }, []);
 
-    const handleParseError = useCallback((errorMessage?: string) => {
-        // eslint-disable-next-line no-console
-        console.warn('Failed to parse expression in table editor');
+    const handleModeToggle = useCallback(() => {
+        if (editorMode === 'table') {
+            setEditorMode('cel');
+        } else if (isSimpleExpression(expression)) {
+            setEditorMode('table');
+        }
+    }, [editorMode, expression]);
 
+    const noUsableAttributes = attributesLoaded && userAttributes.length === 0;
+    const canSwitchToTable = editorMode === 'cel' && isSimpleExpression(expression);
+
+    // Transform UserPropertyField[] to the {attribute, values}[] format expected by CELEditor
+    const celEditorAttributes = useMemo(() => {
+        const enableUserManaged = accessControlSettings?.EnableUserManagedAttributes || false;
+        return userAttributes.
+            filter((attr) => {
+                if (enableUserManaged) {
+                    return true;
+                }
+                const isSynced = attr.attrs?.ldap || attr.attrs?.saml;
+                const isAdminManaged = attr.attrs?.managed === 'admin';
+                const isProtected = attr.attrs?.protected;
+                return isSynced || isAdminManaged || isProtected;
+            }).
+            map((attr) => ({
+                attribute: attr.name,
+                values: [] as string[],
+            }));
+    }, [userAttributes, accessControlSettings?.EnableUserManagedAttributes]);
+
+    const handleParseError = useCallback((errorMessage?: string) => {
         // Don't show UI errors for permission issues (403/Forbidden)
         if (errorMessage?.includes('403') || errorMessage?.includes('Forbidden')) {
             return;
         }
 
-        setFormError(formatMessage({
-            id: 'channel_settings.access_rules.parse_error',
-            defaultMessage: 'Invalid expression format',
-        }));
-    }, [formatMessage]);
+        // Auto-switch to CEL mode when the table editor can't parse the expression
+        setEditorMode('cel');
+    }, []);
 
     // Helper function to detect empty rules state
     const isEmptyRulesState = useMemo((): boolean => {
@@ -622,6 +674,13 @@ function ChannelSettingsAccessRulesTab({
         setExpression(originalExpression);
         setAutoSyncMembers(originalAutoSyncMembers);
 
+        // Reset editor mode based on original expression complexity
+        if (originalExpression && !isSimpleExpression(originalExpression)) {
+            setEditorMode('cel');
+        } else {
+            setEditorMode('table');
+        }
+
         // Clear errors and panel state
         setFormError('');
         setSaveChangesPanelState(undefined);
@@ -681,32 +740,93 @@ function ChannelSettingsAccessRulesTab({
             )}
 
             <div className='ChannelSettingsModal__accessRulesHeader'>
-                <h3 className='ChannelSettingsModal__accessRulesTitle'>
-                    {formatMessage({id: 'channel_settings.access_rules.title', defaultMessage: 'Access Rules'})}
-                </h3>
-                <p className='ChannelSettingsModal__accessRulesSubtitle'>
-                    {formatMessage({
-                        id: 'channel_settings.access_rules.subtitle',
-                        defaultMessage: 'Select user attributes and values as rules to restrict channel membership',
-                    })}
-                </p>
+                <div className='ChannelSettingsModal__accessRulesHeaderRow'>
+                    <div className='ChannelSettingsModal__accessRulesHeaderText'>
+                        <h3 className='ChannelSettingsModal__accessRulesTitle'>
+                            {formatMessage({id: 'channel_settings.access_rules.title', defaultMessage: 'Access Rules'})}
+                        </h3>
+                        <p className='ChannelSettingsModal__accessRulesSubtitle'>
+                            {formatMessage({
+                                id: 'channel_settings.access_rules.subtitle',
+                                defaultMessage: 'Select user attributes and values as rules to restrict channel membership',
+                            })}
+                        </p>
+                    </div>
+                    {attributesLoaded && (
+                        <div className='ChannelSettingsModal__editorModeToggle'>
+                            <button
+                                className={`ChannelSettingsModal__editorModeSegment ${editorMode === 'table' ? 'active' : ''}`}
+                                onClick={() => editorMode !== 'table' && handleModeToggle()}
+                                disabled={editorMode === 'cel' && !canSwitchToTable}
+                                title={editorMode === 'cel' && !canSwitchToTable ?
+                                    formatMessage({
+                                        id: 'channel_settings.access_rules.complex_expression_tooltip',
+                                        defaultMessage: 'Complex expression detected. Simple editor is not available.',
+                                    }) :
+                                    undefined
+                                }
+                            >
+                                <i className='icon icon-table-large'/>
+                                <span>{formatMessage({id: 'channel_settings.access_rules.simple_editor', defaultMessage: 'Simple'})}</span>
+                            </button>
+                            <button
+                                className={`ChannelSettingsModal__editorModeSegment ${editorMode === 'cel' ? 'active' : ''}`}
+                                onClick={() => editorMode !== 'cel' && handleModeToggle()}
+                                disabled={noUsableAttributes}
+                                title={noUsableAttributes ?
+                                    formatMessage({
+                                        id: 'channel_settings.access_rules.no_attributes_tooltip',
+                                        defaultMessage: 'Please configure user attributes to use the editor.',
+                                    }) :
+                                    undefined
+                                }
+                            >
+                                <i className='icon icon-file-code-outline'/>
+                                <span>{formatMessage({id: 'channel_settings.access_rules.advanced_editor', defaultMessage: 'Advanced'})}</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* TableEditor for creating access rules */}
+            {/* Editor: Table (simple) or CEL (advanced) */}
             {attributesLoaded && (
                 <div className='ChannelSettingsModal__accessRulesEditor'>
-                    <TableEditor
-                        value={expression}
-                        onChange={handleExpressionChange}
-                        onValidate={() => setFormError('')}
-                        userAttributes={userAttributes}
-                        onParseError={handleParseError}
-                        channelId={channel.id}
-                        actions={actions}
-                        enableUserManagedAttributes={accessControlSettings?.EnableUserManagedAttributes || false}
-                        isSystemAdmin={isSystemAdmin}
-                        validateExpressionAgainstRequester={actions.validateExpressionAgainstRequester}
-                    />
+                    {editorMode === 'cel' ? (
+                        <Suspense
+                            fallback={
+                                <div className='ChannelSettingsModal__editorLoading'>
+                                    <i className='fa fa-spinner fa-spin'/>
+                                    {formatMessage({id: 'channel_settings.access_rules.loading_editor', defaultMessage: 'Loading editor...'})}
+                                </div>
+                            }
+                        >
+                            <CELEditor
+                                value={expression}
+                                onChange={handleExpressionChange}
+                                onValidate={(isValid) => {
+                                    if (isValid) {
+                                        setFormError('');
+                                    }
+                                }}
+                                channelId={channel.id}
+                                userAttributes={celEditorAttributes}
+                            />
+                        </Suspense>
+                    ) : (
+                        <TableEditor
+                            value={expression}
+                            onChange={handleExpressionChange}
+                            onValidate={() => setFormError('')}
+                            userAttributes={userAttributes}
+                            onParseError={handleParseError}
+                            channelId={channel.id}
+                            actions={actions}
+                            enableUserManagedAttributes={accessControlSettings?.EnableUserManagedAttributes || false}
+                            isSystemAdmin={isSystemAdmin}
+                            validateExpressionAgainstRequester={actions.validateExpressionAgainstRequester}
+                        />
+                    )}
                 </div>
             )}
 

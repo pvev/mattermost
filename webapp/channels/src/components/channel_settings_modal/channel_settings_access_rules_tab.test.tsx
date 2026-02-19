@@ -24,6 +24,17 @@ jest.mock('components/admin_console/access_control/editors/table_editor/table_ed
     return jest.fn(() => React.createElement('div', {'data-testid': 'table-editor'}, 'TableEditor'));
 });
 
+// Mock CELEditor (lazy-loaded in the component)
+const mockCELEditorFn = jest.fn();
+jest.mock('components/admin_console/access_control/editors/cel_editor/editor', () => {
+    const React = require('react');
+    const component = (props: Record<string, unknown>) => {
+        mockCELEditorFn(props);
+        return React.createElement('div', {'data-testid': 'cel-editor'}, 'CELEditor');
+    };
+    return {__esModule: true, default: component};
+});
+
 const mockUseChannelAccessControlActions = useChannelAccessControlActions as jest.MockedFunction<typeof useChannelAccessControlActions>;
 const mockUseChannelSystemPolicies = useChannelSystemPolicies as jest.MockedFunction<typeof useChannelSystemPolicies>;
 const MockedTableEditor = TableEditor as jest.MockedFunction<typeof TableEditor>;
@@ -156,6 +167,7 @@ describe('components/channel_settings_modal/ChannelSettingsAccessRulesTab', () =
 
     beforeEach(() => {
         // Clear mocks but preserve implementations
+        mockCELEditorFn.mockClear();
         mockActions.getAccessControlFields.mockClear();
         mockActions.getChannelPolicy.mockClear();
         mockActions.saveChannelPolicy.mockClear();
@@ -255,10 +267,9 @@ describe('components/channel_settings_modal/ChannelSettingsAccessRulesTab', () =
             initialState,
         );
 
-        const header = screen.getByText('Access Rules').closest('.ChannelSettingsModal__accessRulesHeader');
+        const header = screen.getByText('Access Rules').closest('.ChannelSettingsModal__accessRulesHeaderText');
         expect(header).toBeInTheDocument();
 
-        // Check that both title and subtitle are within the header
         const title = screen.getByRole('heading', {name: 'Access Rules'});
         const subtitle = screen.getByText('Select user attributes and values as rules to restrict channel membership');
 
@@ -449,7 +460,7 @@ describe('components/channel_settings_modal/ChannelSettingsAccessRulesTab', () =
         expect(document.querySelector('.ChannelSettingsModal__accessRulesEditor')).not.toBeInTheDocument();
     });
 
-    test('should handle parse error from TableEditor', async () => {
+    test('should switch to CEL editor on parse error from TableEditor', async () => {
         renderWithContext(
             <ChannelSettingsAccessRulesTab {...baseProps}/>,
             initialState,
@@ -462,10 +473,15 @@ describe('components/channel_settings_modal/ChannelSettingsAccessRulesTab', () =
         // Get the onParseError callback passed to TableEditor
         const onParseErrorCallback = MockedTableEditor.mock.calls[0][0].onParseError;
 
-        // Simulate parse error
-        onParseErrorCallback('Parse error message');
+        // Simulate parse error - should trigger switch to CEL mode
+        act(() => {
+            onParseErrorCallback('Parse error message');
+        });
 
-        expect(console.warn).toHaveBeenCalledWith('Failed to parse expression in table editor');
+        await waitFor(() => {
+            expect(screen.getByTestId('cel-editor')).toBeInTheDocument();
+        });
+        expect(screen.queryByTestId('table-editor')).not.toBeInTheDocument();
     });
 
     describe('Auto-sync members toggle', () => {
@@ -994,7 +1010,11 @@ describe('components/channel_settings_modal/ChannelSettingsAccessRulesTab', () =
             expect(checkbox).not.toBeChecked();
         });
 
-        test('should show error state when there is a form error', async () => {
+        test('should show error state when save fails', async () => {
+            // Mock saveChannelPolicy to fail
+            mockActions.saveChannelPolicy.mockResolvedValue({error: {message: 'Save failed'}});
+            mockActions.getChannelMembers.mockResolvedValue({data: []});
+
             renderWithContext(
                 <ChannelSettingsAccessRulesTab {...baseProps}/>,
                 initialState,
@@ -1004,17 +1024,21 @@ describe('components/channel_settings_modal/ChannelSettingsAccessRulesTab', () =
                 expect(screen.getByTestId('table-editor')).toBeInTheDocument();
             });
 
-            // Trigger parse error
-            const onParseErrorCallback = MockedTableEditor.mock.calls[0][0].onParseError;
-            onParseErrorCallback('Invalid expression');
-
             // Change expression to trigger panel
             const onChangeCallback = MockedTableEditor.mock.calls[0][0].onChange;
-            onChangeCallback('invalid expression');
+            onChangeCallback('user.attributes.department == "Engineering"');
 
             await waitFor(() => {
-                const panel = screen.getByText('Invalid expression format');
-                expect(panel).toBeInTheDocument();
+                expect(screen.getByText('You have unsaved changes')).toBeInTheDocument();
+            });
+
+            // Click Save
+            const saveButton = screen.getByText('Save');
+            await userEvent.click(saveButton);
+
+            // Wait for the save process
+            await waitFor(() => {
+                expect(mockActions.saveChannelPolicy).toHaveBeenCalled();
             });
         });
 
@@ -2108,6 +2132,279 @@ describe('components/channel_settings_modal/ChannelSettingsAccessRulesTab', () =
             });
 
             expect(screen.queryByText('Exposing channel history')).not.toBeInTheDocument();
+        });
+    });
+
+    describe('Editor mode toggle (Table / CEL)', () => {
+        test('should render mode toggle when attributes are loaded', async () => {
+            renderWithContext(
+                <ChannelSettingsAccessRulesTab {...baseProps}/>,
+                initialState,
+            );
+
+            await waitFor(() => {
+                expect(screen.getByTestId('table-editor')).toBeInTheDocument();
+            });
+
+            expect(screen.getByText('Simple')).toBeInTheDocument();
+            expect(screen.getByText('Advanced')).toBeInTheDocument();
+        });
+
+        test('should not render mode toggle when attributes are not loaded', () => {
+            mockActions.getAccessControlFields.mockReturnValue(new Promise(() => {}));
+
+            renderWithContext(
+                <ChannelSettingsAccessRulesTab {...baseProps}/>,
+                initialState,
+            );
+
+            expect(screen.queryByText('Advanced')).not.toBeInTheDocument();
+            expect(screen.queryByText('Simple')).not.toBeInTheDocument();
+        });
+
+        test('should start in table mode by default with Simple segment active', async () => {
+            renderWithContext(
+                <ChannelSettingsAccessRulesTab {...baseProps}/>,
+                initialState,
+            );
+
+            await waitFor(() => {
+                expect(screen.getByTestId('table-editor')).toBeInTheDocument();
+            });
+
+            expect(screen.queryByTestId('cel-editor')).not.toBeInTheDocument();
+
+            // Simple segment should be active
+            const simpleButton = screen.getByText('Simple').closest('button');
+            expect(simpleButton).toHaveClass('active');
+        });
+
+        test('should switch to CEL mode when Advanced segment is clicked', async () => {
+            renderWithContext(
+                <ChannelSettingsAccessRulesTab {...baseProps}/>,
+                initialState,
+            );
+
+            await waitFor(() => {
+                expect(screen.getByTestId('table-editor')).toBeInTheDocument();
+            });
+
+            await userEvent.click(screen.getByText('Advanced'));
+
+            await waitFor(() => {
+                expect(screen.getByTestId('cel-editor')).toBeInTheDocument();
+            });
+
+            expect(screen.queryByTestId('table-editor')).not.toBeInTheDocument();
+
+            // Advanced segment should now be active
+            const advancedButton = screen.getByText('Advanced').closest('button');
+            expect(advancedButton).toHaveClass('active');
+        });
+
+        test('should switch back to table mode when Simple segment is clicked and expression is simple', async () => {
+            renderWithContext(
+                <ChannelSettingsAccessRulesTab {...baseProps}/>,
+                initialState,
+            );
+
+            await waitFor(() => {
+                expect(screen.getByTestId('table-editor')).toBeInTheDocument();
+            });
+
+            // Switch to CEL mode
+            await userEvent.click(screen.getByText('Advanced'));
+
+            await waitFor(() => {
+                expect(screen.getByTestId('cel-editor')).toBeInTheDocument();
+            });
+
+            // The expression is empty, so switching back to table should work
+            await userEvent.click(screen.getByText('Simple'));
+
+            await waitFor(() => {
+                expect(screen.getByTestId('table-editor')).toBeInTheDocument();
+            });
+            expect(screen.queryByTestId('cel-editor')).not.toBeInTheDocument();
+
+            // Simple segment should be active again
+            const simpleButton = screen.getByText('Simple').closest('button');
+            expect(simpleButton).toHaveClass('active');
+        });
+
+        test('should auto-switch to CEL mode when policy has complex expression', async () => {
+            // Mock existing policy with a complex expression (uses ||)
+            mockActions.getChannelPolicy.mockResolvedValue({
+                data: {
+                    id: 'channel_id',
+                    rules: [{expression: 'user.attributes.dept == "Eng" || user.attributes.dept == "Sales"'}],
+                    active: false,
+                },
+            });
+
+            renderWithContext(
+                <ChannelSettingsAccessRulesTab {...baseProps}/>,
+                initialState,
+            );
+
+            // Should auto-switch to CEL mode for complex expressions
+            await waitFor(() => {
+                expect(screen.getByTestId('cel-editor')).toBeInTheDocument();
+            });
+
+            expect(screen.queryByTestId('table-editor')).not.toBeInTheDocument();
+        });
+
+        test('should stay in table mode when policy has simple expression', async () => {
+            // Mock existing policy with a simple expression
+            mockActions.getChannelPolicy.mockResolvedValue({
+                data: {
+                    id: 'channel_id',
+                    rules: [{expression: 'user.attributes.department == "Engineering"'}],
+                    active: false,
+                },
+            });
+
+            renderWithContext(
+                <ChannelSettingsAccessRulesTab {...baseProps}/>,
+                initialState,
+            );
+
+            await waitFor(() => {
+                expect(screen.getByTestId('table-editor')).toBeInTheDocument();
+            });
+
+            expect(screen.queryByTestId('cel-editor')).not.toBeInTheDocument();
+        });
+
+        test('should auto-switch to CEL mode on parse error', async () => {
+            renderWithContext(
+                <ChannelSettingsAccessRulesTab {...baseProps}/>,
+                initialState,
+            );
+
+            await waitFor(() => {
+                expect(screen.getByTestId('table-editor')).toBeInTheDocument();
+            });
+
+            // Simulate parse error from TableEditor
+            const onParseErrorCallback = MockedTableEditor.mock.calls[0][0].onParseError;
+            act(() => {
+                onParseErrorCallback('Cannot parse expression');
+            });
+
+            await waitFor(() => {
+                expect(screen.getByTestId('cel-editor')).toBeInTheDocument();
+            });
+
+            expect(screen.queryByTestId('table-editor')).not.toBeInTheDocument();
+        });
+
+        test('should not auto-switch to CEL mode on 403 permission error', async () => {
+            renderWithContext(
+                <ChannelSettingsAccessRulesTab {...baseProps}/>,
+                initialState,
+            );
+
+            await waitFor(() => {
+                expect(screen.getByTestId('table-editor')).toBeInTheDocument();
+            });
+
+            // Simulate permission error (403) from TableEditor
+            const onParseErrorCallback = MockedTableEditor.mock.calls[0][0].onParseError;
+            act(() => {
+                onParseErrorCallback('403 Forbidden');
+            });
+
+            // Should stay in table mode
+            expect(screen.getByTestId('table-editor')).toBeInTheDocument();
+            expect(screen.queryByTestId('cel-editor')).not.toBeInTheDocument();
+        });
+
+        test('should pass correct props to CELEditor when in CEL mode', async () => {
+            renderWithContext(
+                <ChannelSettingsAccessRulesTab {...baseProps}/>,
+                initialState,
+            );
+
+            await waitFor(() => {
+                expect(screen.getByTestId('table-editor')).toBeInTheDocument();
+            });
+
+            // Switch to CEL mode
+            await userEvent.click(screen.getByText('Advanced'));
+
+            await waitFor(() => {
+                expect(screen.getByTestId('cel-editor')).toBeInTheDocument();
+            });
+
+            expect(mockCELEditorFn).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    value: '',
+                    onChange: expect.any(Function),
+                    onValidate: expect.any(Function),
+                    channelId: 'channel_id',
+                    userAttributes: expect.any(Array),
+                }),
+            );
+        });
+
+        test('should preserve expression when switching between modes', async () => {
+            renderWithContext(
+                <ChannelSettingsAccessRulesTab {...baseProps}/>,
+                initialState,
+            );
+
+            await waitFor(() => {
+                expect(screen.getByTestId('table-editor')).toBeInTheDocument();
+            });
+
+            // Set an expression in table mode
+            const onChangeCallback = MockedTableEditor.mock.calls[0][0].onChange;
+            act(() => {
+                onChangeCallback('user.attributes.department == "Engineering"');
+            });
+
+            // Switch to CEL mode
+            await userEvent.click(screen.getByText('Advanced'));
+
+            await waitFor(() => {
+                expect(screen.getByTestId('cel-editor')).toBeInTheDocument();
+            });
+
+            // CELEditor should receive the same expression
+            const celProps = mockCELEditorFn.mock.calls[mockCELEditorFn.mock.calls.length - 1][0];
+            expect(celProps.value).toBe('user.attributes.department == "Engineering"');
+        });
+
+        test('should disable toggle button when in CEL mode with complex expression', async () => {
+            renderWithContext(
+                <ChannelSettingsAccessRulesTab {...baseProps}/>,
+                initialState,
+            );
+
+            await waitFor(() => {
+                expect(screen.getByTestId('table-editor')).toBeInTheDocument();
+            });
+
+            // Switch to CEL mode
+            await userEvent.click(screen.getByText('Advanced'));
+
+            await waitFor(() => {
+                expect(screen.getByTestId('cel-editor')).toBeInTheDocument();
+            });
+
+            // Type a complex expression (uses ||)
+            const celOnChange = mockCELEditorFn.mock.calls[mockCELEditorFn.mock.calls.length - 1][0].onChange;
+            act(() => {
+                celOnChange('user.attributes.dept == "Eng" || user.attributes.dept == "Sales"');
+            });
+
+            // The "Simple" button should be disabled because expression is complex
+            await waitFor(() => {
+                const toggleButton = screen.getByText('Simple').closest('button');
+                expect(toggleButton).toBeDisabled();
+            });
         });
     });
 });

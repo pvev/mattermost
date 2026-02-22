@@ -1,0 +1,15 @@
+.AllowedOperatorsSetting {
+    // Override ReactSelect's default red/pink hover color on chip remove (x) buttons.
+    // Uses attribute substring selector to match emotion-generated class names
+    // containing "multiValue" which is stable across ReactSelect versions.
+    [class*='multiValue'] [role='button'],
+    [class*='MultiValue'] [role='button'] {
+        color: rgba(var(--center-channel-color-rgb), 0.56);
+        cursor: pointer;
+
+        &:hover {
+            background-color: rgba(var(--center-channel-color-rgb), 0.08);
+            color: rgba(var(--center-channel-color-rgb), 0.72);
+        }
+    }
+}

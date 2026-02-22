@@ -344,13 +344,17 @@ func TestGetClientConfig(t *testing.T) {
 				AccessControlSettings: model.AccessControlSettings{
 					EnableAttributeBasedAccessControl: model.NewPointer(true),
 					EnableUserManagedAttributes:       model.NewPointer(true),
+					EnableChannelAdminCELEditor:       model.NewPointer(true),
+					AllowedOperatorsForChannelAdmins:  []string{"==", "!="},
 				},
 			},
 			"",
 			nil,
 			map[string]string{
-				"EnableAttributeBasedAccessControl": "true",
-				"EnableUserManagedAttributes":       "true",
+				"EnableAttributeBasedAccessControl":    "true",
+				"EnableUserManagedAttributes":          "true",
+				"EnableChannelAdminCELEditor":          "true",
+				"AllowedOperatorsForChannelAdmins":     "==,!=",
 			},
 		},
 		{
@@ -359,13 +363,17 @@ func TestGetClientConfig(t *testing.T) {
 				AccessControlSettings: model.AccessControlSettings{
 					EnableAttributeBasedAccessControl: model.NewPointer(false),
 					EnableUserManagedAttributes:       model.NewPointer(false),
+					EnableChannelAdminCELEditor:       model.NewPointer(false),
+					AllowedOperatorsForChannelAdmins:  model.GetDefaultAllowedOperatorsForChannelAdmins(),
 				},
 			},
 			"",
 			nil,
 			map[string]string{
-				"EnableAttributeBasedAccessControl": "false",
-				"EnableUserManagedAttributes":       "false",
+				"EnableAttributeBasedAccessControl":    "false",
+				"EnableUserManagedAttributes":          "false",
+				"EnableChannelAdminCELEditor":          "false",
+				"AllowedOperatorsForChannelAdmins":     "==,!=,startsWith,endsWith,contains,in",
 			},
 		},
 		{
@@ -374,8 +382,10 @@ func TestGetClientConfig(t *testing.T) {
 			"",
 			nil,
 			map[string]string{
-				"EnableAttributeBasedAccessControl": "false",
-				"EnableUserManagedAttributes":       "false",
+				"EnableAttributeBasedAccessControl":    "false",
+				"EnableUserManagedAttributes":          "false",
+				"EnableChannelAdminCELEditor":          "false",
+				"AllowedOperatorsForChannelAdmins":     "==,!=,startsWith,endsWith,contains,in",
 			},
 		},
 		{

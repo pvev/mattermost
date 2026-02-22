@@ -74,6 +74,10 @@ function ChannelSettingsAccessRulesTab({
     // Check if current user is system admin (system admins should never be restricted)
     const isSystemAdmin = useSelector(isCurrentUserSystemAdmin);
 
+    // Config-driven controls for non-system-admins
+    const canUseAdvancedEditor = isSystemAdmin || (accessControlSettings?.EnableChannelAdminCELEditor ?? false);
+    const allowedOperators = isSystemAdmin ? undefined : (accessControlSettings?.AllowedOperatorsForChannelAdmins ?? undefined);
+
     // Editor mode state: 'table' (simple) or 'cel' (advanced)
     const [editorMode, setEditorMode] = useState<'cel' | 'table'>('table');
 
@@ -752,7 +756,7 @@ function ChannelSettingsAccessRulesTab({
                             })}
                         </p>
                     </div>
-                    {attributesLoaded && (
+                    {attributesLoaded && canUseAdvancedEditor && (
                         <div className='ChannelSettingsModal__editorModeToggle'>
                             <button
                                 className={`ChannelSettingsModal__editorModeSegment ${editorMode === 'table' ? 'active' : ''}`}
@@ -825,6 +829,7 @@ function ChannelSettingsAccessRulesTab({
                             enableUserManagedAttributes={accessControlSettings?.EnableUserManagedAttributes || false}
                             isSystemAdmin={isSystemAdmin}
                             validateExpressionAgainstRequester={actions.validateExpressionAgainstRequester}
+                            allowedOperators={allowedOperators}
                         />
                     )}
                 </div>

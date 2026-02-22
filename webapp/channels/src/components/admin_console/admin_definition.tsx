@@ -44,6 +44,7 @@ import {ID_PATH_PATTERN} from 'utils/path';
 import {getSiteURL} from 'utils/url';
 
 import PolicyList from './access_control';
+import AllowedOperatorsSetting from './access_control/allowed_operators_setting';
 import AccessControlPolicyJobs from './access_control/jobs';
 import PolicyDetails from './access_control/policy_details';
 import * as DefinitionConstants from './admin_definition_constants';
@@ -691,6 +692,32 @@ const AdminDefinition: AdminDefinitionType = {
                                             </a>
                                         ),
                                     },
+                                },
+                            ],
+                        },
+                        {
+                            key: 'admin.accesscontrol.channelAdminSettings',
+                            title: defineMessage({id: 'admin.accesscontrol.channelAdminSettings.title', defaultMessage: 'Channel Admin Controls'}),
+                            isHidden: it.any(
+                                it.configIsFalse('AccessControlSettings', 'EnableAttributeBasedAccessControl'),
+                                it.stateIsFalse('AccessControlSettings.EnableAttributeBasedAccessControl'),
+                            ),
+                            settings: [
+                                {
+                                    type: 'bool',
+                                    key: 'AccessControlSettings.EnableChannelAdminCELEditor',
+                                    label: defineMessage({id: 'admin.accesscontrol.enableCELEditor.title', defaultMessage: 'Allow channel admins to use the advanced (CEL) editor'}),
+                                    help_text: defineMessage({id: 'admin.accesscontrol.enableCELEditor.desc', defaultMessage: 'When enabled, channel and team admins can switch to the advanced CEL editor to write free-form access rule expressions. When disabled, they can only use the simple table editor.'}),
+                                    isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
+                                },
+                                {
+                                    type: 'custom',
+                                    component: AllowedOperatorsSetting,
+                                    key: 'AccessControlSettings.AllowedOperatorsForChannelAdmins',
+                                    isDisabled: it.any(
+                                        it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
+                                        it.stateIsFalse('AccessControlSettings.EnableChannelAdminCELEditor'),
+                                    ),
                                 },
                             ],
                         },

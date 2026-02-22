@@ -3905,7 +3905,13 @@ func (s *ExportSettings) SetDefaults() {
 
 type AccessControlSettings struct {
 	EnableAttributeBasedAccessControl *bool
-	EnableUserManagedAttributes       *bool `access:"write_restrictable"`
+	EnableUserManagedAttributes       *bool    `access:"write_restrictable"`
+	EnableChannelAdminCELEditor       *bool    `access:"write_restrictable"`
+	AllowedOperatorsForChannelAdmins  []string `access:"write_restrictable"`
+}
+
+func GetDefaultAllowedOperatorsForChannelAdmins() []string {
+	return []string{"==", "!=", "startsWith", "endsWith", "contains", "in"}
 }
 
 func (s *AccessControlSettings) SetDefaults() {
@@ -3915,6 +3921,14 @@ func (s *AccessControlSettings) SetDefaults() {
 
 	if s.EnableUserManagedAttributes == nil {
 		s.EnableUserManagedAttributes = NewPointer(false)
+	}
+
+	if s.EnableChannelAdminCELEditor == nil {
+		s.EnableChannelAdminCELEditor = NewPointer(false)
+	}
+
+	if s.AllowedOperatorsForChannelAdmins == nil {
+		s.AllowedOperatorsForChannelAdmins = GetDefaultAllowedOperatorsForChannelAdmins()
 	}
 }
 

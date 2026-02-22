@@ -160,6 +160,8 @@ func GenerateClientConfig(c *model.Config, telemetryID string, license *model.Li
 
 	props["EnableAttributeBasedAccessControl"] = strconv.FormatBool(*c.AccessControlSettings.EnableAttributeBasedAccessControl)
 	props["EnableUserManagedAttributes"] = strconv.FormatBool(*c.AccessControlSettings.EnableUserManagedAttributes)
+	props["EnableChannelAdminCELEditor"] = strconv.FormatBool(*c.AccessControlSettings.EnableChannelAdminCELEditor)
+	props["AllowedOperatorsForChannelAdmins"] = strings.Join(c.AccessControlSettings.AllowedOperatorsForChannelAdmins, ",")
 
 	props["WranglerPermittedWranglerRoles"] = strings.Join(c.WranglerSettings.PermittedWranglerRoles, ",")
 	props["WranglerAllowedEmailDomain"] = strings.Join(c.WranglerSettings.AllowedEmailDomain, ",")

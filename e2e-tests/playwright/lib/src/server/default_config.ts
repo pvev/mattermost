@@ -811,6 +811,8 @@ const defaultServerConfig: AdminConfig = {
     AccessControlSettings: {
         EnableAttributeBasedAccessControl: false,
         EnableUserManagedAttributes: false,
+        EnableChannelAdminCELEditor: false,
+        AllowedOperatorsForChannelAdmins: ['==', '!=', 'startsWith', 'endsWith', 'contains', 'in'],
     },
     ContentFlaggingSettings: {
         EnableContentFlagging: false,

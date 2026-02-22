@@ -37,6 +37,10 @@ interface TableEditorProps {
     // Props for user self-exclusion detection
     isSystemAdmin?: boolean;
     validateExpressionAgainstRequester?: (expression: string) => Promise<ActionResult<{requester_matches: boolean}>>;
+
+    // CEL operator strings (e.g. '==', '!=', 'contains') allowed for this user.
+    // When undefined, all operators are available (system admin default).
+    allowedOperators?: string[];
 }
 
 // Finds the first available (non-disabled) attribute from a list of user attributes.
@@ -116,6 +120,7 @@ function TableEditor({
     actions,
     isSystemAdmin = false,
     validateExpressionAgainstRequester,
+    allowedOperators,
 }: TableEditorProps): JSX.Element {
     const {formatMessage} = useIntl();
 
@@ -397,6 +402,7 @@ function TableEditor({
                                         currentOperator={row.operator}
                                         disabled={disabled}
                                         onChange={(operator) => updateRowOperator(index, operator)}
+                                        allowedOperators={allowedOperators}
                                     />
                                 </td>
                                 <td className='table-editor__cell'>

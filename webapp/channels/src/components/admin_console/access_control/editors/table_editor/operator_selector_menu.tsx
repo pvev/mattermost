@@ -13,16 +13,25 @@ import type {IDMappedObjects} from '@mattermost/types/utilities';
 
 import * as Menu from 'components/menu';
 
-import {OperatorLabel} from '../shared';
+import {OPERATOR_CONFIG, OperatorLabel} from '../shared';
 import './selector_menus.scss';
+
+// Maps CEL operator strings (from config) to OperatorLabel values (used in the UI)
+const CEL_TO_LABEL: Record<string, OperatorLabel> = Object.fromEntries(
+    Object.entries(OPERATOR_CONFIG).map(([label, config]) => [config.celOp, label as OperatorLabel]),
+);
 
 interface OperatorSelectorProps {
     currentOperator: string;
     disabled: boolean;
     onChange: (operator: string) => void;
+
+    // CEL operator strings (e.g. '==', 'contains') allowed for this user.
+    // When undefined, all operators are shown.
+    allowedOperators?: string[];
 }
 
-const OperatorSelectorMenu = ({currentOperator, disabled, onChange}: OperatorSelectorProps) => {
+const OperatorSelectorMenu = ({currentOperator, disabled, onChange, allowedOperators}: OperatorSelectorProps) => {
     const {formatMessage} = useIntl();
     const [filter, setFilter] = useState('');
 
@@ -41,12 +50,29 @@ const OperatorSelectorMenu = ({currentOperator, disabled, onChange}: OperatorSel
         setFilter(e.target.value);
     }, []);
 
+    const allowedLabels = useMemo(() => {
+        if (!allowedOperators) {
+            return undefined;
+        }
+        const labels = new Set<OperatorLabel>();
+        for (const celOp of allowedOperators) {
+            const label = CEL_TO_LABEL[celOp];
+            if (label) {
+                labels.add(label);
+            }
+        }
+        return labels;
+    }, [allowedOperators]);
+
     const filteredOperators = useMemo(() => {
         return Object.values(OPERATOR_DESCRIPTORS).filter((desc) => {
+            if (allowedLabels && !allowedLabels.has(desc.id)) {
+                return false;
+            }
             const label = formatMessage(desc.label);
             return label.toLowerCase().includes(filter.toLowerCase());
         });
-    }, [filter, formatMessage]);
+    }, [filter, formatMessage, allowedLabels]);
 
     return (
         <Menu.Container

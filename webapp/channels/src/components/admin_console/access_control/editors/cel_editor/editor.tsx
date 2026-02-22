@@ -15,7 +15,7 @@ import {MonacoLanguageProvider} from './language_provider';
 
 import CELHelpModal from '../../modals/cel_help/cel_help_modal';
 import TestResultsModal from '../../modals/policy_test/test_modal';
-import {TestButton, HelpText} from '../shared';
+import {TestButton, HelpText, findDisallowedOperators} from '../shared';
 
 import './editor.scss';
 
@@ -79,6 +79,10 @@ interface CELEditorProps {
         attribute: string;
         values: string[];
     }>;
+
+    // CEL operator strings allowed for this user.
+    // When undefined, all operators are permitted (system admin default).
+    allowedOperators?: string[];
 }
 
 // TODO: this is just a sample schema for the editor, we need to get the actual schema from the server
@@ -92,6 +96,7 @@ function CELEditor({
     channelId,
     disabled = false,
     userAttributes,
+    allowedOperators,
 }: CELEditorProps): JSX.Element {
     const intl = useIntl();
     const [editorState, setEditorState] = useState({
@@ -105,6 +110,13 @@ function CELEditor({
         testResults: null as AccessControlTestResult | null,
         isWaitingForValidation: false,
     });
+
+    // Detect disallowed operators in real-time
+    const disallowedOps = useMemo(
+        () => findDisallowedOperators(editorState.expression, allowedOperators),
+        [editorState.expression, allowedOperators],
+    );
+    const hasDisallowedOperators = disallowedOps.length > 0;
 
     const schemas = {
         user: ['attributes'],
@@ -267,6 +279,9 @@ function CELEditor({
         if (editorState.validationErrors.length > 0) {
             return 'error';
         }
+        if (hasDisallowedOperators) {
+            return 'disallowed_operators';
+        }
         if (editorState.isValid && editorState.statusBarColor === 'var(--online-indicator)') {
             return 'validated';
         }
@@ -280,7 +295,7 @@ function CELEditor({
             return 'waiting';
         }
         return 'unvalidated';
-    }, [editorState]);
+    }, [editorState, hasDisallowedOperators]);
 
     // Helper function to render status message based on state
     const renderStatusMessage = useCallback((state: string) => {
@@ -290,6 +305,19 @@ function CELEditor({
                 <span className='cel-editor__error'>
                     <i className='icon icon-alert-circle-outline'/>
                     {editorState.validationErrors[0]}
+                </span>
+            );
+        case 'disallowed_operators':
+            return (
+                <span className='cel-editor__error'>
+                    <i className='icon icon-alert-circle-outline'/>
+                    {intl.formatMessage(
+                        {
+                            id: 'admin.access_control.cel.disallowed_operators',
+                            defaultMessage: 'Expression uses operators not allowed by your administrator: {operators}',
+                        },
+                        {operators: disallowedOps.join(', ')},
+                    )}
                 </span>
             );
         case 'validated':
@@ -330,15 +358,20 @@ function CELEditor({
         default:
             return null;
         }
-    }, [editorState.validationErrors]);
+    }, [editorState.validationErrors, disallowedOps, intl]);
+
+    const effectiveStatusBarColor = hasDisallowedOperators ? 'var(--error-text)' : editorState.statusBarColor;
 
     return (
         <div className={`cel-editor ${className}`}>
-            <MonacoLanguageProvider schemas={schemas}/>
+            <MonacoLanguageProvider
+                schemas={schemas}
+                allowedOperators={allowedOperators}
+            />
 
             <div
                 className='cel-editor__container'
-                data-status-color={editorState.statusBarColor}
+                data-status-color={effectiveStatusBarColor}
             >
                 {!editorState.expression && (
                     <div
@@ -355,7 +388,7 @@ function CELEditor({
                 />
                 <div
                     className='cel-editor__status-bar'
-                    style={{backgroundColor: editorState.statusBarColor}}
+                    style={{backgroundColor: effectiveStatusBarColor}}
                     data-validation-state={getValidationState()}
                 >
                     <div className='cel-editor__status-message'>
@@ -392,7 +425,14 @@ function CELEditor({
                 </div>
                 <TestButton
                     onClick={() => setEditorState((prev) => ({...prev, showTestResults: true}))}
-                    disabled={disabled || !editorState.expression || !editorState.isValid || editorState.isValidating}
+                    disabled={disabled || !editorState.expression || !editorState.isValid || editorState.isValidating || hasDisallowedOperators}
+                    disabledTooltip={hasDisallowedOperators ? intl.formatMessage(
+                        {
+                            id: 'admin.access_control.cel.disallowed_operators_tooltip',
+                            defaultMessage: 'This expression uses operators not allowed by your administrator: {operators}',
+                        },
+                        {operators: disallowedOps.join(', ')},
+                    ) : undefined}
                 />
             </div>
             {editorState.showTestResults && (

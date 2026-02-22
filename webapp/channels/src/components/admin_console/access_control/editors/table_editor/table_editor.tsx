@@ -17,7 +17,7 @@ import ValueSelectorMenu from './value_selector_menu';
 
 import CELHelpModal from '../../modals/cel_help/cel_help_modal';
 import TestResultsModal from '../../modals/policy_test/test_modal';
-import {AddAttributeButton, TestButton, HelpText, OPERATOR_CONFIG, OPERATOR_LABELS, OperatorLabel} from '../shared';
+import {AddAttributeButton, TestButton, HelpText, OPERATOR_CONFIG, OPERATOR_LABELS, OperatorLabel, findDisallowedOperators} from '../shared';
 
 import './table_editor.scss';
 
@@ -131,6 +131,13 @@ function TableEditor({
 
     // State for user self-exclusion detection (only applies to non-system-admins)
     const [userWouldBeExcluded, setUserWouldBeExcluded] = useState(false);
+
+    // Detect disallowed operators in the current expression
+    const disallowedOps = React.useMemo(
+        () => findDisallowedOperators(value, allowedOperators),
+        [value, allowedOperators],
+    );
+    const hasDisallowedOperators = disallowedOps.length > 0;
 
     // Effect to parse the incoming CEL expression string (value prop)
     // and update the internal rows state. Handles errors during parsing.
@@ -452,14 +459,22 @@ function TableEditor({
                 />
                 <TestButton
                     onClick={() => setShowTestResults(true)}
-                    disabled={disabled || !value || userWouldBeExcluded}
+                    disabled={disabled || !value || userWouldBeExcluded || hasDisallowedOperators}
                     disabledTooltip={
-                        userWouldBeExcluded ?
-                            formatMessage({
-                                id: 'admin.access_control.table_editor.user_excluded_tooltip',
-                                defaultMessage: 'You cannot test access rules that would exclude you from the channel',
-                            }) :
-                            undefined
+                        hasDisallowedOperators ?
+                            formatMessage(
+                                {
+                                    id: 'admin.access_control.table_editor.disallowed_operators_tooltip',
+                                    defaultMessage: 'This expression uses operators not allowed by your administrator: {operators}',
+                                },
+                                {operators: disallowedOps.join(', ')},
+                            ) :
+                            userWouldBeExcluded ?
+                                formatMessage({
+                                    id: 'admin.access_control.table_editor.user_excluded_tooltip',
+                                    defaultMessage: 'You cannot test access rules that would exclude you from the channel',
+                                }) :
+                                undefined
                     }
                 />
             </div>

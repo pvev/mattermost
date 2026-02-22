@@ -17,9 +17,22 @@ interface SchemaMap {
 
 interface MonacoLanguageProviderProps {
     schemas: SchemaMap;
+
+    // CEL operator strings allowed for this user (e.g. ['==', '!=', 'contains']).
+    // When undefined, all operators are shown in autocomplete.
+    allowedOperators?: string[];
 }
 
-export function MonacoLanguageProvider({schemas}: MonacoLanguageProviderProps) {
+// Infix comparison operators. Logical connectors (&&, ||) are always shown.
+const INFIX_COMPARISON_OPERATORS: Array<{celOp: string; label: string}> = [
+    {celOp: '==', label: '=='},
+    {celOp: '!=', label: '!='},
+    {celOp: 'in', label: 'in'},
+];
+
+const LOGICAL_CONNECTORS = ['&&', '||'];
+
+export function MonacoLanguageProvider({schemas, allowedOperators}: MonacoLanguageProviderProps) {
     useEffect(() => {
         // Register our custom expression language
         if (
@@ -185,8 +198,13 @@ export function MonacoLanguageProvider({schemas}: MonacoLanguageProviderProps) {
                     const operatorMatch = textBeforePosition.match(operatorPattern);
 
                     if (operatorMatch) {
-                        // We have an entity followed by space - suggest operators
-                        const operators = ['&&', '||', '==', '!=', 'in'];
+                        const allowedSet = allowedOperators ? new Set(allowedOperators) : null;
+
+                        const filteredInfix = INFIX_COMPARISON_OPERATORS.
+                            filter((op) => !allowedSet || allowedSet.has(op.celOp)).
+                            map((op) => op.label);
+
+                        const operators = [...LOGICAL_CONNECTORS, ...filteredInfix];
 
                         return {
                             suggestions: operators.map((op) => ({
@@ -269,7 +287,7 @@ export function MonacoLanguageProvider({schemas}: MonacoLanguageProviderProps) {
         return () => {
             disposable.dispose();
         };
-    }, [schemas]);
+    }, [schemas, allowedOperators]);
 
     return null; // This component doesn't render anything
 }

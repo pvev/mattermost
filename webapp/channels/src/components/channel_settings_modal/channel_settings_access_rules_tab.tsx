@@ -12,6 +12,7 @@ import {getAccessControlSettings} from 'mattermost-redux/selectors/entities/acce
 import {getChannelMessageCount} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 
+import {findDisallowedOperators} from 'components/admin_console/access_control/editors/shared';
 import TableEditor from 'components/admin_console/access_control/editors/table_editor/table_editor';
 const CELEditor = lazy(() => import('components/admin_console/access_control/editors/cel_editor/editor'));
 import ConfirmModal from 'components/confirm_modal';
@@ -553,6 +554,21 @@ function ChannelSettingsAccessRulesTab({
                 return SAVE_RESULT_ERROR;
             }
 
+            // Validate that expression only uses allowed operators
+            if (!isSystemAdmin && expression.trim()) {
+                const disallowed = findDisallowedOperators(expression, allowedOperators);
+                if (disallowed.length > 0) {
+                    setFormError(formatMessage(
+                        {
+                            id: 'channel_settings.access_rules.error.disallowed_operators',
+                            defaultMessage: 'This expression uses operators not allowed by your administrator: {operators}. Please update the rules to use only permitted operators.',
+                        },
+                        {operators: disallowed.join(', ')},
+                    ));
+                    return SAVE_RESULT_ERROR;
+                }
+            }
+
             // Validate self-exclusion
             if (expression.trim()) {
                 const isValid = await validateSelfExclusion(expression);
@@ -611,7 +627,7 @@ function ChannelSettingsAccessRulesTab({
             }));
             return SAVE_RESULT_ERROR;
         }
-    }, [expression, originalExpression, autoSyncMembers, formatMessage, validateSelfExclusion, calculateMembershipChanges, performSave, isEmptyRulesState, channelMessageCount, isBecomingLessRestrictive]);
+    }, [expression, originalExpression, autoSyncMembers, formatMessage, validateSelfExclusion, calculateMembershipChanges, performSave, isEmptyRulesState, channelMessageCount, isBecomingLessRestrictive, allowedOperators, isSystemAdmin]);
 
     // Prevent duplicate saves with immediate response
     const saveInProgressRef = useRef(false);
@@ -815,6 +831,7 @@ function ChannelSettingsAccessRulesTab({
                                 }}
                                 channelId={channel.id}
                                 userAttributes={celEditorAttributes}
+                                allowedOperators={allowedOperators}
                             />
                         </Suspense>
                     ) : (

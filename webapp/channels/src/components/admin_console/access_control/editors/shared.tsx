@@ -53,6 +53,65 @@ export const OPERATOR_CONFIG: Record<string, {type: OperatorType; celOp: CELOper
     [OperatorLabel.IN]: {type: 'list', celOp: CELOperator.IN},
 };
 
+// Detects which CEL operators are used in an expression string.
+// Returns the set of CEL operator values (e.g. '==', 'contains') found.
+export function detectOperatorsInExpression(expression: string): Set<string> {
+    const found = new Set<string>();
+    if (!expression || !expression.trim()) {
+        return found;
+    }
+
+    // Method-style operators: .startsWith(, .endsWith(, .contains(
+    // These are unambiguous because they appear as method calls on attributes
+    if (/\.startsWith\s*\(/.test(expression)) {
+        found.add(CELOperator.STARTS_WITH);
+    }
+    if (/\.endsWith\s*\(/.test(expression)) {
+        found.add(CELOperator.ENDS_WITH);
+    }
+    if (/\.contains\s*\(/.test(expression)) {
+        found.add(CELOperator.CONTAINS);
+    }
+
+    // Comparison operators
+    if (/[^!=]==[^=]/.test(expression) || /^==[^=]/.test(expression)) {
+        found.add(CELOperator.EQUALS);
+    }
+    if (/!=/.test(expression)) {
+        found.add(CELOperator.NOT_EQUALS);
+    }
+
+    // 'in' operator: appears as ` in ` or ` in [` between expressions
+    if (/\bin\b/.test(expression)) {
+        found.add(CELOperator.IN);
+    }
+
+    return found;
+}
+
+// Returns the CEL operator strings from an expression that are NOT in the allowed list.
+// When allowedOperators is undefined/empty, returns empty (no restrictions).
+export function findDisallowedOperators(
+    expression: string,
+    allowedOperators?: string[],
+): string[] {
+    if (!allowedOperators || allowedOperators.length === 0) {
+        return [];
+    }
+
+    const used = detectOperatorsInExpression(expression);
+    const allowedSet = new Set(allowedOperators);
+    const disallowed: string[] = [];
+
+    for (const op of used) {
+        if (!allowedSet.has(op)) {
+            disallowed.push(OPERATOR_LABELS[op] || op);
+        }
+    }
+
+    return disallowed;
+}
+
 // Checks if there are any usable attributes for ABAC policies.
 // An attribute is usable if:
 // 1. It doesn't contain spaces (CEL incompatible)

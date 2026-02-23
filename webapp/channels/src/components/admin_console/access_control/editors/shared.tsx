@@ -19,6 +19,7 @@ export enum CELOperator {
     ENDS_WITH = 'endsWith',
     CONTAINS = 'contains',
     IN = 'in',
+    OR = '||',
 }
 
 // Operator label constants
@@ -29,6 +30,7 @@ export enum OperatorLabel {
     ENDS_WITH = 'ends with',
     CONTAINS = 'contains',
     IN = 'in',
+    OR = 'or (||)',
 }
 
 // Map from CEL operator to UI label
@@ -39,6 +41,7 @@ export const OPERATOR_LABELS: Record<string, string> = {
     [CELOperator.ENDS_WITH]: OperatorLabel.ENDS_WITH,
     [CELOperator.CONTAINS]: OperatorLabel.CONTAINS,
     [CELOperator.IN]: OperatorLabel.IN,
+    [CELOperator.OR]: OperatorLabel.OR,
 };
 
 type OperatorType = 'comparison' | 'method' | 'list';
@@ -84,6 +87,11 @@ export function detectOperatorsInExpression(expression: string): Set<string> {
     // 'in' operator: appears as ` in ` or ` in [` between expressions
     if (/\bin\b/.test(expression)) {
         found.add(CELOperator.IN);
+    }
+
+    // Logical OR operator
+    if (/\|\|/.test(expression)) {
+        found.add(CELOperator.OR);
     }
 
     return found;

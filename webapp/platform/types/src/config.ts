@@ -237,8 +237,8 @@ export type ClientConfig = {
     // Access Control Settings
     EnableAttributeBasedAccessControl: string;
     EnableUserManagedAttributes: string;
-    EnableChannelAdminCELEditor: string;
-    AllowedOperatorsForChannelAdmins: string;
+    EnableDelegatedCELEditor: string;
+    AllowedOperatorsForDelegatedAdmins: string;
 
     // Auto Translation Settings
     AutoTranslationLanguages: string;
@@ -1020,8 +1020,8 @@ export type ExportSettings = {
 export type AccessControlSettings = {
     EnableAttributeBasedAccessControl: boolean;
     EnableUserManagedAttributes: boolean;
-    EnableChannelAdminCELEditor: boolean;
-    AllowedOperatorsForChannelAdmins: string[];
+    EnableDelegatedCELEditor: boolean;
+    AllowedOperatorsForDelegatedAdmins: string[];
 };
 
 export type ContentFlaggingNotificationSettings = {

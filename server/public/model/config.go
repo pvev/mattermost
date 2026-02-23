@@ -3906,12 +3906,19 @@ func (s *ExportSettings) SetDefaults() {
 type AccessControlSettings struct {
 	EnableAttributeBasedAccessControl *bool
 	EnableUserManagedAttributes       *bool    `access:"write_restrictable"`
-	EnableChannelAdminCELEditor       *bool    `access:"write_restrictable"`
-	AllowedOperatorsForChannelAdmins  []string `access:"write_restrictable"`
+	EnableDelegatedCELEditor          *bool    `access:"write_restrictable"`
+	AllowedOperatorsForDelegatedAdmins []string `access:"write_restrictable"`
 }
 
-func GetDefaultAllowedOperatorsForChannelAdmins() []string {
-	return []string{"==", "!=", "startsWith", "endsWith", "contains", "in"}
+func GetDefaultAllowedOperatorsForDelegatedAdmins() []string {
+	return []string{
+		CELOperatorEquals,
+		CELOperatorNotEquals,
+		CELOperatorStartsWith,
+		CELOperatorEndsWith,
+		CELOperatorContains,
+		CELOperatorIn,
+	}
 }
 
 func (s *AccessControlSettings) SetDefaults() {
@@ -3923,12 +3930,12 @@ func (s *AccessControlSettings) SetDefaults() {
 		s.EnableUserManagedAttributes = NewPointer(false)
 	}
 
-	if s.EnableChannelAdminCELEditor == nil {
-		s.EnableChannelAdminCELEditor = NewPointer(false)
+	if s.EnableDelegatedCELEditor == nil {
+		s.EnableDelegatedCELEditor = NewPointer(false)
 	}
 
-	if s.AllowedOperatorsForChannelAdmins == nil {
-		s.AllowedOperatorsForChannelAdmins = GetDefaultAllowedOperatorsForChannelAdmins()
+	if s.AllowedOperatorsForDelegatedAdmins == nil {
+		s.AllowedOperatorsForDelegatedAdmins = GetDefaultAllowedOperatorsForDelegatedAdmins()
 	}
 }
 

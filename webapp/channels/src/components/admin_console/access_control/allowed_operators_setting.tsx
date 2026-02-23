@@ -4,34 +4,39 @@
 import React, {useCallback, useMemo} from 'react';
 import {defineMessage, useIntl} from 'react-intl';
 
+import {CELOperator} from 'components/admin_console/access_control/editors/shared';
 import MultiSelectSetting from 'components/admin_console/multiselect_settings';
 
 import './allowed_operators_setting.scss';
 
 const ALL_OPERATORS = [
     {
-        value: '==',
+        value: CELOperator.EQUALS,
         label: defineMessage({id: 'admin.accesscontrol.operator.equals', defaultMessage: 'is (equals)'}),
     },
     {
-        value: '!=',
+        value: CELOperator.NOT_EQUALS,
         label: defineMessage({id: 'admin.accesscontrol.operator.not_equals', defaultMessage: 'is not (not equals)'}),
     },
     {
-        value: 'in',
+        value: CELOperator.IN,
         label: defineMessage({id: 'admin.accesscontrol.operator.in', defaultMessage: 'in (list membership)'}),
     },
     {
-        value: 'startsWith',
+        value: CELOperator.STARTS_WITH,
         label: defineMessage({id: 'admin.accesscontrol.operator.starts_with', defaultMessage: 'starts with'}),
     },
     {
-        value: 'endsWith',
+        value: CELOperator.ENDS_WITH,
         label: defineMessage({id: 'admin.accesscontrol.operator.ends_with', defaultMessage: 'ends with'}),
     },
     {
-        value: 'contains',
+        value: CELOperator.CONTAINS,
         label: defineMessage({id: 'admin.accesscontrol.operator.contains', defaultMessage: 'contains'}),
+    },
+    {
+        value: CELOperator.OR,
+        label: defineMessage({id: 'admin.accesscontrol.operator.or', defaultMessage: 'or (||) - allows combining conditions with OR logic'}),
     },
 ];
 
@@ -77,7 +82,7 @@ const AllowedOperatorsSetting: React.FC<Props> = ({
                 values={options}
                 label={formatMessage({
                     id: 'admin.accesscontrol.allowedOperators.title',
-                    defaultMessage: 'Allowed operators for channel admins',
+                    defaultMessage: 'Allowed operators for delegated admins',
                 })}
                 helpText={formatMessage({
                     id: 'admin.accesscontrol.allowedOperators.desc',

@@ -26,9 +26,9 @@ export const getAccessControlSettings = createSelector(
         return {
             EnableAttributeBasedAccessControl: config?.EnableAttributeBasedAccessControl === 'true',
             EnableUserManagedAttributes: config?.EnableUserManagedAttributes === 'true',
-            EnableChannelAdminCELEditor: config?.EnableChannelAdminCELEditor === 'true',
-            AllowedOperatorsForChannelAdmins: config?.AllowedOperatorsForChannelAdmins
-                ? config.AllowedOperatorsForChannelAdmins.split(',')
+            EnableDelegatedCELEditor: config?.EnableDelegatedCELEditor === 'true',
+            AllowedOperatorsForDelegatedAdmins: config?.AllowedOperatorsForDelegatedAdmins
+                ? config.AllowedOperatorsForDelegatedAdmins.split(',')
                 : ['==', '!=', 'startsWith', 'endsWith', 'contains', 'in'],
         } as AccessControlSettings;
     },

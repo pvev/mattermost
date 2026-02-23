@@ -6,6 +6,7 @@ package app
 import (
 	"net/http"
 	"slices"
+	"strings"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
@@ -450,6 +451,24 @@ func (a *App) ValidateChannelAccessControlPolicyCreation(rctx request.CTX, userI
 
 	// For channel-type policies, validate channel-specific permission (policy ID equals channel ID)
 	return a.ValidateChannelAccessControlPermission(rctx, userID, policy.ID)
+}
+
+// ValidateExpressionOperators checks that a CEL expression only uses operators
+// permitted by the AllowedOperatorsForDelegatedAdmins configuration. Returns an
+// error listing the disallowed operators found, or nil if all are permitted.
+func (a *App) ValidateExpressionOperators(expression string) *model.AppError {
+	allowedOps := a.Config().AccessControlSettings.AllowedOperatorsForDelegatedAdmins
+	disallowed := model.FindDisallowedOperators(expression, allowedOps)
+	if len(disallowed) > 0 {
+		return model.NewAppError(
+			"ValidateExpressionOperators",
+			"app.access_control.disallowed_operators",
+			map[string]any{"Operators": strings.Join(disallowed, ", ")},
+			"expression contains operators not permitted by configuration: "+strings.Join(disallowed, ", "),
+			http.StatusBadRequest,
+		)
+	}
+	return nil
 }
 
 // TestExpressionWithChannelContext tests expressions for channel admins with attribute validation

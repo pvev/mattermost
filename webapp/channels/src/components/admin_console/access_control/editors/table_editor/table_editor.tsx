@@ -21,6 +21,40 @@ import {AddAttributeButton, TestButton, HelpText, OPERATOR_CONFIG, OPERATOR_LABE
 
 import './table_editor.scss';
 
+// Order in which operators are preferred when choosing a default.
+const DEFAULT_OPERATOR_PREFERENCE: OperatorLabel[] = [
+    OperatorLabel.IS,
+    OperatorLabel.IS_NOT,
+    OperatorLabel.IN,
+    OperatorLabel.STARTS_WITH,
+    OperatorLabel.ENDS_WITH,
+    OperatorLabel.CONTAINS,
+];
+
+// CEL operator string → OperatorLabel lookup
+const CEL_OP_TO_LABEL: Record<string, OperatorLabel> = Object.fromEntries(
+    Object.entries(OPERATOR_CONFIG).map(([label, cfg]) => [cfg.celOp, label as OperatorLabel]),
+);
+
+// Returns the best default OperatorLabel considering which CEL operators are allowed.
+function getDefaultOperator(allowedOperators?: string[]): OperatorLabel {
+    if (!allowedOperators || allowedOperators.length === 0) {
+        return OperatorLabel.IS;
+    }
+
+    const allowedLabels = new Set(
+        allowedOperators.map((op) => CEL_OP_TO_LABEL[op]).filter(Boolean),
+    );
+
+    for (const label of DEFAULT_OPERATOR_PREFERENCE) {
+        if (allowedLabels.has(label)) {
+            return label;
+        }
+    }
+
+    return OperatorLabel.IS;
+}
+
 interface TableEditorProps {
     value: string;
     onChange: (value: string) => void;
@@ -268,17 +302,17 @@ function TableEditor({
 
         setRows((currentRows) => {
             const newRow = {
-                attribute: firstAvailableAttribute.name, // Default to the first available attribute
-                operator: OperatorLabel.IS, // Default operator
+                attribute: firstAvailableAttribute.name,
+                operator: getDefaultOperator(allowedOperators),
                 values: [],
                 attribute_type: userAttributes[0]?.type || '',
             };
             const newRows = [...currentRows, newRow];
-            updateExpression(newRows); // Ensure expression is updated immediately
-            setAutoOpenAttributeMenuForRow(newRows.length - 1); // Set for the new row
+            updateExpression(newRows);
+            setAutoOpenAttributeMenuForRow(newRows.length - 1);
             return newRows;
         });
-    }, [userAttributes, updateExpression, findFirstAvailableAttribute]);
+    }, [userAttributes, updateExpression, findFirstAvailableAttribute, allowedOperators]);
 
     const removeRow = useCallback((index: number) => {
         setRows((currentRows) => {
@@ -294,15 +328,14 @@ function TableEditor({
             const oldAttribute = newRows[index].attribute;
             newRows[index] = {...newRows[index], attribute};
 
-            // If attribute changes, we are resetting values.
             if (oldAttribute !== attribute) {
                 newRows[index].values = [];
-                newRows[index].operator = OperatorLabel.IS;
+                newRows[index].operator = getDefaultOperator(allowedOperators);
             }
             updateExpression(newRows);
             return newRows;
         });
-    }, [updateExpression]);
+    }, [updateExpression, allowedOperators]);
 
     const updateRowOperator = useCallback((index: number, newOperator: string) => {
         setRows((currentRows) => {

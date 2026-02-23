@@ -71,6 +71,14 @@ func createAccessControlPolicy(c *Context, w http.ResponseWriter, r *http.Reques
 				return
 			}
 
+			// Validate operators in all rules before saving
+			for _, rule := range policy.Rules {
+				if appErr := c.App.ValidateExpressionOperators(rule.Expression); appErr != nil {
+					c.Err = appErr
+					return
+				}
+			}
+
 			// Now do the full validation (channel exists, is private, etc.)
 			if appErr := c.App.ValidateChannelAccessControlPolicyCreation(c.AppContext, c.AppContext.Session().UserId, &policy); appErr != nil {
 				c.Err = appErr
@@ -205,6 +213,13 @@ func checkExpression(c *Context, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if !hasSystemPermission {
+		if appErr := c.App.ValidateExpressionOperators(checkExpressionRequest.Expression); appErr != nil {
+			c.Err = appErr
+			return
+		}
+	}
+
 	errs, appErr := c.App.CheckExpression(c.AppContext, checkExpressionRequest.Expression)
 	if appErr != nil {
 		c.Err = appErr
@@ -249,6 +264,13 @@ func testExpression(c *Context, w http.ResponseWriter, r *http.Request) {
 		hasChannelPermission, _ := c.App.HasPermissionToChannel(c.AppContext, c.AppContext.Session().UserId, channelId, model.PermissionManageChannelAccessRules)
 		if !hasChannelPermission {
 			c.SetPermissionError(model.PermissionManageChannelAccessRules)
+			return
+		}
+	}
+
+	if !hasSystemPermission {
+		if appErr := c.App.ValidateExpressionOperators(checkExpressionRequest.Expression); appErr != nil {
+			c.Err = appErr
 			return
 		}
 	}
@@ -325,6 +347,13 @@ func validateExpressionAgainstRequester(c *Context, w http.ResponseWriter, r *ht
 		hasChannelPermission, _ := c.App.HasPermissionToChannel(c.AppContext, c.AppContext.Session().UserId, channelId, model.PermissionManageChannelAccessRules)
 		if !hasChannelPermission {
 			c.SetPermissionError(model.PermissionManageChannelAccessRules)
+			return
+		}
+	}
+
+	if !hasSystemPermission {
+		if appErr := c.App.ValidateExpressionOperators(request.Expression); appErr != nil {
+			c.Err = appErr
 			return
 		}
 	}

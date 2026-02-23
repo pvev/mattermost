@@ -344,17 +344,17 @@ func TestGetClientConfig(t *testing.T) {
 				AccessControlSettings: model.AccessControlSettings{
 					EnableAttributeBasedAccessControl: model.NewPointer(true),
 					EnableUserManagedAttributes:       model.NewPointer(true),
-					EnableChannelAdminCELEditor:       model.NewPointer(true),
-					AllowedOperatorsForChannelAdmins:  []string{"==", "!="},
-				},
+				EnableDelegatedCELEditor:            model.NewPointer(true),
+				AllowedOperatorsForDelegatedAdmins:  []string{"==", "!="},
 			},
-			"",
-			nil,
-			map[string]string{
-				"EnableAttributeBasedAccessControl":    "true",
-				"EnableUserManagedAttributes":          "true",
-				"EnableChannelAdminCELEditor":          "true",
-				"AllowedOperatorsForChannelAdmins":     "==,!=",
+		},
+		"",
+		nil,
+		map[string]string{
+			"EnableAttributeBasedAccessControl":      "true",
+			"EnableUserManagedAttributes":            "true",
+			"EnableDelegatedCELEditor":               "true",
+			"AllowedOperatorsForDelegatedAdmins":     "==,!=",
 			},
 		},
 		{
@@ -363,17 +363,17 @@ func TestGetClientConfig(t *testing.T) {
 				AccessControlSettings: model.AccessControlSettings{
 					EnableAttributeBasedAccessControl: model.NewPointer(false),
 					EnableUserManagedAttributes:       model.NewPointer(false),
-					EnableChannelAdminCELEditor:       model.NewPointer(false),
-					AllowedOperatorsForChannelAdmins:  model.GetDefaultAllowedOperatorsForChannelAdmins(),
-				},
+				EnableDelegatedCELEditor:            model.NewPointer(false),
+				AllowedOperatorsForDelegatedAdmins:  model.GetDefaultAllowedOperatorsForDelegatedAdmins(),
 			},
-			"",
-			nil,
-			map[string]string{
-				"EnableAttributeBasedAccessControl":    "false",
-				"EnableUserManagedAttributes":          "false",
-				"EnableChannelAdminCELEditor":          "false",
-				"AllowedOperatorsForChannelAdmins":     "==,!=,startsWith,endsWith,contains,in",
+		},
+		"",
+		nil,
+		map[string]string{
+			"EnableAttributeBasedAccessControl":      "false",
+			"EnableUserManagedAttributes":            "false",
+			"EnableDelegatedCELEditor":               "false",
+			"AllowedOperatorsForDelegatedAdmins":     "==,!=,startsWith,endsWith,contains,in",
 			},
 		},
 		{
@@ -384,8 +384,8 @@ func TestGetClientConfig(t *testing.T) {
 			map[string]string{
 				"EnableAttributeBasedAccessControl":    "false",
 				"EnableUserManagedAttributes":          "false",
-				"EnableChannelAdminCELEditor":          "false",
-				"AllowedOperatorsForChannelAdmins":     "==,!=,startsWith,endsWith,contains,in",
+			"EnableDelegatedCELEditor":               "false",
+			"AllowedOperatorsForDelegatedAdmins":     "==,!=,startsWith,endsWith,contains,in",
 			},
 		},
 		{

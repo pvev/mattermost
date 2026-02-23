@@ -6,6 +6,7 @@ package model
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
@@ -264,4 +265,99 @@ func (p *AccessControlPolicy) Auditable() map[string]any {
 		"type":     p.Type,
 		"revision": p.Revision,
 	}
+}
+
+// CEL operator identifier constants used for operator detection and configuration.
+const (
+	CELOperatorEquals     = "=="
+	CELOperatorNotEquals  = "!="
+	CELOperatorStartsWith = "startsWith"
+	CELOperatorEndsWith   = "endsWith"
+	CELOperatorContains   = "contains"
+	CELOperatorIn         = "in"
+	CELOperatorOr         = "||"
+)
+
+// DetectOperatorsInExpression parses a CEL expression string and returns the set
+// of operator identifiers found (e.g. CELOperatorEquals, CELOperatorContains).
+// Uses pattern matching so may produce false positives for operators appearing
+// inside string literals, which is acceptable for security validation (overly
+// restrictive is safer than permissive).
+func DetectOperatorsInExpression(expression string) map[string]bool {
+	found := make(map[string]bool)
+	if len(strings.TrimSpace(expression)) == 0 {
+		return found
+	}
+
+	// Method-style operators
+	if strings.Contains(expression, ".startsWith(") || strings.Contains(expression, ".startsWith (") {
+		found[CELOperatorStartsWith] = true
+	}
+	if strings.Contains(expression, ".endsWith(") || strings.Contains(expression, ".endsWith (") {
+		found[CELOperatorEndsWith] = true
+	}
+	if strings.Contains(expression, ".contains(") || strings.Contains(expression, ".contains (") {
+		found[CELOperatorContains] = true
+	}
+
+	// Infix comparison operators
+	for i := 0; i < len(expression)-1; i++ {
+		if expression[i] == '=' && expression[i+1] == '=' {
+			if i == 0 || expression[i-1] != '!' {
+				found[CELOperatorEquals] = true
+			}
+			i++
+		} else if expression[i] == '!' && expression[i+1] == '=' {
+			found[CELOperatorNotEquals] = true
+			i++
+		} else if expression[i] == '|' && expression[i+1] == '|' {
+			found[CELOperatorOr] = true
+			i++
+		}
+	}
+
+	// 'in' keyword: match word boundary
+	for i := 0; i <= len(expression)-2; i++ {
+		if expression[i:i+2] != CELOperatorIn {
+			continue
+		}
+		if i > 0 && isAlphaNumericOrUnderscore(expression[i-1]) {
+			continue
+		}
+		if i+2 < len(expression) && isAlphaNumericOrUnderscore(expression[i+2]) {
+			continue
+		}
+		found[CELOperatorIn] = true
+		break
+	}
+
+	return found
+}
+
+func isAlphaNumericOrUnderscore(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9') || b == '_'
+}
+
+// FindDisallowedOperators checks a CEL expression against a list of allowed operator
+// strings and returns the operators found in the expression that are NOT in the
+// allowed list. Returns nil if all operators are permitted or if allowedOperators
+// is empty (no restrictions).
+func FindDisallowedOperators(expression string, allowedOperators []string) []string {
+	if len(allowedOperators) == 0 {
+		return nil
+	}
+
+	allowedSet := make(map[string]bool, len(allowedOperators))
+	for _, op := range allowedOperators {
+		allowedSet[op] = true
+	}
+
+	detected := DetectOperatorsInExpression(expression)
+	var disallowed []string
+	for op := range detected {
+		if !allowedSet[op] {
+			disallowed = append(disallowed, op)
+		}
+	}
+	return disallowed
 }

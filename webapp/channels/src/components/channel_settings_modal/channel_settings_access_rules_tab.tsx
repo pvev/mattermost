@@ -76,8 +76,8 @@ function ChannelSettingsAccessRulesTab({
     const isSystemAdmin = useSelector(isCurrentUserSystemAdmin);
 
     // Config-driven controls for non-system-admins
-    const canUseAdvancedEditor = isSystemAdmin || (accessControlSettings?.EnableChannelAdminCELEditor ?? false);
-    const allowedOperators = isSystemAdmin ? undefined : (accessControlSettings?.AllowedOperatorsForChannelAdmins ?? undefined);
+    const canUseAdvancedEditor = isSystemAdmin || (accessControlSettings?.EnableDelegatedCELEditor ?? false);
+    const allowedOperators = isSystemAdmin ? undefined : (accessControlSettings?.AllowedOperatorsForDelegatedAdmins ?? undefined);
 
     // Editor mode state: 'table' (simple) or 'cel' (advanced)
     const [editorMode, setEditorMode] = useState<'cel' | 'table'>('table');

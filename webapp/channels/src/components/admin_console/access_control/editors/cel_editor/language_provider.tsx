@@ -4,6 +4,8 @@
 import * as monaco from 'monaco-editor';
 import {useEffect} from 'react';
 
+import {CELOperator} from 'components/admin_console/access_control/editors/shared';
+
 const POLICY_LANGUAGE_NAME = 'expressionLanguage';
 
 // Enhanced schema interface to support different types of values
@@ -23,14 +25,16 @@ interface MonacoLanguageProviderProps {
     allowedOperators?: string[];
 }
 
-// Infix comparison operators. Logical connectors (&&, ||) are always shown.
-const INFIX_COMPARISON_OPERATORS: Array<{celOp: string; label: string}> = [
-    {celOp: '==', label: '=='},
-    {celOp: '!=', label: '!='},
-    {celOp: 'in', label: 'in'},
+// Operators that can be filtered by the allowed operators config.
+// && (AND) is always shown since it only makes rules more restrictive.
+const FILTERABLE_OPERATORS: Array<{celOp: string; label: string}> = [
+    {celOp: CELOperator.EQUALS, label: CELOperator.EQUALS},
+    {celOp: CELOperator.NOT_EQUALS, label: CELOperator.NOT_EQUALS},
+    {celOp: CELOperator.IN, label: CELOperator.IN},
+    {celOp: CELOperator.OR, label: CELOperator.OR},
 ];
 
-const LOGICAL_CONNECTORS = ['&&', '||'];
+const ALWAYS_ALLOWED_OPERATORS = ['&&'];
 
 export function MonacoLanguageProvider({schemas, allowedOperators}: MonacoLanguageProviderProps) {
     useEffect(() => {
@@ -200,11 +204,11 @@ export function MonacoLanguageProvider({schemas, allowedOperators}: MonacoLangua
                     if (operatorMatch) {
                         const allowedSet = allowedOperators ? new Set(allowedOperators) : null;
 
-                        const filteredInfix = INFIX_COMPARISON_OPERATORS.
+                        const filteredOps = FILTERABLE_OPERATORS.
                             filter((op) => !allowedSet || allowedSet.has(op.celOp)).
                             map((op) => op.label);
 
-                        const operators = [...LOGICAL_CONNECTORS, ...filteredInfix];
+                        const operators = [...ALWAYS_ALLOWED_OPERATORS, ...filteredOps];
 
                         return {
                             suggestions: operators.map((op) => ({

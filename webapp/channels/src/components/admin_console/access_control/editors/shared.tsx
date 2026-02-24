@@ -66,31 +66,31 @@ export function detectOperatorsInExpression(expression: string): Set<string> {
 
     // Method-style operators: .startsWith(, .endsWith(, .contains(
     // These are unambiguous because they appear as method calls on attributes
-    if (/\.startsWith\s*\(/.test(expression)) {
+    if ((/\.startsWith\s*\(/).test(expression)) {
         found.add(CELOperator.STARTS_WITH);
     }
-    if (/\.endsWith\s*\(/.test(expression)) {
+    if ((/\.endsWith\s*\(/).test(expression)) {
         found.add(CELOperator.ENDS_WITH);
     }
-    if (/\.contains\s*\(/.test(expression)) {
+    if ((/\.contains\s*\(/).test(expression)) {
         found.add(CELOperator.CONTAINS);
     }
 
     // Comparison operators
-    if (/[^!=]==[^=]/.test(expression) || /^==[^=]/.test(expression)) {
+    if ((/[^!=]==[^=]/).test(expression) || (/^==[^=]/).test(expression)) {
         found.add(CELOperator.EQUALS);
     }
-    if (/!=/.test(expression)) {
+    if ((/!=/).test(expression)) {
         found.add(CELOperator.NOT_EQUALS);
     }
 
     // 'in' operator: appears as ` in ` or ` in [` between expressions
-    if (/\bin\b/.test(expression)) {
+    if ((/\bin\b/).test(expression)) {
         found.add(CELOperator.IN);
     }
 
     // Logical OR operator
-    if (/\|\|/.test(expression)) {
+    if ((/\|\|/).test(expression)) {
         found.add(CELOperator.OR);
     }
 

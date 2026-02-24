@@ -9,7 +9,6 @@ import {defineMessage, FormattedMessage, useIntl} from 'react-intl';
 
 import {CheckIcon, ElementOfIcon, EqualIcon, FunctionIcon, NotEqualVariantIcon} from '@mattermost/compass-icons/components';
 import type IconProps from '@mattermost/compass-icons/components/props';
-import type {IDMappedObjects} from '@mattermost/types/utilities';
 
 import * as Menu from 'components/menu';
 
@@ -149,7 +148,7 @@ type OperatorDescriptor = {
     label: MessageDescriptor;
 };
 
-const OPERATOR_DESCRIPTORS: IDMappedObjects<OperatorDescriptor> = {
+const OPERATOR_DESCRIPTORS: Record<string, OperatorDescriptor> = {
     [OperatorLabel.IS]: {
         id: OperatorLabel.IS,
         icon: EqualIcon,

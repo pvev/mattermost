@@ -27,9 +27,9 @@ export const getAccessControlSettings = createSelector(
             EnableAttributeBasedAccessControl: config?.EnableAttributeBasedAccessControl === 'true',
             EnableUserManagedAttributes: config?.EnableUserManagedAttributes === 'true',
             EnableDelegatedCELEditor: config?.EnableDelegatedCELEditor === 'true',
-            AllowedOperatorsForDelegatedAdmins: config?.AllowedOperatorsForDelegatedAdmins
-                ? config.AllowedOperatorsForDelegatedAdmins.split(',')
-                : ['==', '!=', 'startsWith', 'endsWith', 'contains', 'in'],
+            AllowedOperatorsForDelegatedAdmins: config?.AllowedOperatorsForDelegatedAdmins ?
+                config.AllowedOperatorsForDelegatedAdmins.split(',') :
+                ['==', '!=', 'startsWith', 'endsWith', 'contains', 'in'],
         } as AccessControlSettings;
     },
 );

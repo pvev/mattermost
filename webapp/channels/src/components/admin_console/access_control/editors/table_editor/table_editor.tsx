@@ -375,6 +375,22 @@ function TableEditor({
         });
     }, [updateExpression]);
 
+    let testButtonTooltip: string | undefined;
+    if (hasDisallowedOperators) {
+        testButtonTooltip = formatMessage(
+            {
+                id: 'admin.access_control.table_editor.disallowed_operators_tooltip',
+                defaultMessage: 'This expression uses operators not allowed by your administrator: {operators}',
+            },
+            {operators: disallowedOps.join(', ')},
+        );
+    } else if (userWouldBeExcluded) {
+        testButtonTooltip = formatMessage({
+            id: 'admin.access_control.table_editor.user_excluded_tooltip',
+            defaultMessage: 'You cannot test access rules that would exclude you from the channel',
+        });
+    }
+
     return (
         <div className='table-editor'>
             <table className='table-editor__table'>
@@ -493,22 +509,7 @@ function TableEditor({
                 <TestButton
                     onClick={() => setShowTestResults(true)}
                     disabled={disabled || !value || userWouldBeExcluded || hasDisallowedOperators}
-                    disabledTooltip={
-                        hasDisallowedOperators ?
-                            formatMessage(
-                                {
-                                    id: 'admin.access_control.table_editor.disallowed_operators_tooltip',
-                                    defaultMessage: 'This expression uses operators not allowed by your administrator: {operators}',
-                                },
-                                {operators: disallowedOps.join(', ')},
-                            ) :
-                            userWouldBeExcluded ?
-                                formatMessage({
-                                    id: 'admin.access_control.table_editor.user_excluded_tooltip',
-                                    defaultMessage: 'You cannot test access rules that would exclude you from the channel',
-                                }) :
-                                undefined
-                    }
+                    disabledTooltip={testButtonTooltip}
                 />
             </div>
 

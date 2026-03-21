@@ -9,23 +9,14 @@ import {GenericModal} from '@mattermost/components';
 import './burn_on_read_screenshot_warning_modal.scss';
 
 interface Props {
-    /** Whether the modal is currently visible */
-    show: boolean;
 
-    /** Callback invoked when user acknowledges the warning */
+    show: boolean;
     onConfirm: () => void;
 }
 
 /**
- * Modal displayed when a screenshot attempt is detected on a revealed Burn-on-Read message.
- *
- * This modal is intentionally restrictive:
- * - Cannot be closed via backdrop click
- * - Cannot be closed via Escape key
- * - No X close button
- * - Only way to dismiss is clicking "I Understand"
- *
- * The backdrop is fully opaque to prevent viewing the content while the modal is open.
+ * Warning modal shown on screenshot attempt. Dismissable only via confirm button;
+ * opaque backdrop prevents content capture while displayed.
  */
 const BurnOnReadScreenshotWarningModal: React.FC<Props> = ({show, onConfirm}) => {
     const {formatMessage} = useIntl();
@@ -49,10 +40,8 @@ const BurnOnReadScreenshotWarningModal: React.FC<Props> = ({show, onConfirm}) =>
         defaultMessage: 'I Understand',
     });
 
-    // Empty handler to prevent closing via backdrop or escape key
-    const preventClose = useCallback((): void => {
-        // Intentionally empty - modal can only be closed via confirm button
-    }, []);
+    // No-op: forces dismissal through the confirm button only.
+    const preventClose = useCallback((): void => {}, []);
 
     return (
         <GenericModal

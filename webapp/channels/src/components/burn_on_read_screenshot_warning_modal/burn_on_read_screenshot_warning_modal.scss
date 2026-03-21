@@ -1,28 +1,17 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-/**
- * Styles for the Burn-on-Read screenshot warning modal.
- *
- * The backdrop is intentionally opaque to prevent viewing sensitive content
- * while the warning is displayed. This provides an additional layer of
- * protection by obscuring the BoR message during screenshot attempts.
- */
-
-// Fully opaque backdrop - prevents seeing content while modal is open
+// Opaque backdrop overrides Bootstrap defaults to hide content during the warning.
 .BurnOnReadScreenshotWarningModal__backdrop {
-    // Using !important to override Bootstrap's default backdrop opacity
-    // This is intentional for security purposes
-    background-color: rgb(0 0 0) !important;
-    opacity: 1 !important;
+    background-color: rgb(0 0 0) !important; // stylelint-disable-line declaration-no-important
+    opacity: 1 !important; // stylelint-disable-line declaration-no-important
 }
 
 .BurnOnReadScreenshotWarningModal {
-    // Modal body styling
     .BurnOnReadScreenshotWarningModal__body {
         padding: 16px 0;
+        color: var(--center-channel-color);
         font-size: 14px;
         line-height: 20px;
-        color: var(--center-channel-color);
     }
 }

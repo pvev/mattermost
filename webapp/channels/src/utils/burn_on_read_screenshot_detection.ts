@@ -2,47 +2,24 @@
 // See LICENSE.txt for license information.
 
 /**
- * ScreenshotDetectionManager
+ * Singleton that provides screenshot deterrence for Burn-on-Read messages.
  *
- * A singleton manager that provides screenshot deterrence for Burn-on-Read messages.
- * It handles two main protection mechanisms:
+ * - Detects platform-specific screenshot shortcuts (Cmd+Shift on Mac,
+ *   Win+Shift+S / PrintScreen on Windows/Linux) and fires a callback.
+ * - Applies a CSS blur class to BoR content when the window loses focus.
  *
- * 1. Screenshot shortcut detection: Monitors keyboard for screenshot shortcuts
- *    (Cmd+Shift+3/4/5 on Mac, Windows+Shift+S or PrintScreen on Windows)
- *    and triggers a callback when detected.
- *
- * 2. Window blur protection: Applies a CSS class to blur BoR content when
- *    the browser window loses focus (e.g., switching to another app).
- *
- * The manager uses a reference counting pattern to ensure listeners are only
- * registered when at least one BoR timer chip is visible, and automatically
- * cleaned up when all chips are unmounted.
- *
- * @example
- * // In a React component:
- * useEffect(() => {
- *     screenshotDetectionManager.register(() => showWarningModal());
- *     return () => screenshotDetectionManager.unregister();
- * }, []);
+ * Uses ref-counting so listeners attach on the first registration
+ * and detach when all consumers unregister.
  */
 
-/** Callback invoked when a screenshot attempt is detected */
 type ScreenshotDetectedCallback = () => void;
-
-/** Timer handle type compatible with both Node.js and browser environments */
 type TimeoutHandle = ReturnType<typeof setTimeout>;
 
-// Configuration constants
-const SCREENSHOT_DETECTION_DELAY_MS = 350; // Time to wait before triggering warning after Cmd+Shift
-const CALLBACK_THROTTLE_MS = 2000; // Minimum time between callback invocations
-const BLUR_SETTLE_DELAY_MS = 100; // Time to let focus settle before checking document.hasFocus()
+const SCREENSHOT_DETECTION_DELAY_MS = 350;
+const CALLBACK_THROTTLE_MS = 2000;
+const BLUR_SETTLE_DELAY_MS = 100;
 
-/**
- * Detects the current operating system platform.
- * Uses modern navigator.userAgentData when available, falls back to userAgent parsing.
- */
 function detectPlatform(): {isMac: boolean; isWindows: boolean; isLinux: boolean} {
-    // Try modern API first (Chromium-based browsers)
     const userAgentData = (navigator as Navigator & {userAgentData?: {platform?: string}}).userAgentData;
     if (userAgentData?.platform) {
         const platform = userAgentData.platform.toUpperCase();
@@ -53,7 +30,6 @@ function detectPlatform(): {isMac: boolean; isWindows: boolean; isLinux: boolean
         };
     }
 
-    // Fallback to userAgent parsing
     const ua = navigator.userAgent.toUpperCase();
     return {
         isMac: ua.includes('MAC'),
@@ -62,7 +38,6 @@ function detectPlatform(): {isMac: boolean; isWindows: boolean; isLinux: boolean
     };
 }
 
-/** CSS class applied to document.body when window loses focus */
 const BLUR_CLASS = 'bor-window-blurred';
 
 class ScreenshotDetectionManager {
@@ -70,29 +45,23 @@ class ScreenshotDetectionManager {
     private isListenerRegistered = false;
     private callback: ScreenshotDetectedCallback | null = null;
 
-    // Event handler references for cleanup
     private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
     private keyupHandler: ((e: KeyboardEvent) => void) | null = null;
     private blurHandler: (() => void) | null = null;
     private focusHandler: (() => void) | null = null;
     private visibilityChangeHandler: (() => void) | null = null;
 
-    // Keyboard state tracking
     private cmdKeyPressed = false;
     private shiftKeyPressed = false;
     private otherKeyPressed = false;
     private lastCallbackTime = 0;
     private warningTimeout: TimeoutHandle | null = null;
+    private blurSettleTimeout: TimeoutHandle | null = null;
 
-    /**
-     * Registers a callback to be invoked when a screenshot attempt is detected.
-     * Multiple registrations increment a reference count; listeners are only
-     * attached on the first registration.
-     *
-     * @param callback - Function to call when screenshot is detected
-     */
     public register(callback: ScreenshotDetectedCallback): void {
         this.listenerCount++;
+
+        // Single callback by design — ref-counting controls listener lifecycle only.
         this.callback = callback;
 
         if (!this.isListenerRegistered) {
@@ -100,10 +69,6 @@ class ScreenshotDetectionManager {
         }
     }
 
-    /**
-     * Decrements the registration count. When count reaches zero,
-     * all event listeners are removed and state is reset.
-     */
     public unregister(): void {
         this.listenerCount = Math.max(0, this.listenerCount - 1);
 
@@ -112,17 +77,10 @@ class ScreenshotDetectionManager {
         }
     }
 
-    /**
-     * Returns the current number of active registrations.
-     * Useful for debugging and testing.
-     */
     public getRegistrationCount(): number {
         return this.listenerCount;
     }
 
-    /**
-     * Attaches all event listeners for screenshot detection and blur protection.
-     */
     private attachListeners(): void {
         if (this.isListenerRegistered) {
             return;
@@ -150,7 +108,7 @@ class ScreenshotDetectionManager {
             this.handleVisibilityChange();
         };
 
-        // Use capture phase to intercept events before they reach other handlers
+        // Capture phase to intercept before other handlers
         window.addEventListener('keydown', this.keydownHandler, true);
         window.addEventListener('keyup', this.keyupHandler, true);
         window.addEventListener('blur', this.blurHandler, true);
@@ -160,9 +118,6 @@ class ScreenshotDetectionManager {
         this.isListenerRegistered = true;
     }
 
-    /**
-     * Removes all event listeners and resets internal state.
-     */
     private detachListeners(): void {
         if (this.keydownHandler) {
             window.removeEventListener('keydown', this.keydownHandler, true);
@@ -185,39 +140,29 @@ class ScreenshotDetectionManager {
             this.visibilityChangeHandler = null;
         }
 
-        // Clean up blur class if still applied
         document.body.classList.remove(BLUR_CLASS);
 
         this.clearWarningTimeout();
+        this.clearBlurSettleTimeout();
         this.resetState();
     }
 
-    /**
-     * Handles keydown events for screenshot shortcut detection.
-     */
     private handleKeyDown(e: KeyboardEvent, isMac: boolean, isWindows: boolean, isLinux: boolean): void {
-        // Handle PrintScreen on Windows/Linux
         if ((isWindows || isLinux) && (e.key === 'PrintScreen' || e.code === 'PrintScreen')) {
             this.triggerCallbackThrottled();
             return;
         }
 
-        // Handle Mac: Cmd+Shift combinations
         if (isMac) {
             this.handleMacScreenshotDetection(e);
         }
 
-        // Handle Windows: Windows+Shift+S (Snipping Tool)
         if (isWindows) {
             this.handleWindowsScreenshotDetection(e);
         }
     }
 
-    /**
-     * Detects Cmd+Shift screenshot shortcuts on macOS.
-     * Starts a timer when Cmd+Shift is pressed; if no other key is pressed
-     * within the delay, assumes it's a screenshot attempt.
-     */
+    // Cmd+Shift held without a third key within the delay → likely a screenshot shortcut.
     private handleMacScreenshotDetection(e: KeyboardEvent): void {
         const wasModifiersPressed = this.cmdKeyPressed && this.shiftKeyPressed;
 
@@ -226,94 +171,74 @@ class ScreenshotDetectionManager {
 
         const modifiersNowPressed = this.cmdKeyPressed && this.shiftKeyPressed;
 
-        // Modifiers just became pressed together - start detection timer
         if (modifiersNowPressed && !wasModifiersPressed) {
             this.otherKeyPressed = false;
             this.startScreenshotDetectionTimer();
         }
 
-        // Another key pressed while modifiers held - it's a regular shortcut, cancel detection
+        // Non-modifier key while held → regular shortcut, cancel detection
         if (modifiersNowPressed && !this.isModifierKey(e.key)) {
             this.otherKeyPressed = true;
             this.clearWarningTimeout();
         }
     }
 
-    /**
-     * Detects Windows+Shift+S (Snipping Tool) on Windows.
-     * Similar logic to Mac, but also triggers immediately on 'S' key.
-     */
+    // Win+Shift+S triggers immediately; other combos use the same delay heuristic.
     private handleWindowsScreenshotDetection(e: KeyboardEvent): void {
         const wasModifiersPressed = this.cmdKeyPressed && this.shiftKeyPressed;
 
-        this.cmdKeyPressed = e.metaKey; // Windows key
+        this.cmdKeyPressed = e.metaKey;
         this.shiftKeyPressed = e.shiftKey;
 
         const modifiersNowPressed = this.cmdKeyPressed && this.shiftKeyPressed;
 
-        // Modifiers just became pressed together - start detection timer
         if (modifiersNowPressed && !wasModifiersPressed) {
             this.otherKeyPressed = false;
             this.startScreenshotDetectionTimer();
         }
 
-        // Windows+Shift+S pressed - trigger immediately
         if (modifiersNowPressed && e.key.toLowerCase() === 's') {
             this.clearWarningTimeout();
             this.triggerCallbackThrottled();
             return;
         }
 
-        // Another key (not 'S') pressed - it's a regular shortcut, cancel detection
         if (modifiersNowPressed && !this.isModifierKey(e.key) && e.key.toLowerCase() !== 's') {
             this.otherKeyPressed = true;
             this.clearWarningTimeout();
         }
     }
 
-    /**
-     * Handles keyup events to track modifier key state.
-     */
     private handleKeyUp(e: KeyboardEvent, isMac: boolean, isWindows: boolean): void {
         if (isMac || isWindows) {
             this.cmdKeyPressed = e.metaKey;
             this.shiftKeyPressed = e.shiftKey;
 
-            // If modifiers released, cancel any pending detection
             if (!this.cmdKeyPressed || !this.shiftKeyPressed) {
                 this.clearWarningTimeout();
             }
         }
     }
 
-    /**
-     * Handles window blur by applying blur class after a short delay.
-     * The delay allows focus to settle and prevents false positives
-     * from clicks within the document.
-     */
+    // Delay lets focus settle to avoid false positives from in-page clicks.
     private handleWindowBlur(): void {
-        setTimeout(() => {
+        this.clearBlurSettleTimeout();
+        this.blurSettleTimeout = setTimeout(() => {
+            this.blurSettleTimeout = null;
             if (!document.hasFocus()) {
                 document.body.classList.add(BLUR_CLASS);
             }
         }, BLUR_SETTLE_DELAY_MS);
 
-        // Reset keyboard state when window loses focus
         this.cmdKeyPressed = false;
         this.shiftKeyPressed = false;
         this.clearWarningTimeout();
     }
 
-    /**
-     * Handles window focus by removing the blur class.
-     */
     private handleWindowFocus(): void {
         document.body.classList.remove(BLUR_CLASS);
     }
 
-    /**
-     * Handles page visibility changes (tab switching, minimizing).
-     */
     private handleVisibilityChange(): void {
         if (document.hidden) {
             document.body.classList.add(BLUR_CLASS);
@@ -322,9 +247,6 @@ class ScreenshotDetectionManager {
         }
     }
 
-    /**
-     * Starts a timer that will trigger the callback if no other key is pressed.
-     */
     private startScreenshotDetectionTimer(): void {
         this.clearWarningTimeout();
 
@@ -335,9 +257,6 @@ class ScreenshotDetectionManager {
         }, SCREENSHOT_DETECTION_DELAY_MS);
     }
 
-    /**
-     * Triggers the callback with throttling to prevent spam.
-     */
     private triggerCallbackThrottled(): void {
         const now = Date.now();
         if (now - this.lastCallbackTime > CALLBACK_THROTTLE_MS) {
@@ -346,9 +265,6 @@ class ScreenshotDetectionManager {
         }
     }
 
-    /**
-     * Clears the warning timeout if one is pending.
-     */
     private clearWarningTimeout(): void {
         if (this.warningTimeout) {
             clearTimeout(this.warningTimeout);
@@ -356,16 +272,17 @@ class ScreenshotDetectionManager {
         }
     }
 
-    /**
-     * Checks if the given key is a modifier key.
-     */
+    private clearBlurSettleTimeout(): void {
+        if (this.blurSettleTimeout) {
+            clearTimeout(this.blurSettleTimeout);
+            this.blurSettleTimeout = null;
+        }
+    }
+
     private isModifierKey(key: string): boolean {
         return key === 'Meta' || key === 'Shift' || key === 'Control' || key === 'Alt';
     }
 
-    /**
-     * Resets all internal state to initial values.
-     */
     private resetState(): void {
         this.isListenerRegistered = false;
         this.callback = null;
@@ -376,5 +293,4 @@ class ScreenshotDetectionManager {
     }
 }
 
-/** Singleton instance for global screenshot detection management */
 export const screenshotDetectionManager = new ScreenshotDetectionManager();

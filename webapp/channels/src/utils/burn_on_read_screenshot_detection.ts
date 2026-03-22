@@ -47,6 +47,7 @@ class ScreenshotDetectionManager {
 
     private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
     private keyupHandler: ((e: KeyboardEvent) => void) | null = null;
+    private contextMenuHandler: ((e: MouseEvent) => void) | null = null;
     private blurHandler: (() => void) | null = null;
     private focusHandler: (() => void) | null = null;
     private visibilityChangeHandler: (() => void) | null = null;
@@ -96,6 +97,11 @@ class ScreenshotDetectionManager {
             this.handleKeyUp(e, isMac, isWindows);
         };
 
+        // Block right-click globally while any revealed BoR message is visible.
+        this.contextMenuHandler = (e: MouseEvent) => {
+            e.preventDefault();
+        };
+
         this.blurHandler = () => {
             this.handleWindowBlur();
         };
@@ -111,6 +117,7 @@ class ScreenshotDetectionManager {
         // Capture phase to intercept before other handlers
         window.addEventListener('keydown', this.keydownHandler, true);
         window.addEventListener('keyup', this.keyupHandler, true);
+        window.addEventListener('contextmenu', this.contextMenuHandler, true);
         window.addEventListener('blur', this.blurHandler, true);
         window.addEventListener('focus', this.focusHandler, true);
         document.addEventListener('visibilitychange', this.visibilityChangeHandler, true);
@@ -126,6 +133,10 @@ class ScreenshotDetectionManager {
         if (this.keyupHandler) {
             window.removeEventListener('keyup', this.keyupHandler, true);
             this.keyupHandler = null;
+        }
+        if (this.contextMenuHandler) {
+            window.removeEventListener('contextmenu', this.contextMenuHandler, true);
+            this.contextMenuHandler = null;
         }
         if (this.blurHandler) {
             window.removeEventListener('blur', this.blurHandler, true);

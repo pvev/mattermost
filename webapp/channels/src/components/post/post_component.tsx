@@ -374,13 +374,6 @@ function PostComponent(props: Props) {
         }
     }, [isRevealedBoR]);
 
-    const handleContextMenu = useCallback((e: React.MouseEvent) => {
-        if (isRevealedBoR) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-    }, [isRevealedBoR]);
-
     const handleCardClick = (post?: Post) => {
         if (!post) {
             return;
@@ -761,7 +754,6 @@ function PostComponent(props: Props) {
                 autotranslated={props.isChannelAutotranslated}
                 onCopy={handleCopy}
                 onCut={handleCut}
-                onContextMenu={handleContextMenu}
             >
                 {props.isChannelAutotranslated && isTranslating && (
                     <div className='post-message__shimmer'/>

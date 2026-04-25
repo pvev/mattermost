@@ -293,3 +293,96 @@ func TestFilterConditionValues_EmptySlice(t *testing.T) {
 	assert.Empty(t, values)
 	assert.False(t, condition.HasMaskedValues) // nothing was filtered
 }
+
+func TestFilterConditionValues_TextFieldMasking(t *testing.T) {
+	// Text field masking uses the same filterConditionValues function,
+	// but the visible set comes from the caller's actual text value
+	// instead of field options.
+
+	t.Run("text field with in operator: caller holds matching value", func(t *testing.T) {
+		condition := &model.Condition{
+			Attribute:     "user.attributes.Clearance",
+			Operator:      "in",
+			Value:         []any{"Top Secret", "Secret", "Confidential"},
+			ValueType:     model.LiteralValue,
+			AttributeType: "text",
+		}
+
+		// Caller holds "Top Secret" — only this value should be visible
+		callerTextValues := map[string]struct{}{"Top Secret": {}}
+		filterConditionValues(condition, callerTextValues)
+
+		values, ok := condition.Value.([]any)
+		require.True(t, ok)
+		assert.Equal(t, []any{"Top Secret"}, values)
+		assert.True(t, condition.HasMaskedValues)
+	})
+
+	t.Run("text field with in operator: caller holds no matching value", func(t *testing.T) {
+		condition := &model.Condition{
+			Attribute:     "user.attributes.Clearance",
+			Operator:      "in",
+			Value:         []any{"Top Secret", "Secret"},
+			ValueType:     model.LiteralValue,
+			AttributeType: "text",
+		}
+
+		// Caller holds "Unclassified" — none of the policy values match
+		callerTextValues := map[string]struct{}{"Unclassified": {}}
+		filterConditionValues(condition, callerTextValues)
+
+		values, ok := condition.Value.([]any)
+		require.True(t, ok)
+		assert.Empty(t, values)
+		assert.True(t, condition.HasMaskedValues)
+	})
+
+	t.Run("text field with == operator: caller holds matching value", func(t *testing.T) {
+		condition := &model.Condition{
+			Attribute:     "user.attributes.Clearance",
+			Operator:      "==",
+			Value:         "Top Secret",
+			ValueType:     model.LiteralValue,
+			AttributeType: "text",
+		}
+
+		callerTextValues := map[string]struct{}{"Top Secret": {}}
+		filterConditionValues(condition, callerTextValues)
+
+		assert.Equal(t, "Top Secret", condition.Value)
+		assert.False(t, condition.HasMaskedValues)
+	})
+
+	t.Run("text field with == operator: caller holds different value", func(t *testing.T) {
+		condition := &model.Condition{
+			Attribute:     "user.attributes.Clearance",
+			Operator:      "==",
+			Value:         "Top Secret",
+			ValueType:     model.LiteralValue,
+			AttributeType: "text",
+		}
+
+		callerTextValues := map[string]struct{}{"Secret": {}}
+		filterConditionValues(condition, callerTextValues)
+
+		assert.Nil(t, condition.Value)
+		assert.True(t, condition.HasMaskedValues)
+	})
+
+	t.Run("text field with is not operator: caller holds no value", func(t *testing.T) {
+		condition := &model.Condition{
+			Attribute:     "user.attributes.Location",
+			Operator:      "!=",
+			Value:         "Building 7",
+			ValueType:     model.LiteralValue,
+			AttributeType: "text",
+		}
+
+		// Caller has no value for Location — empty visible set
+		callerTextValues := map[string]struct{}{}
+		filterConditionValues(condition, callerTextValues)
+
+		assert.Nil(t, condition.Value)
+		assert.True(t, condition.HasMaskedValues)
+	})
+}

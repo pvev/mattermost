@@ -4,6 +4,7 @@
 package app
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -515,10 +516,18 @@ func (a *App) maskConditionValues(rctx request.CTX, condition *model.Condition, 
 
 	case model.PropertyAccessModeSharedOnly:
 		// Shared-only fields: filter values to the caller-field intersection.
-		// The field returned by GetPropertyFieldByName already has options filtered
-		// to only those the caller holds (via PropertyAccessService).
-		visibleNames := extractVisibleOptionNames(field)
-		filterConditionValues(condition, visibleNames)
+		if field.Type == model.PropertyFieldTypeSelect || field.Type == model.PropertyFieldTypeMultiselect {
+			// Select/multiselect: the field returned by GetPropertyFieldByName already has
+			// options filtered to only those the caller holds (via PropertyAccessService).
+			visibleNames := extractVisibleOptionNames(field)
+			filterConditionValues(condition, visibleNames)
+		} else {
+			// Text (and other) fields: fetch the caller's actual property value and use
+			// it as the visible set. The caller can only see condition values that match
+			// their own value for this field.
+			callerTextValues := a.getCallerTextValues(rctx, field, cpaGroupID)
+			filterConditionValues(condition, callerTextValues)
+		}
 		return
 
 	default:
@@ -581,6 +590,38 @@ func extractVisibleOptionNames(field *model.PropertyField) map[string]struct{} {
 	}
 
 	return names
+}
+
+// getCallerTextValues fetches the caller's actual property value for a text field
+// and returns it as a set of visible names. For text fields, the caller can only
+// see condition values that exactly match their own value for this field.
+func (a *App) getCallerTextValues(rctx request.CTX, field *model.PropertyField, cpaGroupID string) map[string]struct{} {
+	visible := make(map[string]struct{})
+
+	callerID, ok := CallerIDFromRequestContext(rctx)
+	if !ok || callerID == "" {
+		return visible
+	}
+
+	// Search for the caller's property value on this field
+	values, appErr := a.SearchPropertyValues(rctx, cpaGroupID, model.PropertyValueSearchOpts{
+		FieldID:   field.ID,
+		TargetIDs: []string{callerID},
+		PerPage:   10,
+	})
+	if appErr != nil || len(values) == 0 {
+		return visible
+	}
+
+	// Extract the text value from the property value's JSON
+	for _, pv := range values {
+		var textVal string
+		if err := json.Unmarshal(pv.Value, &textVal); err == nil && textVal != "" {
+			visible[textVal] = struct{}{}
+		}
+	}
+
+	return visible
 }
 
 // filterConditionValues filters a condition's Value to only include values
@@ -1013,7 +1054,12 @@ func (a *App) validateConditionValues(rctx request.CTX, cond *model.Condition, c
 
 	case model.PropertyAccessModeSharedOnly:
 		// Shared-only fields: all submitted values must be in the caller's visible set
-		visibleNames := extractVisibleOptionNames(field)
+		var visibleNames map[string]struct{}
+		if field.Type == model.PropertyFieldTypeSelect || field.Type == model.PropertyFieldTypeMultiselect {
+			visibleNames = extractVisibleOptionNames(field)
+		} else {
+			visibleNames = a.getCallerTextValues(rctx, field, cpaGroupID)
+		}
 		for _, v := range values {
 			if _, visible := visibleNames[v]; !visible {
 				return invalidValueError()

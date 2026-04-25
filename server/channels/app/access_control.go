@@ -95,6 +95,41 @@ func (a *App) CreateOrUpdateAccessControlPolicy(rctx request.CTX, policy *model.
 		}
 	}
 
+	// Attribute-value masking write-path checks for delegated admins.
+	// Attribute-value masking write-path checks for delegated admins.
+	// When the feature flag is ON and the caller is not a system admin,
+	// execute: validate → merge → self-inclusion check.
+	if a.Config().FeatureFlags.AttributeBasedAccessControl && a.Config().FeatureFlags.AttributeValueMasking {
+		session := rctx.Session()
+		if session == nil {
+			return nil, model.NewAppError("CreateOrUpdateAccessControlPolicy", "api.context.session_expired.app_error", nil, "session required for masking validation", http.StatusUnauthorized)
+		}
+		callerID := session.UserId
+		isSystemAdmin := a.SessionHasPermissionTo(*session, model.PermissionManageSystem)
+
+		if !isSystemAdmin {
+			// Step 1: Validate submitted literal values BEFORE merging.
+			// At this point the expression only contains the caller's visible values.
+			// Validating after merge would reject the hidden values that were re-injected.
+			if appErr := a.validatePolicyExpressionValues(rctx, policy, callerID); appErr != nil {
+				return nil, appErr
+			}
+
+			// Step 2: Merge hidden values back from the stored policy.
+			// The delegated admin's submitted expression only contains visible values;
+			// hidden values from the stored policy are now re-injected.
+			if appErr := a.mergeStoredPolicyExpressions(rctx, policy, callerID); appErr != nil {
+				return nil, appErr
+			}
+
+			// Step 3: Self-inclusion check on the complete merged expression.
+			// The caller must still satisfy the policy after their edit.
+			if appErr := a.checkSelfInclusion(rctx, policy, callerID); appErr != nil {
+				return nil, appErr
+			}
+		}
+	}
+
 	var appErr *model.AppError
 	policy, appErr = acs.SavePolicy(rctx, policy)
 	if appErr != nil {
@@ -102,6 +137,69 @@ func (a *App) CreateOrUpdateAccessControlPolicy(rctx request.CTX, policy *model.
 	}
 
 	return policy, nil
+}
+
+// mergeStoredPolicyExpressions loads the existing stored policy (if updating) and merges
+// hidden values back into the submitted expressions. For new policies (no stored version),
+// this is a no-op.
+func (a *App) mergeStoredPolicyExpressions(rctx request.CTX, policy *model.AccessControlPolicy, callerID string) *model.AppError {
+	acs := a.Srv().ch.AccessControl
+	if acs == nil {
+		return model.NewAppError("mergeStoredPolicyExpressions", "app.pap.merge_stored_policy.app_error", nil, "Policy Administration Point is not initialized", http.StatusNotImplemented)
+	}
+
+	// Try to load the existing stored policy
+	existingPolicy, appErr := acs.GetPolicy(rctx, policy.ID)
+	if appErr != nil {
+		// If the policy doesn't exist yet (new policy), no merge needed
+		if appErr.StatusCode == http.StatusNotFound {
+			return nil
+		}
+		return appErr
+	}
+
+	// Merge each rule's expression with the corresponding stored rule
+	for i, rule := range policy.Rules {
+		if i >= len(existingPolicy.Rules) {
+			// New rule added by the admin — no stored expression to merge with
+			continue
+		}
+
+		storedExpr := existingPolicy.Rules[i].Expression
+		if storedExpr == "" || storedExpr == "true" {
+			continue
+		}
+
+		mergedExpr, appErr := a.mergeExpressionWithMaskedValues(rctx, rule.Expression, storedExpr, callerID)
+		if appErr != nil {
+			return appErr
+		}
+		policy.Rules[i].Expression = mergedExpr
+	}
+
+	return nil
+}
+
+// checkSelfInclusion verifies that the caller still satisfies all rules in the policy.
+// This evaluates the complete merged expression (including hidden values the admin didn't modify).
+func (a *App) checkSelfInclusion(rctx request.CTX, policy *model.AccessControlPolicy, callerID string) *model.AppError {
+	for _, rule := range policy.Rules {
+		if rule.Expression == "" || rule.Expression == "true" {
+			continue
+		}
+
+		matches, appErr := a.ValidateExpressionAgainstRequester(rctx, rule.Expression, callerID)
+		if appErr != nil {
+			return appErr
+		}
+		if !matches {
+			return model.NewAppError("CreateOrUpdateAccessControlPolicy",
+				"app.pap.save_policy.self_exclusion", nil,
+				"You do not satisfy one or more conditions in this policy.", http.StatusBadRequest)
+		}
+	}
+
+	return nil
 }
 
 func (a *App) DeleteAccessControlPolicy(rctx request.CTX, id string) *model.AppError {

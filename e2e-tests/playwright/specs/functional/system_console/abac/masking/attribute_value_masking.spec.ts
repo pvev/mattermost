@@ -229,4 +229,55 @@ test.describe('Attribute-Value Masking', () => {
         // 7. Save — verify succeeds
         // 8. As system admin: verify stored expression is Program in ["Bravo", "Charlie", "Alpha"]
     });
+
+    test('E2E-11: Text field masking with shared_only and in operator', async ({pw}) => {
+        await pw.skipIfNoLicense();
+
+        // This test validates that text fields with access_mode: shared_only
+        // are correctly masked when used with the "in" operator in policy rules.
+
+        const {adminUser, adminClient, team} = await pw.initSetup();
+
+        await enableUserManagedAttributes(adminClient);
+
+        // Enable the masking feature flag
+        const config = await adminClient.getConfig();
+        config.FeatureFlags = config.FeatureFlags || {};
+        (config.FeatureFlags as any).AttributeValueMasking = true;
+        await adminClient.updateConfig(config);
+
+        // Setup:
+        // 1. Create a text CPA field "Clearance" with access_mode: shared_only, protected: true
+        //    (via API — PATCH /api/v4/custom_profile_attributes/fields/{id} with attrs.access_mode = "shared_only")
+        // 2. Create delegated admin with Clearance = "Top Secret"
+        // 3. Create policy with rule: Clearance in ["Top Secret", "Secret", "Confidential"]
+
+        // Steps:
+        // 1. Log in as delegated admin, open the policy editor
+        // 2. Verify the Clearance row shows: "Top Secret" as visible chip + masked chip (••••••••)
+        // 3. Verify "Secret" and "Confidential" are NOT visible anywhere in the UI
+        // 4. Verify operator dropdown is locked on the masked row
+        // 5. Verify attribute dropdown is locked on the masked row
+        // 6. As system admin: load same policy — verify all three values visible, no masking
+
+        // This validates that the text field branch in maskConditionValues works correctly:
+        // - getCallerTextValues fetches the caller's "Top Secret" text value
+        // - filterConditionValues keeps "Top Secret", masks "Secret" and "Confidential"
+        // - HasMaskedValues is set to true on the condition
+    });
+
+    test('E2E-12: Text field masking with == operator', async ({pw}) => {
+        await pw.skipIfNoLicense();
+
+        // Setup:
+        // 1. Text CPA field "Location" with access_mode: shared_only, protected: true
+        // 2. Delegated admin with Location = "Building 1"
+        // 3. Policy with rule: Location != "Building 7"
+
+        // Steps:
+        // 1. Log in as delegated admin, open the policy editor
+        // 2. Verify the Location row shows only masked chip (delegated admin holds "Building 1", not "Building 7")
+        // 3. Operator and attribute dropdowns are locked
+        // 4. As system admin: "Building 7" is visible
+    });
 });

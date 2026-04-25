@@ -4,6 +4,7 @@
 package app
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -474,7 +475,12 @@ func (a *App) maskConditionValues(rctx request.CTX, condition *model.Condition, 
 		condition.Value = nil
 		condition.HasMaskedValues = true
 	case model.PropertyAccessModeSharedOnly:
-		filterConditionValues(condition, extractVisibleOptionNames(field))
+		if field.Type == model.PropertyFieldTypeSelect || field.Type == model.PropertyFieldTypeMultiselect {
+			filterConditionValues(condition, extractVisibleOptionNames(field))
+		} else {
+			filterConditionValues(condition, a.getCallerTextValues(rctx, field, cpaGroupID))
+		}
+		return
 	default:
 		condition.Value = nil
 		condition.HasMaskedValues = true
@@ -531,6 +537,35 @@ func extractVisibleOptionNames(field *model.PropertyField) map[string]struct{} {
 	}
 
 	return names
+}
+
+// getCallerTextValues returns the caller's text property value as a visible-names set.
+// For text fields, the caller can only see condition values matching their own value.
+func (a *App) getCallerTextValues(rctx request.CTX, field *model.PropertyField, cpaGroupID string) map[string]struct{} {
+	visible := make(map[string]struct{})
+
+	callerID, ok := CallerIDFromRequestContext(rctx)
+	if !ok || callerID == "" {
+		return visible
+	}
+
+	values, appErr := a.SearchPropertyValues(rctx, cpaGroupID, model.PropertyValueSearchOpts{
+		FieldID:   field.ID,
+		TargetIDs: []string{callerID},
+		PerPage:   10,
+	})
+	if appErr != nil || len(values) == 0 {
+		return visible
+	}
+
+	for _, pv := range values {
+		var textVal string
+		if err := json.Unmarshal(pv.Value, &textVal); err == nil && textVal != "" {
+			visible[textVal] = struct{}{}
+		}
+	}
+
+	return visible
 }
 
 // filterConditionValues keeps only visible values in a condition, setting HasMaskedValues if any were removed.
@@ -893,7 +928,12 @@ func (a *App) validateConditionValues(rctx request.CTX, cond *model.Condition, c
 		}
 		return nil
 	case model.PropertyAccessModeSharedOnly:
-		visibleNames := extractVisibleOptionNames(field)
+		var visibleNames map[string]struct{}
+		if field.Type == model.PropertyFieldTypeSelect || field.Type == model.PropertyFieldTypeMultiselect {
+			visibleNames = extractVisibleOptionNames(field)
+		} else {
+			visibleNames = a.getCallerTextValues(rctx, field, cpaGroupID)
+		}
 		for _, v := range values {
 			if _, visible := visibleNames[v]; !visible {
 				return invalidValueError()

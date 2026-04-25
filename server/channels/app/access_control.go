@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -340,6 +341,179 @@ func (a *App) ExpressionToVisualAST(rctx request.CTX, expression string) (*model
 	}
 
 	return visualAST, nil
+}
+
+// GetMaskedVisualAST returns a visual AST with attribute values filtered based on
+// the caller's holdings. For shared_only fields, only values the caller holds are
+// returned; for source_only fields, all values are masked. Public fields pass through
+// unmasked. HasMaskedValues is set to true on conditions where values were omitted.
+// This implements the read-path of attribute-value masking for delegated admins.
+func (a *App) GetMaskedVisualAST(rctx request.CTX, expression string, callerID string) (*model.VisualExpression, *model.AppError) {
+	visualAST, appErr := a.ExpressionToVisualAST(rctx, expression)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	cpaGroupID, appErr := a.CpaGroupID()
+	if appErr != nil {
+		return nil, model.NewAppError("GetMaskedVisualAST", "app.pap.get_masked_visual_ast.app_error", nil, "", http.StatusInternalServerError).Wrap(appErr)
+	}
+
+	rctxWithCaller := RequestContextWithCallerID(rctx, callerID)
+
+	for i := range visualAST.Conditions {
+		a.maskConditionValues(rctxWithCaller, &visualAST.Conditions[i], cpaGroupID)
+	}
+
+	return visualAST, nil
+}
+
+// maskConditionValues filters a single condition's values based on the caller's
+// attribute holdings and the field's access_mode. Modifies the condition in place.
+func (a *App) maskConditionValues(rctx request.CTX, condition *model.Condition, cpaGroupID string) {
+	// Skip attribute-to-attribute comparisons — no literal values to mask
+	if condition.ValueType == model.AttrValue {
+		return
+	}
+
+	// Extract the field name from the attribute path (e.g., "user.attributes.Program" → "Program")
+	fieldName := extractFieldName(condition.Attribute)
+	if fieldName == "" {
+		return
+	}
+
+	// Look up the field with caller's access control context.
+	// GetPropertyFieldByName routes through PropertyAccessService which filters
+	// options based on access_mode and caller identity.
+	field, appErr := a.GetPropertyFieldByName(rctx, cpaGroupID, "", fieldName)
+	if appErr != nil {
+		// Fail closed: if we can't look up the field, mask all values.
+		// This prevents information leakage when field resolution fails.
+		rctx.Logger().Warn("Failed to look up field for masking, failing closed",
+			mlog.String("field_name", fieldName),
+			mlog.Err(appErr),
+		)
+		condition.Value = nil
+		condition.HasMaskedValues = true
+		return
+	}
+
+	// Determine the field's access mode
+	accessMode := getFieldAccessMode(field)
+
+	switch accessMode {
+	case model.PropertyAccessModePublic:
+		// Public fields: no masking needed
+		return
+
+	case model.PropertyAccessModeSourceOnly:
+		// Source-only fields: mask all values for non-plugin callers.
+		// The PropertyAccessService already returns empty options for source_only
+		// when the caller is not the source plugin, so we mask everything.
+		condition.Value = nil
+		condition.HasMaskedValues = true
+		return
+
+	case model.PropertyAccessModeSharedOnly:
+		// Shared-only fields: filter values to the caller-field intersection.
+		// The field returned by GetPropertyFieldByName already has options filtered
+		// to only those the caller holds (via PropertyAccessService).
+		visibleNames := extractVisibleOptionNames(field)
+		filterConditionValues(condition, visibleNames)
+		return
+
+	default:
+		// Unknown access mode: fail closed — mask all values
+		condition.Value = nil
+		condition.HasMaskedValues = true
+	}
+}
+
+// extractFieldName extracts the field name from an attribute path.
+// e.g., "user.attributes.Program" → "Program"
+func extractFieldName(attribute string) string {
+	const prefix = "user.attributes."
+	if strings.HasPrefix(attribute, prefix) {
+		return attribute[len(prefix):]
+	}
+	return ""
+}
+
+// getFieldAccessMode extracts the access_mode from a PropertyField's Attrs.
+// Returns PropertyAccessModePublic (empty string) if not set.
+func getFieldAccessMode(field *model.PropertyField) string {
+	if field.Attrs == nil {
+		return model.PropertyAccessModePublic
+	}
+	accessMode, ok := field.Attrs[model.PropertyAttrsAccessMode].(string)
+	if !ok {
+		return model.PropertyAccessModePublic
+	}
+	return accessMode
+}
+
+// extractVisibleOptionNames extracts option names from a PropertyField's filtered options.
+// The field must have already been filtered by PropertyAccessService (caller-aware).
+func extractVisibleOptionNames(field *model.PropertyField) map[string]struct{} {
+	names := make(map[string]struct{})
+	if field.Attrs == nil {
+		return names
+	}
+
+	optionsRaw, ok := field.Attrs[model.PropertyFieldAttributeOptions]
+	if !ok {
+		return names
+	}
+
+	optionsSlice, ok := optionsRaw.([]any)
+	if !ok {
+		return names
+	}
+
+	for _, opt := range optionsSlice {
+		optMap, ok := opt.(map[string]any)
+		if !ok {
+			continue
+		}
+		name, ok := optMap["name"].(string)
+		if ok && name != "" {
+			names[name] = struct{}{}
+		}
+	}
+
+	return names
+}
+
+// filterConditionValues filters a condition's Value to only include values
+// present in the visibleNames set. Sets HasMaskedValues if any values were removed.
+func filterConditionValues(condition *model.Condition, visibleNames map[string]struct{}) {
+	switch v := condition.Value.(type) {
+	case []any:
+		// Multi-value (e.g., "in" operator): filter the slice
+		var filtered []any
+		for _, val := range v {
+			if strVal, ok := val.(string); ok {
+				if _, visible := visibleNames[strVal]; visible {
+					filtered = append(filtered, val)
+				}
+			}
+		}
+		if len(filtered) < len(v) {
+			condition.HasMaskedValues = true
+		}
+		condition.Value = filtered
+
+	case string:
+		// Single value (e.g., "==" operator): check if visible
+		if _, visible := visibleNames[v]; !visible {
+			condition.Value = nil
+			condition.HasMaskedValues = true
+		}
+
+	default:
+		// Non-string values (booleans, numbers) or nil: skip masking
+		// These types don't correspond to select/multiselect option names
+	}
 }
 
 // ValidateChannelEligibilityForAccessControl checks that a channel is eligible for

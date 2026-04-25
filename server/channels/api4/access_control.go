@@ -996,7 +996,17 @@ func convertToVisualAST(c *Context, w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	visualAST, appErr := c.App.ExpressionToVisualAST(c.AppContext, cel.Expression)
+	var visualAST *model.VisualExpression
+	var appErr *model.AppError
+
+	// When attribute-value masking is enabled, delegated admins receive a masked
+	// visual AST where non-held values are filtered out. System admins always
+	// see the full unmasked visual AST.
+	if c.App.Config().FeatureFlags.AttributeValueMasking && !hasSystemPermission {
+		visualAST, appErr = c.App.GetMaskedVisualAST(c.AppContext, cel.Expression, c.AppContext.Session().UserId)
+	} else {
+		visualAST, appErr = c.App.ExpressionToVisualAST(c.AppContext, cel.Expression)
+	}
 	if appErr != nil {
 		c.Err = appErr
 		return

@@ -23,6 +23,9 @@ type Condition struct {
 	ValueType ValueType `json:"value_type"`
 	// Type of the Attribute (e.g., "text", "select", "multiselect").
 	AttributeType string `json:"attribute_type"`
+	// HasMaskedValues indicates that non-held values were omitted from Value for this condition.
+	// Used by attribute-value masking to signal the presence of hidden values to the frontend.
+	HasMaskedValues bool `json:"has_masked_values,omitempty"`
 }
 
 // VisualExpression represents a series of conditions combined with logical AND.

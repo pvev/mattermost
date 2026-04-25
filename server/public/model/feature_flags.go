@@ -69,6 +69,11 @@ type FeatureFlags struct {
 
 	AttributeBasedAccessControl bool
 
+	// Enable attribute-value masking in the ABAC policy editor.
+	// When enabled, delegated admins (team/channel admins) see only the attribute values
+	// they hold; non-held values are masked. Requires AttributeBasedAccessControl to also be enabled.
+	AttributeValueMasking bool
+
 	// Enable permission policies (file upload/download ABAC policies).
 	// Requires AttributeBasedAccessControl to also be enabled.
 	PermissionPolicies bool
@@ -135,6 +140,7 @@ func (f *FeatureFlags) SetDefaults() {
 	f.ExperimentalAuditSettingsSystemConsoleUI = true
 	f.CustomProfileAttributes = true
 	f.AttributeBasedAccessControl = true
+	f.AttributeValueMasking = false
 	f.PermissionPolicies = false
 	f.ContentFlagging = true
 	f.InteractiveDialogAppsForm = true

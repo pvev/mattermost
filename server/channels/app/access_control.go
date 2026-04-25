@@ -5,6 +5,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -476,6 +477,271 @@ func filterConditionValues(condition *model.Condition, visibleNames map[string]s
 			condition.Value = nil
 			condition.HasMaskedValues = true
 		}
+	}
+}
+
+// mergeExpressionWithMaskedValues re-injects hidden values from storedExpr into submittedExpr.
+// Submitted expressions contain only the caller's visible values; this restores the rest.
+func (a *App) mergeExpressionWithMaskedValues(rctx request.CTX, submittedExpr, storedExpr, callerID string) (string, *model.AppError) {
+	submittedAST, appErr := a.ExpressionToVisualAST(rctx, submittedExpr)
+	if appErr != nil {
+		return "", appErr
+	}
+
+	storedAST, appErr := a.ExpressionToVisualAST(rctx, storedExpr)
+	if appErr != nil {
+		return "", appErr
+	}
+
+	cpaGroupID, appErr := a.CpaGroupID()
+	if appErr != nil {
+		return "", model.NewAppError("mergeExpressionWithMaskedValues", "app.pap.merge_expression.app_error", nil, "", http.StatusInternalServerError).Wrap(appErr)
+	}
+
+	rctxWithCaller := RequestContextWithCallerID(rctx, callerID)
+
+	// Match by attribute only — operator can change as value counts change (e.g. hasAnyOf→in).
+	// Use stored operator to preserve original semantics.
+	storedByAttr := make(map[string][]model.Condition)
+	for _, cond := range storedAST.Conditions {
+		storedByAttr[cond.Attribute] = append(storedByAttr[cond.Attribute], cond)
+	}
+
+	matchCount := make(map[string]int)
+	var mergedConditions []model.Condition
+
+	for _, submitted := range submittedAST.Conditions {
+		storedList, found := storedByAttr[submitted.Attribute]
+		if !found {
+			mergedConditions = append(mergedConditions, submitted)
+			continue
+		}
+
+		matchIdx := matchCount[submitted.Attribute]
+		matchCount[submitted.Attribute]++
+
+		if matchIdx >= len(storedList) {
+			mergedConditions = append(mergedConditions, submitted)
+			continue
+		}
+
+		stored := storedList[matchIdx]
+		hiddenValues := a.getHiddenValues(rctxWithCaller, &stored, cpaGroupID)
+		merged := mergeConditionValues(submitted, hiddenValues)
+		merged.Operator = stored.Operator
+		merged.AttributeType = stored.AttributeType
+		mergedConditions = append(mergedConditions, merged)
+	}
+
+	// Conditions absent from submitted were deleted by the admin — they are dropped.
+	return buildCELFromConditions(mergedConditions), nil
+}
+
+// getHiddenValues returns stored condition values not visible to the caller.
+func (a *App) getHiddenValues(rctx request.CTX, stored *model.Condition, cpaGroupID string) []string {
+	if stored.ValueType == model.AttrValue {
+		return nil
+	}
+
+	fieldName := extractFieldName(stored.Attribute)
+	if fieldName == "" {
+		return nil
+	}
+
+	field, appErr := a.GetPropertyFieldByName(rctx, cpaGroupID, "", fieldName)
+	if appErr != nil {
+		return extractStringValues(stored.Value) // fail safe: treat all as hidden
+	}
+
+	switch getFieldAccessMode(field) {
+	case model.PropertyAccessModeSourceOnly:
+		return extractStringValues(stored.Value)
+	case model.PropertyAccessModeSharedOnly:
+		visibleNames := extractVisibleOptionNames(field)
+		var hidden []string
+		for _, val := range extractStringValues(stored.Value) {
+			if _, visible := visibleNames[val]; !visible {
+				hidden = append(hidden, val)
+			}
+		}
+		return hidden
+	default:
+		return nil
+	}
+}
+
+// extractStringValues converts a condition's Value to a slice of strings.
+func extractStringValues(value any) []string {
+	switch v := value.(type) {
+	case []any:
+		var result []string
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				result = append(result, s)
+			}
+		}
+		return result
+	case string:
+		return []string{v}
+	default:
+		return nil
+	}
+}
+
+// mergeConditionValues appends hiddenValues to the submitted condition's values, deduplicating.
+func mergeConditionValues(submitted model.Condition, hiddenValues []string) model.Condition {
+	if len(hiddenValues) == 0 {
+		return submitted
+	}
+
+	merged := submitted
+
+	switch v := submitted.Value.(type) {
+	case []any:
+		seen := make(map[string]struct{})
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				seen[s] = struct{}{}
+			}
+		}
+		result := make([]any, len(v))
+		copy(result, v)
+		for _, hidden := range hiddenValues {
+			if _, exists := seen[hidden]; !exists {
+				result = append(result, hidden)
+			}
+		}
+		merged.Value = result
+
+	case string:
+		if v == "" && len(hiddenValues) > 0 {
+			merged.Value = hiddenValues[0]
+		}
+
+	case nil:
+		if len(hiddenValues) == 1 {
+			merged.Value = hiddenValues[0]
+		} else if len(hiddenValues) > 1 {
+			result := make([]any, 0, len(hiddenValues))
+			for _, h := range hiddenValues {
+				result = append(result, h)
+			}
+			merged.Value = result
+		}
+	}
+
+	return merged
+}
+
+// buildCELFromConditions reconstructs a CEL expression from conditions, joined with " && ".
+func buildCELFromConditions(conditions []model.Condition) string {
+	if len(conditions) == 0 {
+		return "true"
+	}
+
+	parts := make([]string, 0, len(conditions))
+	for _, cond := range conditions {
+		cel := conditionToCEL(cond)
+		if cel != "" {
+			parts = append(parts, cel)
+		}
+	}
+
+	if len(parts) == 0 {
+		return "true"
+	}
+
+	return strings.Join(parts, " && ")
+}
+
+// conditionToCEL converts a single Condition to its CEL string representation.
+func conditionToCEL(cond model.Condition) string {
+	attr := cond.Attribute
+
+	switch cond.Operator {
+	case "==", "!=", ">", ">=", "<", "<=":
+		return attr + " " + cond.Operator + " " + celValueLiteral(cond.Value)
+
+	case "in":
+		values := extractStringValues(cond.Value)
+		if len(values) == 0 {
+			return ""
+		}
+		if cond.AttributeType == "multiselect" {
+			// multiselect: "v1" in attr && "v2" in attr
+			inParts := make([]string, 0, len(values))
+			for _, v := range values {
+				inParts = append(inParts, celStringLiteral(v)+" in "+attr)
+			}
+			return strings.Join(inParts, " && ")
+		}
+		// select: attr in ["v1", "v2"]
+		valLiterals := make([]string, 0, len(values))
+		for _, v := range values {
+			valLiterals = append(valLiterals, celStringLiteral(v))
+		}
+		return attr + " in [" + strings.Join(valLiterals, ", ") + "]"
+
+	case "hasAnyOf":
+		values := extractStringValues(cond.Value)
+		if len(values) == 0 {
+			return ""
+		}
+		orParts := make([]string, 0, len(values))
+		for _, v := range values {
+			orParts = append(orParts, celStringLiteral(v)+" in "+attr)
+		}
+		if len(orParts) == 1 {
+			return orParts[0]
+		}
+		return "(" + strings.Join(orParts, " || ") + ")"
+
+	case "hasAllOf":
+		values := extractStringValues(cond.Value)
+		if len(values) == 0 {
+			return ""
+		}
+		andParts := make([]string, 0, len(values))
+		for _, v := range values {
+			andParts = append(andParts, celStringLiteral(v)+" in "+attr)
+		}
+		return strings.Join(andParts, " && ")
+
+	case "contains", "startsWith", "endsWith":
+		return attr + "." + cond.Operator + "(" + celValueLiteral(cond.Value) + ")"
+
+	default:
+		return attr + " " + cond.Operator + " " + celValueLiteral(cond.Value)
+	}
+}
+
+// celStringLiteral wraps s in double quotes with backslash and quote escaping.
+func celStringLiteral(s string) string {
+	escaped := strings.ReplaceAll(s, `\`, `\\`)
+	escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+	return `"` + escaped + `"`
+}
+
+// celValueLiteral returns the CEL literal for a condition value.
+func celValueLiteral(value any) string {
+	switch v := value.(type) {
+	case string:
+		return celStringLiteral(v)
+	case float64:
+		return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%f", v), "0"), ".")
+	case int:
+		return fmt.Sprintf("%d", v)
+	case int64:
+		return fmt.Sprintf("%d", v)
+	case bool:
+		if v {
+			return "true"
+		}
+		return "false"
+	case nil:
+		return "null"
+	default:
+		return fmt.Sprintf("%v", v)
 	}
 }
 

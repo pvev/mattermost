@@ -81,6 +81,7 @@ function PolicyDetails({
     const [serverError, setServerError] = useState<string | undefined>(undefined);
     const [addChannelOpen, setAddChannelOpen] = useState(false);
     const [editorMode, setEditorMode] = useState<'cel' | 'table'>('table');
+    const [hasMaskedRows, setHasMaskedRows] = useState(false);
     const [channelChanges, setChannelChanges] = useState<ChannelChanges>({
         removed: {},
         added: {},
@@ -188,6 +189,10 @@ function PolicyDetails({
                 if (result.error) {
                     if (result.error.server_error_id === 'app.pap.save_policy.name_exists.app_error') {
                         setServerError(formatMessage({id: 'admin.access_control.edit_policy.name_exists', defaultMessage: 'A policy with this name already exists. Please choose a different name.'}));
+                    } else if (result.error.server_error_id === 'app.pap.save_policy.invalid_value') {
+                        setServerError(formatMessage({id: 'admin.access_control.edit_policy.invalid_value', defaultMessage: 'Invalid value.'}));
+                    } else if (result.error.server_error_id === 'app.pap.save_policy.self_exclusion') {
+                        setServerError(formatMessage({id: 'admin.access_control.edit_policy.self_exclusion', defaultMessage: 'You do not satisfy one or more conditions in this policy. Contact a System Admin for assistance.'}));
                     } else {
                         setServerError(result.error.message);
                     }
@@ -479,6 +484,7 @@ function PolicyDetails({
                                     }}
                                     onValidate={() => {}}
                                     disabled={noUsableAttributes}
+                                    hasMaskedRows={hasMaskedRows}
                                     userAttributes={autocompleteResult.
                                         filter((attr) => {
                                             if (accessControlSettings.EnableUserManagedAttributes) {
@@ -510,6 +516,7 @@ function PolicyDetails({
                                     }}
                                     enableUserManagedAttributes={accessControlSettings.EnableUserManagedAttributes}
                                     actions={abacActions}
+                                    onMaskedStateChange={setHasMaskedRows}
                                 />
                             )}
                         </Card.Body>

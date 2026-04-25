@@ -176,12 +176,24 @@ function TableEditor({
     // State for user self-exclusion detection (only applies to non-system-admins)
     const [userWouldBeExcluded, setUserWouldBeExcluded] = useState(false);
 
+    // Track whether the last expression change was from internal editing (updateExpression)
+    // vs external (policy load). When internal, we skip re-parsing the visual AST
+    // to avoid losing masked values.
+    const isInternalChange = React.useRef(false);
+
     // Derived state: whether any row has masked values
     const hasMaskedRows = useMemo(() => rows.some((r) => r.hasMaskedValues), [rows]);
 
     // Effect to parse the incoming CEL expression string (value prop)
     // and update the internal rows state. Handles errors during parsing.
+    // Skips re-parsing when the change was from internal editing (updateExpression)
+    // to avoid losing masked values during row manipulation.
     useEffect(() => {
+        if (isInternalChange.current) {
+            isInternalChange.current = false;
+            return;
+        }
+
         // Skip parsing if no expression to avoid unnecessary API calls
         if (!value || value.trim() === '') {
             setRows([]);
@@ -241,11 +253,18 @@ function TableEditor({
 
     // Converts the internal rows state back into a CEL expression string
     // and calls the onChange and onValidate props.
+    //
+    // IMPORTANT: When rows have masked values, the rebuilt expression will only
+    // contain the visible values. The server-side merge (in CreateOrUpdateAccessControlPolicy)
+    // will re-inject the hidden values from the stored policy before saving.
+    // This means the expression passed via onChange is intentionally incomplete —
+    // it represents only the delegated admin's visible view.
     const updateExpression = useCallback((newRows: TableRow[]) => {
         const rowsThatCanFormExpressions = newRows.filter((row) => row.attribute && row.values.length > 0);
 
         const expr = rowsThatCanFormExpressions.map((row) => rowToCEL(row)).join(' && ');
 
+        isInternalChange.current = true;
         onChange(expr);
         if (onValidate) {
             onValidate(expr === '' || rowsThatCanFormExpressions.length > 0);
@@ -280,7 +299,7 @@ function TableEditor({
                 hasMaskedValues: false,
             };
             const newRows = [...currentRows, newRow];
-            updateExpression(newRows); // Ensure expression is updated immediately
+            updateExpression(newRows);
             setAutoOpenAttributeMenuForRow(newRows.length - 1); // Set for the new row
             return newRows;
         });

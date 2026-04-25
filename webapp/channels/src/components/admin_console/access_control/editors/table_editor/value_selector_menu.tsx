@@ -25,7 +25,6 @@ export interface ValueSelectorMenuProps {
     options?: PropertyFieldOption[];
     allowCreateValue?: boolean;
     placeholder?: string;
-    hasMaskedValues?: boolean;
 }
 
 // Main ValueSelectorMenu component that delegates to the appropriate selector
@@ -36,7 +35,6 @@ const ValueSelectorMenu = ({
     options = [],
     allowCreateValue = false,
     placeholder,
-    hasMaskedValues = false,
 }: ValueSelectorMenuProps) => {
     const isMultiOperator = isMultiValueOperator(row.operator);
 
@@ -49,7 +47,7 @@ const ValueSelectorMenu = ({
                 options={options}
                 allowCreateValue={allowCreateValue}
                 placeholder={placeholder}
-                hasMaskedValues={hasMaskedValues}
+                hasMaskedValues={row.hasMaskedValues}
             />
         );
     }
@@ -63,7 +61,7 @@ const ValueSelectorMenu = ({
             options={options}
             allowCreateValue={allowCreateValue}
             placeholder={placeholder}
-            hasMaskedValues={hasMaskedValues}
+            hasMaskedValues={row.hasMaskedValues}
         />
     );
 };

@@ -25,10 +25,10 @@ describe('MaskedChip', () => {
         expect(chip).toHaveAttribute('aria-label', 'Hidden values that you do not have permission to view');
     });
 
-    test('has aria-readonly="true"', () => {
+    test('does not have aria-readonly (invalid for role="img")', () => {
         renderWithContext(<MaskedChip/>);
         const chip = screen.getByRole('img');
-        expect(chip).toHaveAttribute('aria-readonly', 'true');
+        expect(chip).not.toHaveAttribute('aria-readonly');
     });
 
     test('does not render a close/remove button', () => {

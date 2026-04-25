@@ -458,7 +458,6 @@ function TableEditor({
                                         disabled={disabled}
                                         updateValues={(values: string[]) => updateRowValues(index, values)}
                                         options={row.attribute ? userAttributes.find((attr) => attr.name === row.attribute)?.attrs?.options || [] : []}
-                                        hasMaskedValues={row.hasMaskedValues}
                                     />
                                 </td>
                                 <td className='table-editor__cell-actions'>

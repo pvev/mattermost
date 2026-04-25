@@ -33,7 +33,6 @@ const MaskedChip = (): JSX.Element => {
                 className='select__multi-value select__multi-value--masked'
                 role='img'
                 aria-label={ariaLabel}
-                aria-readonly='true'
             >
                 <div className='select__multi-value__label'>
                     {'••••••••'}

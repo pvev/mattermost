@@ -827,6 +827,111 @@ func celValueLiteral(value any) string {
 	}
 }
 
+// maskedTokenValue is the sentinel token used by the frontend to represent masked values
+// in the CEL editor. It must never be accepted as a real attribute value.
+const maskedTokenValue = "--------"
+
+// validatePolicyExpressionValues validates that all literal values in a policy's expressions
+// are held by the caller for shared_only fields. Rejects source_only literal values entirely.
+// Rejects the masked token sentinel value. Returns a generic HTTP 400 "Invalid value." error
+// for all rejections — no distinction is made between "value doesn't exist", "value exists
+// but you don't hold it", or "value is malformed" to prevent value enumeration.
+func (a *App) validatePolicyExpressionValues(rctx request.CTX, policy *model.AccessControlPolicy, callerID string) *model.AppError {
+	cpaGroupID, appErr := a.CpaGroupID()
+	if appErr != nil {
+		return model.NewAppError("validatePolicyExpressionValues", "app.pap.validate_expression_values.app_error", nil, "", http.StatusInternalServerError).Wrap(appErr)
+	}
+
+	rctxWithCaller := RequestContextWithCallerID(rctx, callerID)
+
+	for _, rule := range policy.Rules {
+		if rule.Expression == "" || rule.Expression == "true" {
+			continue
+		}
+
+		visualAST, appErr := a.ExpressionToVisualAST(rctx, rule.Expression)
+		if appErr != nil {
+			return appErr
+		}
+
+		for _, cond := range visualAST.Conditions {
+			if appErr := a.validateConditionValues(rctxWithCaller, &cond, cpaGroupID); appErr != nil {
+				return appErr
+			}
+		}
+	}
+
+	return nil
+}
+
+// invalidValueError returns the standard generic error for all write-path value rejections.
+// The error message and status code are intentionally identical for all rejection reasons
+// to prevent value enumeration attacks.
+func invalidValueError() *model.AppError {
+	return model.NewAppError("validatePolicyExpressionValues", "app.pap.save_policy.invalid_value", nil, "Invalid value.", http.StatusBadRequest)
+}
+
+// validateConditionValues validates that all literal values in a single condition are
+// held by the caller.
+func (a *App) validateConditionValues(rctx request.CTX, cond *model.Condition, cpaGroupID string) *model.AppError {
+	// Skip attribute-to-attribute comparisons
+	if cond.ValueType == model.AttrValue {
+		return nil
+	}
+
+	// Check for the masked token sentinel — never valid as a real value
+	values := extractStringValues(cond.Value)
+	for _, v := range values {
+		if v == maskedTokenValue {
+			return invalidValueError()
+		}
+	}
+
+	fieldName := extractFieldName(cond.Attribute)
+	if fieldName == "" {
+		return nil
+	}
+
+	// Look up the field with the caller's access context
+	field, appErr := a.GetPropertyFieldByName(rctx, cpaGroupID, "", fieldName)
+	if appErr != nil {
+		// Field not found or not accessible — reject to prevent probing
+		return invalidValueError()
+	}
+
+	accessMode := getFieldAccessMode(field)
+
+	switch accessMode {
+	case model.PropertyAccessModePublic:
+		// Public fields: no value restrictions
+		return nil
+
+	case model.PropertyAccessModeSourceOnly:
+		// Source-only fields: delegated admins cannot submit any literal values
+		if len(values) > 0 {
+			return invalidValueError()
+		}
+		return nil
+
+	case model.PropertyAccessModeSharedOnly:
+		// Shared-only fields: all submitted values must be in the caller's visible set
+		visibleNames := extractVisibleOptionNames(field)
+		for _, v := range values {
+			if _, visible := visibleNames[v]; !visible {
+				return invalidValueError()
+			}
+		}
+		return nil
+
+	default:
+		// Unknown access mode: reject to be safe
+		if len(values) > 0 {
+			return invalidValueError()
+		}
+		return nil
+	}
+}
+
 // ValidateChannelEligibilityForAccessControl checks that a channel is eligible for
 // access control policy assignment: must be private, not group-constrained, not shared.
 func ValidateChannelEligibilityForAccessControl(channel *model.Channel) *model.AppError {

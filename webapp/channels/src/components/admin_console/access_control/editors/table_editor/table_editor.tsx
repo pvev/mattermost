@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect, useCallback, useMemo} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 
 import type {AccessControlVisualAST} from '@mattermost/types/access_control';
@@ -80,6 +80,9 @@ interface TableEditorProps {
     // Props for user self-exclusion detection
     isSystemAdmin?: boolean;
     validateExpressionAgainstRequester?: (expression: string) => Promise<ActionResult<{requester_matches: boolean}>>;
+
+    // Callback to notify parent when masked state changes (for CEL editor integration)
+    onMaskedStateChange?: (hasMasked: boolean) => void;
 }
 
 // Finds the first available (non-disabled) attribute from a list of user attributes.
@@ -136,6 +139,7 @@ export const parseExpression = (visualAST: AccessControlVisualAST): TableRow[] =
             operator: op,
             values,
             attribute_type: node.attribute_type,
+            hasMaskedValues: node.has_masked_values === true,
         });
     }
 
@@ -160,6 +164,7 @@ function TableEditor({
     actions,
     isSystemAdmin = false,
     validateExpressionAgainstRequester,
+    onMaskedStateChange,
 }: TableEditorProps): JSX.Element {
     const {formatMessage} = useIntl();
 
@@ -171,10 +176,18 @@ function TableEditor({
     // State for user self-exclusion detection (only applies to non-system-admins)
     const [userWouldBeExcluded, setUserWouldBeExcluded] = useState(false);
 
-    // Effect to parse the incoming CEL expression string (value prop)
-    // and update the internal rows state. Handles errors during parsing.
+    // Derived state: whether any row has masked values
+    const hasMaskedRows = useMemo(() => rows.some((r) => r.hasMaskedValues), [rows]);
+
+    // Prevents getVisualAST re-parse when expression change is from internal row editing.
+    const isInternalChange = React.useRef(false);
+
     useEffect(() => {
-        // Skip parsing if no expression to avoid unnecessary API calls
+        if (isInternalChange.current) {
+            isInternalChange.current = false;
+            return;
+        }
+
         if (!value || value.trim() === '') {
             setRows([]);
             return;
@@ -205,10 +218,8 @@ function TableEditor({
         });
     }, [value]);
 
-    // Effect to check if user would be excluded by their own rules
     useEffect(() => {
         const checkUserSelfExclusion = async () => {
-            // Only check for non-system admins when there's an expression and validation function
             if (isSystemAdmin || !value.trim() || !validateExpressionAgainstRequester) {
                 setUserWouldBeExcluded(false);
                 return;
@@ -217,8 +228,7 @@ function TableEditor({
             try {
                 const result = await validateExpressionAgainstRequester(value);
                 setUserWouldBeExcluded(!result.data?.requester_matches);
-            } catch (error) {
-                // If validation fails, assume they would not be excluded (to allow testing)
+            } catch {
                 setUserWouldBeExcluded(false);
             }
         };
@@ -226,28 +236,28 @@ function TableEditor({
         checkUserSelfExclusion();
     }, [value, isSystemAdmin, validateExpressionAgainstRequester]);
 
-    // Converts the internal rows state back into a CEL expression string
-    // and calls the onChange and onValidate props.
+    useEffect(() => {
+        onMaskedStateChange?.(hasMaskedRows);
+    }, [hasMaskedRows, onMaskedStateChange]);
+
     const updateExpression = useCallback((newRows: TableRow[]) => {
         const rowsThatCanFormExpressions = newRows.filter((row) => row.attribute && row.values.length > 0);
 
         const expr = rowsThatCanFormExpressions.map((row) => rowToCEL(row)).join(' && ');
 
+        isInternalChange.current = true;
         onChange(expr);
         if (onValidate) {
             onValidate(expr === '' || rowsThatCanFormExpressions.length > 0);
         }
     }, [onChange, onValidate]);
 
-    // Helper function to find the first available (non-disabled) attribute
     const findFirstAvailableAttribute = useCallback(() => {
         return findFirstAvailableAttributeFromList(userAttributes, enableUserManagedAttributes);
     }, [userAttributes, enableUserManagedAttributes]);
 
-    // Row Manipulation Handlers
     const addRow = useCallback(() => {
         if (userAttributes.length === 0) {
-            // Show a helpful message instead of silently failing
             onParseError('No user attributes available. Please ensure ABAC is properly configured and you have the necessary permissions.');
             return;
         }
@@ -259,11 +269,12 @@ function TableEditor({
         }
 
         setRows((currentRows) => {
-            const newRow = {
+            const newRow: TableRow = {
                 attribute: firstAvailableAttribute.name,
                 operator: firstAvailableAttribute.type === 'multiselect' ? OperatorLabel.HAS_ANY_OF : OperatorLabel.IS,
                 values: [],
                 attribute_type: firstAvailableAttribute.type || '',
+                hasMaskedValues: false,
             };
             const newRows = [...currentRows, newRow];
             updateExpression(newRows); // Ensure expression is updated immediately
@@ -402,7 +413,7 @@ function TableEditor({
                                     <AttributeSelectorMenu
                                         currentAttribute={row.attribute}
                                         availableAttributes={userAttributes}
-                                        disabled={disabled}
+                                        disabled={disabled || row.hasMaskedValues}
                                         onChange={(attribute) => updateRowAttribute(index, attribute)}
                                         menuId={`attribute-selector-menu-${index}`}
                                         buttonId={`attribute-selector-button-${index}`}
@@ -414,7 +425,7 @@ function TableEditor({
                                 <td className='table-editor__cell'>
                                     <OperatorSelectorMenu
                                         currentOperator={row.operator}
-                                        disabled={disabled}
+                                        disabled={disabled || row.hasMaskedValues}
                                         onChange={(operator) => updateRowOperator(index, operator)}
                                         attributeType={userAttributes.find((attr) => attr.name === row.attribute)?.type}
                                     />
@@ -466,14 +477,19 @@ function TableEditor({
                 />
                 <TestButton
                     onClick={() => setShowTestResults(true)}
-                    disabled={disabled || !value || userWouldBeExcluded}
+                    disabled={disabled || !value || userWouldBeExcluded || hasMaskedRows}
                     disabledTooltip={
-                        userWouldBeExcluded ?
+                        hasMaskedRows ?
                             formatMessage({
-                                id: 'admin.access_control.table_editor.user_excluded_tooltip',
-                                defaultMessage: 'You cannot test access rules that would exclude you from the channel',
+                                id: 'admin.access_control.table_editor.masked_values_tooltip',
+                                defaultMessage: 'Test is unavailable because this policy contains restricted attribute values.',
                             }) :
-                            undefined
+                            userWouldBeExcluded ?
+                                formatMessage({
+                                    id: 'admin.access_control.table_editor.user_excluded_tooltip',
+                                    defaultMessage: 'You cannot test access rules that would exclude you from the channel',
+                                }) :
+                                undefined
                     }
                 />
             </div>

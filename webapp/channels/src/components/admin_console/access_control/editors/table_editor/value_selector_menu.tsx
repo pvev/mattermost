@@ -15,6 +15,7 @@ export interface TableRow {
     operator: string;
     values: string[];
     attribute_type: string;
+    hasMaskedValues: boolean;
 }
 
 export interface ValueSelectorMenuProps {
@@ -24,6 +25,7 @@ export interface ValueSelectorMenuProps {
     options?: PropertyFieldOption[];
     allowCreateValue?: boolean;
     placeholder?: string;
+    hasMaskedValues?: boolean;
 }
 
 // Main ValueSelectorMenu component that delegates to the appropriate selector
@@ -34,6 +36,7 @@ const ValueSelectorMenu = ({
     options = [],
     allowCreateValue = false,
     placeholder,
+    hasMaskedValues = false,
 }: ValueSelectorMenuProps) => {
     const isMultiOperator = isMultiValueOperator(row.operator);
 
@@ -46,6 +49,7 @@ const ValueSelectorMenu = ({
                 options={options}
                 allowCreateValue={allowCreateValue}
                 placeholder={placeholder}
+                hasMaskedValues={hasMaskedValues}
             />
         );
     }
@@ -59,6 +63,7 @@ const ValueSelectorMenu = ({
             options={options}
             allowCreateValue={allowCreateValue}
             placeholder={placeholder}
+            hasMaskedValues={hasMaskedValues}
         />
     );
 };

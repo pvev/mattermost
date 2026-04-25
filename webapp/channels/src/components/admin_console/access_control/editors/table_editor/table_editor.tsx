@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect, useCallback, useMemo} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 
 import type {AccessControlVisualAST} from '@mattermost/types/access_control';
@@ -80,6 +80,9 @@ interface TableEditorProps {
     // Props for user self-exclusion detection
     isSystemAdmin?: boolean;
     validateExpressionAgainstRequester?: (expression: string) => Promise<ActionResult<{requester_matches: boolean}>>;
+
+    // Callback to notify parent when masked state changes (for CEL editor integration)
+    onMaskedStateChange?: (hasMasked: boolean) => void;
 }
 
 // Finds the first available (non-disabled) attribute from a list of user attributes.
@@ -136,6 +139,7 @@ export const parseExpression = (visualAST: AccessControlVisualAST): TableRow[] =
             operator: op,
             values,
             attribute_type: node.attribute_type,
+            hasMaskedValues: node.has_masked_values === true,
         });
     }
 
@@ -160,6 +164,7 @@ function TableEditor({
     actions,
     isSystemAdmin = false,
     validateExpressionAgainstRequester,
+    onMaskedStateChange,
 }: TableEditorProps): JSX.Element {
     const {formatMessage} = useIntl();
 
@@ -170,6 +175,9 @@ function TableEditor({
 
     // State for user self-exclusion detection (only applies to non-system-admins)
     const [userWouldBeExcluded, setUserWouldBeExcluded] = useState(false);
+
+    // Derived state: whether any row has masked values
+    const hasMaskedRows = useMemo(() => rows.some((r) => r.hasMaskedValues), [rows]);
 
     // Effect to parse the incoming CEL expression string (value prop)
     // and update the internal rows state. Handles errors during parsing.
@@ -226,6 +234,11 @@ function TableEditor({
         checkUserSelfExclusion();
     }, [value, isSystemAdmin, validateExpressionAgainstRequester]);
 
+    // Notify parent when masked state changes (for CEL editor read-only integration)
+    useEffect(() => {
+        onMaskedStateChange?.(hasMaskedRows);
+    }, [hasMaskedRows, onMaskedStateChange]);
+
     // Converts the internal rows state back into a CEL expression string
     // and calls the onChange and onValidate props.
     const updateExpression = useCallback((newRows: TableRow[]) => {
@@ -259,11 +272,12 @@ function TableEditor({
         }
 
         setRows((currentRows) => {
-            const newRow = {
+            const newRow: TableRow = {
                 attribute: firstAvailableAttribute.name,
                 operator: firstAvailableAttribute.type === 'multiselect' ? OperatorLabel.HAS_ANY_OF : OperatorLabel.IS,
                 values: [],
                 attribute_type: firstAvailableAttribute.type || '',
+                hasMaskedValues: false,
             };
             const newRows = [...currentRows, newRow];
             updateExpression(newRows); // Ensure expression is updated immediately
@@ -402,7 +416,7 @@ function TableEditor({
                                     <AttributeSelectorMenu
                                         currentAttribute={row.attribute}
                                         availableAttributes={userAttributes}
-                                        disabled={disabled}
+                                        disabled={disabled || row.hasMaskedValues}
                                         onChange={(attribute) => updateRowAttribute(index, attribute)}
                                         menuId={`attribute-selector-menu-${index}`}
                                         buttonId={`attribute-selector-button-${index}`}
@@ -414,7 +428,7 @@ function TableEditor({
                                 <td className='table-editor__cell'>
                                     <OperatorSelectorMenu
                                         currentOperator={row.operator}
-                                        disabled={disabled}
+                                        disabled={disabled || row.hasMaskedValues}
                                         onChange={(operator) => updateRowOperator(index, operator)}
                                         attributeType={userAttributes.find((attr) => attr.name === row.attribute)?.type}
                                     />
@@ -425,6 +439,7 @@ function TableEditor({
                                         disabled={disabled}
                                         updateValues={(values: string[]) => updateRowValues(index, values)}
                                         options={row.attribute ? userAttributes.find((attr) => attr.name === row.attribute)?.attrs?.options || [] : []}
+                                        hasMaskedValues={row.hasMaskedValues}
                                     />
                                 </td>
                                 <td className='table-editor__cell-actions'>
@@ -466,14 +481,19 @@ function TableEditor({
                 />
                 <TestButton
                     onClick={() => setShowTestResults(true)}
-                    disabled={disabled || !value || userWouldBeExcluded}
+                    disabled={disabled || !value || userWouldBeExcluded || hasMaskedRows}
                     disabledTooltip={
-                        userWouldBeExcluded ?
+                        hasMaskedRows ?
                             formatMessage({
-                                id: 'admin.access_control.table_editor.user_excluded_tooltip',
-                                defaultMessage: 'You cannot test access rules that would exclude you from the channel',
+                                id: 'admin.access_control.table_editor.masked_values_tooltip',
+                                defaultMessage: 'Test is unavailable because this policy contains restricted attribute values.',
                             }) :
-                            undefined
+                            userWouldBeExcluded ?
+                                formatMessage({
+                                    id: 'admin.access_control.table_editor.user_excluded_tooltip',
+                                    defaultMessage: 'You cannot test access rules that would exclude you from the channel',
+                                }) :
+                                undefined
                     }
                 />
             </div>

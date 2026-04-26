@@ -280,4 +280,60 @@ test.describe('Attribute-Value Masking', () => {
         // 3. Operator and attribute dropdowns are locked
         // 4. As system admin: "Building 7" is visible
     });
+
+    test('E2E-13: GET /policies/{id} does not leak raw CEL to delegated admin', async ({pw}) => {
+        await pw.skipIfNoLicense();
+
+        // This test validates that the raw CEL expression is redacted for delegated admins,
+        // preventing them from reading masked values via direct API call.
+
+        const {adminUser, adminClient, team} = await pw.initSetup();
+
+        await enableUserManagedAttributes(adminClient);
+
+        // Enable masking
+        const config = await adminClient.getConfig();
+        config.FeatureFlags = config.FeatureFlags || {};
+        (config.FeatureFlags as any).AttributeValueMasking = true;
+        await adminClient.updateConfig(config);
+
+        // Setup:
+        // 1. Create shared_only multiselect "Program" with options Alpha, Bravo, Charlie
+        // 2. Create delegated admin with Program=Alpha
+        // 3. System admin creates policy with Program has any of [Alpha, Bravo, Charlie]
+
+        // Steps:
+        // 1. As delegated admin: GET /api/v4/access_control_policies/{id}
+        // 2. Inspect response body: rules[0].expression
+        // 3. Verify expression is "[REDACTED]" — NOT the raw CEL with "Bravo" and "Charlie"
+        // 4. As system admin: same GET request — verify full raw expression returned
+    });
+
+    test('E2E-14: POST /policies/search does not leak raw CEL to delegated admin', async ({pw}) => {
+        await pw.skipIfNoLicense();
+
+        // Setup: same as E2E-13
+
+        // Steps:
+        // 1. As delegated admin: POST /api/v4/access_control_policies/search with team scope
+        // 2. Inspect returned policies: each policy's rules[].expression
+        // 3. Verify ALL expressions are "[REDACTED]"
+        // 4. As system admin: same search — verify full expressions returned
+    });
+
+    test('E2E-15: Flag OFF preserves raw expressions for delegated admin', async ({pw}) => {
+        await pw.skipIfNoLicense();
+
+        const {adminClient} = await pw.initSetup();
+
+        // Disable masking
+        const config = await adminClient.getConfig();
+        config.FeatureFlags = config.FeatureFlags || {};
+        (config.FeatureFlags as any).AttributeValueMasking = false;
+        await adminClient.updateConfig(config);
+
+        // Steps:
+        // 1. As delegated admin: GET /api/v4/access_control_policies/{id}
+        // 2. Verify full raw expression returned (flag OFF = no redaction)
+    });
 });

@@ -14,6 +14,13 @@ import (
 	"github.com/mattermost/mattermost/server/v8/channels/app"
 )
 
+// shouldRedactExpressions reports whether raw CEL expressions should be masked for this caller.
+func shouldRedactExpressions(c *Context) bool {
+	return c.App.Config().FeatureFlags.AttributeBasedAccessControl &&
+		c.App.Config().FeatureFlags.AttributeValueMasking &&
+		!c.App.SessionHasPermissionTo(*c.AppContext.Session(), model.PermissionManageSystem)
+}
+
 func (api *API) InitAccessControlPolicy() {
 	if !api.srv.Config().FeatureFlags.AttributeBasedAccessControl {
 		return
@@ -183,6 +190,10 @@ func getAccessControlPolicy(c *Context, w http.ResponseWriter, r *http.Request) 
 	if appErr != nil {
 		c.Err = appErr
 		return
+	}
+
+	if shouldRedactExpressions(c) {
+		c.App.MaskPolicyExpressions(c.AppContext, policy, c.AppContext.Session().UserId)
 	}
 
 	js, err := json.Marshal(policy)
@@ -486,6 +497,12 @@ func searchAccessControlPolicies(c *Context, w http.ResponseWriter, r *http.Requ
 		}
 		total -= int64(len(policies) - len(filtered))
 		policies = filtered
+	}
+
+	if shouldRedactExpressions(c) {
+		for _, p := range policies {
+			c.App.MaskPolicyExpressions(c.AppContext, p, c.AppContext.Session().UserId)
+		}
 	}
 
 	result := model.AccessControlPoliciesWithCount{
@@ -999,9 +1016,6 @@ func convertToVisualAST(c *Context, w http.ResponseWriter, r *http.Request) {
 	var visualAST *model.VisualExpression
 	var appErr *model.AppError
 
-	// When attribute-value masking is enabled, delegated admins receive a masked
-	// visual AST where non-held values are filtered out. System admins always
-	// see the full unmasked visual AST.
 	if c.App.Config().FeatureFlags.AttributeValueMasking && !hasSystemPermission {
 		visualAST, appErr = c.App.GetMaskedVisualAST(c.AppContext, cel.Expression, c.AppContext.Session().UserId)
 	} else {

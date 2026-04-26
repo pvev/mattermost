@@ -386,3 +386,158 @@ func TestFilterConditionValues_TextFieldMasking(t *testing.T) {
 		assert.True(t, condition.HasMaskedValues)
 	})
 }
+
+func TestReplaceHiddenValuesWithToken(t *testing.T) {
+	t.Run("multi-value: visible values kept, single token appended for hidden", func(t *testing.T) {
+		condition := &model.Condition{
+			Value: []any{"Alpha", "Bravo", "Charlie"},
+		}
+		visibleNames := map[string]struct{}{"Alpha": {}}
+		replaceHiddenValuesWithToken(condition, visibleNames)
+
+		values, ok := condition.Value.([]any)
+		require.True(t, ok)
+		assert.Equal(t, []any{"Alpha", maskedTokenValue}, values)
+	})
+
+	t.Run("multi-value: multiple hidden values collapse to single token", func(t *testing.T) {
+		condition := &model.Condition{
+			Value: []any{"Bravo", "Charlie", "Delta"},
+		}
+		visibleNames := map[string]struct{}{} // caller holds nothing
+		replaceHiddenValuesWithToken(condition, visibleNames)
+
+		values, ok := condition.Value.([]any)
+		require.True(t, ok)
+		// All 3 hidden → single token, not 3 tokens
+		assert.Equal(t, []any{maskedTokenValue}, values)
+	})
+
+	t.Run("multi-value: all visible, no token appended", func(t *testing.T) {
+		condition := &model.Condition{
+			Value: []any{"Alpha", "Bravo"},
+		}
+		visibleNames := map[string]struct{}{"Alpha": {}, "Bravo": {}}
+		replaceHiddenValuesWithToken(condition, visibleNames)
+
+		values, ok := condition.Value.([]any)
+		require.True(t, ok)
+		assert.Equal(t, []any{"Alpha", "Bravo"}, values)
+	})
+
+	t.Run("single value: hidden is replaced with token", func(t *testing.T) {
+		condition := &model.Condition{Value: "Secret"}
+		visibleNames := map[string]struct{}{"Other": {}}
+		replaceHiddenValuesWithToken(condition, visibleNames)
+		assert.Equal(t, maskedTokenValue, condition.Value)
+	})
+
+	t.Run("single value: visible is kept", func(t *testing.T) {
+		condition := &model.Condition{Value: "Alpha"}
+		visibleNames := map[string]struct{}{"Alpha": {}}
+		replaceHiddenValuesWithToken(condition, visibleNames)
+		assert.Equal(t, "Alpha", condition.Value)
+	})
+}
+
+func TestBuildCELFromConditions(t *testing.T) {
+	t.Run("empty conditions returns true", func(t *testing.T) {
+		assert.Equal(t, "true", buildCELFromConditions(nil))
+		assert.Equal(t, "true", buildCELFromConditions([]model.Condition{}))
+	})
+
+	t.Run("equality operator", func(t *testing.T) {
+		conds := []model.Condition{{
+			Attribute: "user.attributes.Clearance",
+			Operator:  "==",
+			Value:     "TopSecret",
+			ValueType: model.LiteralValue,
+		}}
+		assert.Equal(t, `user.attributes.Clearance == "TopSecret"`, buildCELFromConditions(conds))
+	})
+
+	t.Run("select in operator", func(t *testing.T) {
+		conds := []model.Condition{{
+			Attribute:     "user.attributes.Program",
+			Operator:      "in",
+			Value:         []any{"Alpha", "Bravo"},
+			ValueType:     model.LiteralValue,
+			AttributeType: "select",
+		}}
+		assert.Equal(t, `user.attributes.Program in ["Alpha", "Bravo"]`, buildCELFromConditions(conds))
+	})
+
+	t.Run("multiselect in operator", func(t *testing.T) {
+		conds := []model.Condition{{
+			Attribute:     "user.attributes.Tag",
+			Operator:      "in",
+			Value:         []any{"X", "Y"},
+			ValueType:     model.LiteralValue,
+			AttributeType: "multiselect",
+		}}
+		assert.Equal(t, `"X" in user.attributes.Tag && "Y" in user.attributes.Tag`, buildCELFromConditions(conds))
+	})
+
+	t.Run("hasAnyOf operator", func(t *testing.T) {
+		conds := []model.Condition{{
+			Attribute: "user.attributes.Role",
+			Operator:  "hasAnyOf",
+			Value:     []any{"Admin", "Editor"},
+			ValueType: model.LiteralValue,
+		}}
+		assert.Equal(t, `("Admin" in user.attributes.Role || "Editor" in user.attributes.Role)`, buildCELFromConditions(conds))
+	})
+
+	t.Run("hasAllOf operator", func(t *testing.T) {
+		conds := []model.Condition{{
+			Attribute: "user.attributes.Role",
+			Operator:  "hasAllOf",
+			Value:     []any{"Admin", "Editor"},
+			ValueType: model.LiteralValue,
+		}}
+		assert.Equal(t, `"Admin" in user.attributes.Role && "Editor" in user.attributes.Role`, buildCELFromConditions(conds))
+	})
+
+	t.Run("contains operator", func(t *testing.T) {
+		conds := []model.Condition{{
+			Attribute: "user.attributes.Name",
+			Operator:  "contains",
+			Value:     "test",
+			ValueType: model.LiteralValue,
+		}}
+		assert.Equal(t, `user.attributes.Name.contains("test")`, buildCELFromConditions(conds))
+	})
+
+	t.Run("multiple conditions joined with &&", func(t *testing.T) {
+		conds := []model.Condition{
+			{
+				Attribute: "user.attributes.Clearance",
+				Operator:  "==",
+				Value:     "TopSecret",
+				ValueType: model.LiteralValue,
+			},
+			{
+				Attribute:     "user.attributes.Program",
+				Operator:      "in",
+				Value:         []any{"Alpha"},
+				ValueType:     model.LiteralValue,
+				AttributeType: "select",
+			},
+		}
+		result := buildCELFromConditions(conds)
+		assert.Equal(t, `user.attributes.Clearance == "TopSecret" && user.attributes.Program in ["Alpha"]`, result)
+	})
+
+	t.Run("masked token in values produces valid CEL", func(t *testing.T) {
+		conds := []model.Condition{{
+			Attribute:     "user.attributes.Program",
+			Operator:      "in",
+			Value:         []any{"Alpha", maskedTokenValue},
+			ValueType:     model.LiteralValue,
+			AttributeType: "select",
+		}}
+		result := buildCELFromConditions(conds)
+		assert.Contains(t, result, "Alpha")
+		assert.Contains(t, result, maskedTokenValue)
+	})
+}

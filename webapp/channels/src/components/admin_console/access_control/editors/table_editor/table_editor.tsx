@@ -130,8 +130,10 @@ export const parseExpression = (visualAST: AccessControlVisualAST): TableRow[] =
         let values;
         if (Array.isArray(node.value)) {
             values = node.value;
-        } else {
+        } else if (node.value !== null && node.value !== undefined) {
             values = [node.value];
+        } else {
+            values = [];
         }
 
         tableRows.push({

@@ -23,6 +23,8 @@ import type {CustomMessageInputType} from 'components/widgets/inputs/input/input
 import SaveChangesPanel from 'components/widgets/modals/components/save_changes_panel';
 import type {SaveChangesPanelState} from 'components/widgets/modals/components/save_changes_panel';
 
+import SectionNotice from 'components/section_notice';
+
 import {useChannelAccessControlActions} from 'hooks/useChannelAccessControlActions';
 import Constants from 'utils/constants';
 
@@ -105,6 +107,7 @@ export default function TeamPolicyEditor({
     const [showConfirmationModal, setShowConfirmationModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [backClicked, setBackClicked] = useState(false);
+    const [hasMaskedRows, setHasMaskedRows] = useState(false);
 
     const noUsableAttributes = attributesLoaded && !hasUsableAttributes(autocompleteResult, accessControlSettings.EnableUserManagedAttributes);
 
@@ -507,6 +510,23 @@ export default function TeamPolicyEditor({
                         </p>
                     </div>
                 </div>
+                {hasMaskedRows && (
+                    <div className='TeamPolicyEditor__masked-values-warning'>
+                        <SectionNotice
+                            type='warning'
+                            title={
+                                <FormattedMessage
+                                    id='admin.access_control.policy.edit_policy.masked_values_warning.title'
+                                    defaultMessage='This policy contains restricted values'
+                                />
+                            }
+                            text={formatMessage({
+                                id: 'admin.access_control.policy.edit_policy.masked_values_warning.text',
+                                defaultMessage: 'Some rules include attribute values you cannot see. Editing or deleting these rules may change who has access in ways you cannot fully anticipate.',
+                            })}
+                        />
+                    </div>
+                )}
                 <TableEditor
                     value={expression}
                     onChange={handleExpressionChange}
@@ -524,6 +544,7 @@ export default function TeamPolicyEditor({
                     // nothing to be excluded from in advisory mode, so the
                     // warning is misleading.
                     validateExpressionAgainstRequester={hasPrivateChannelInScope() ? abacActions.validateExpressionAgainstRequester : undefined}
+                    onMaskedStateChange={setHasMaskedRows}
                 />
             </div>
 
@@ -669,12 +690,31 @@ export default function TeamPolicyEditor({
                         </div>
                     }
                 >
-                    <p>
-                        <FormattedMessage
-                            id='team_settings.policy_editor.delete_confirmation.body'
-                            defaultMessage='This action cannot be undone.'
-                        />
-                    </p>
+                    <>
+                        {hasMaskedRows && (
+                            <div className='TeamPolicyEditor__masked-values-warning'>
+                                <SectionNotice
+                                    type='warning'
+                                    title={
+                                        <FormattedMessage
+                                            id='admin.access_control.policy.edit_policy.masked_values_warning.title'
+                                            defaultMessage='This policy contains restricted values'
+                                        />
+                                    }
+                                    text={formatMessage({
+                                        id: 'admin.access_control.policy.edit_policy.masked_values_warning.delete_text',
+                                        defaultMessage: 'This policy includes attribute values that are hidden from you. Deleting it may remove access for users who match those hidden conditions.',
+                                    })}
+                                />
+                            </div>
+                        )}
+                        <p>
+                            <FormattedMessage
+                                id='team_settings.policy_editor.delete_confirmation.body'
+                                defaultMessage='This action cannot be undone.'
+                            />
+                        </p>
+                    </>
                 </GenericModal>
             )}
 

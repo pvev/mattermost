@@ -26,6 +26,16 @@ export function celStringLiteral(val: string): string {
 }
 
 export function rowToCEL(row: TableRow): string {
+    // A fully-masked row has no visible values on the client side.  Emit a
+    // placeholder "in []" expression so the backend merge can locate this
+    // condition by attribute and re-inject the hidden values before persisting.
+    // Without this guard the condition would be filtered out by updateExpression,
+    // the empty expression would be sent to the server, and buildCELFromConditions
+    // would return "true" — making the policy wide-open (security regression).
+    if (row.hasMaskedValues && row.values.length === 0) {
+        return `user.attributes.${row.attribute} in []`;
+    }
+
     const attributeExpr = `user.attributes.${row.attribute}`;
     const config = OPERATOR_CONFIG[row.operator];
 
@@ -243,7 +253,9 @@ function TableEditor({
     }, [hasMaskedRows, onMaskedStateChange]);
 
     const updateExpression = useCallback((newRows: TableRow[]) => {
-        const rowsThatCanFormExpressions = newRows.filter((row) => row.attribute && row.values.length > 0);
+        // Include masked rows with no visible values: rowToCEL will emit an "in []"
+        // placeholder so the backend merge can restore the hidden values on save.
+        const rowsThatCanFormExpressions = newRows.filter((row) => row.attribute && (row.values.length > 0 || row.hasMaskedValues));
 
         const expr = rowsThatCanFormExpressions.map((row) => rowToCEL(row)).join(' && ');
 

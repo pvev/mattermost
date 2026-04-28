@@ -39,7 +39,7 @@ export function setFieldAsSharedOnly(fieldId: string): void {
     const dbUrl = resolveDbUrl();
     const sql = [
         `UPDATE propertyfields`,
-        `SET attrs = jsonb_set(COALESCE(attrs, '{}'::jsonb), '{access_mode}', '"shared_only"'),`,
+        `SET attrs = jsonb_set(COALESCE(attrs, '{}'::jsonb), '{access_mode}', to_json('shared_only'::text)::jsonb),`,
         `updateat = EXTRACT(EPOCH FROM NOW())::bigint * 1000`,
         `WHERE id = '${fieldId}';`,
     ].join(' ');

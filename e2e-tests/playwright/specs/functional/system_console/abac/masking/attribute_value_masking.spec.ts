@@ -15,6 +15,10 @@ import {
     enableUserManagedAttributes,
 } from '../support';
 
+// PLUG: import setFieldAsSharedOnly to make test fields trigger masking.
+// UNPLUG: remove this import (and the setFieldAsSharedOnly() calls below).
+import {setFieldAsSharedOnly} from './masking_db_setup';
+
 /**
  * Attribute-Value Masking E2E Tests
  *
@@ -248,6 +252,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
 
             // adminUser holds "Alpha" — Bravo and Charlie will be masked for them
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
@@ -312,6 +317,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
@@ -389,6 +395,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
@@ -461,6 +468,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
 
             // adminUser holds "Alpha"; policy has ["Alpha", "Bravo"]
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
@@ -526,6 +534,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
@@ -592,6 +601,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
@@ -663,6 +673,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
 
             // adminUser holds "Alpha" and the policy contains ONLY "Alpha"
             // → caller holds ALL values in the condition → nothing is masked
@@ -735,6 +746,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
@@ -786,6 +798,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
@@ -837,6 +850,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
 
             // adminUser holds "Alpha"; policy has ["Bravo", "Charlie"] (admin holds none of these)
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
@@ -912,6 +926,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
@@ -961,6 +976,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingLocation_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Building 1');
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
@@ -1010,6 +1026,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
@@ -1065,6 +1082,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
@@ -1113,6 +1131,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
@@ -1159,6 +1178,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
@@ -1213,6 +1233,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
@@ -1299,6 +1320,8 @@ test.describe('Attribute-Value Masking', () => {
             const programFieldId = await createMaskingTextField(adminClient, programFieldName);
             const clearanceFieldId = await createMaskingTextField(adminClient, clearanceFieldName);
             fieldIds.push(programFieldId, clearanceFieldId);
+            setFieldAsSharedOnly(programFieldId); // UNPLUG: remove to skip masking setup
+            setFieldAsSharedOnly(clearanceFieldId); // UNPLUG: remove to skip masking setup
 
             await setUserAttribute(adminClient, adminUser.id, programFieldId, 'Alpha');
             // Admin holds no value in clearanceField → both clearance rows are fully masked

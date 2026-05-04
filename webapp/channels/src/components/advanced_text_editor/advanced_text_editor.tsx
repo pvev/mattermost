@@ -17,8 +17,7 @@ import {get, getBool, getInt} from 'mattermost-redux/selectors/entities/preferen
 import {haveIChannelPermission} from 'mattermost-redux/selectors/entities/roles';
 import {getCurrentUserId, isCurrentUserGuestUser, getStatusForUserId, makeGetDisplayName} from 'mattermost-redux/selectors/entities/users';
 
-import * as GlobalActions from 'actions/global_actions';
-import type {CreatePostOptions} from 'actions/post_actions';
+import * as GlobalActions from 'actions/global_actions';import type {CreatePostOptions} from 'actions/post_actions';
 import {actionOnGlobalItemsWithPrefix} from 'actions/storage';
 import type {SubmitPostReturnType} from 'actions/views/create_comment';
 import {removeDraft, updateDraft} from 'actions/views/drafts';
@@ -28,7 +27,6 @@ import {getSelectedPostFocussedAt} from 'selectors/rhs';
 import {connectionErrorCount} from 'selectors/views/system';
 import LocalStorageStore from 'stores/local_storage_store';
 
-import PostBoxIndicator from 'components/advanced_text_editor/post_box_indicator/post_box_indicator';
 import {makeAsyncComponent} from 'components/async_load';
 import AutoHeightSwitcher from 'components/common/auto_height_switcher';
 import useDidUpdate from 'components/common/hooks/useDidUpdate';
@@ -39,6 +37,7 @@ import {
     DropOverlayIdCreatePost,
     DropOverlayIdEditPost, FileUploadOverlay,
 } from 'components/file_upload_overlay/file_upload_overlay';
+import PostBoxIndicator from 'components/advanced_text_editor/post_box_indicator/post_box_indicator';
 import RhsSuggestionList from 'components/suggestion/rhs_suggestion_list';
 import SuggestionList from 'components/suggestion/suggestion_list';
 import Textbox from 'components/textbox';
@@ -319,13 +318,17 @@ const AdvancedTextEditor = ({
     } = useRewrite(draft, handleDraftChange, textboxRef, focusTextbox, setServerError);
     const isDisabled = Boolean(readOnlyChannel || (!enableSharedChannelsDMs && isDMOrGMRemote) || rewriteIsProcessing);
 
+    // Ephemeral DM mode state (used for the green border indicator and file upload disabling)
+    const ephemeralModeState = useSelector((state: GlobalState) => state.views.ephemeralMode?.[channelId]);
+    const isEphemeralActive = ephemeralModeState?.status === 'active';
+
     const [attachmentPreview, fileUploadJSX] = useUploadFiles(
         draft,
         rootId,
         channelId,
         isThreadView,
         storedDrafts,
-        isDisabled,
+        isDisabled || isEphemeralActive,
         textboxRef,
         handleDraftChange,
         focusTextbox,
@@ -619,6 +622,7 @@ const AdvancedTextEditor = ({
             disabled={disableSendButton}
             handleSubmit={handleSubmitPostAndScheduledMessage}
             channelId={channelId}
+            hideScheduledPost={isEphemeralActive}
         />
     );
 
@@ -687,9 +691,9 @@ const AdvancedTextEditor = ({
 
     const additionalControls = useMemo(() => [
         !isInEditMode && priorityAdditionalControl,
-        !isInEditMode && burnOnReadAdditionalControl,
+        !isInEditMode && !isEphemeralActive && burnOnReadAdditionalControl,
         ...(pluginItems || []),
-    ].filter(Boolean), [pluginItems, priorityAdditionalControl, isInEditMode, burnOnReadAdditionalControl]);
+    ].filter(Boolean), [pluginItems, priorityAdditionalControl, isInEditMode, burnOnReadAdditionalControl, isEphemeralActive]);
 
     const getSelectedText = useCallback(() => {
         const input = textboxRef.current?.getInputBox();
@@ -740,6 +744,9 @@ const AdvancedTextEditor = ({
     );
 
     const fileUploadOverlay = useMemo(() => {
+        if (isEphemeralActive) {
+            return null;
+        }
         const overlayType = isRHS ? 'right' : 'center';
         const direction = 'horizontal';
 
@@ -758,7 +765,7 @@ const AdvancedTextEditor = ({
                 direction={direction}
             />
         );
-    }, [isInEditMode, isRHS]);
+    }, [isInEditMode, isRHS, isEphemeralActive]);
 
     const showFormattingSpacer = isMessageLong || showPreview || attachmentPreview || isRHS || isThreadView;
 
@@ -785,9 +792,10 @@ const AdvancedTextEditor = ({
             )}
             <div
                 className={classNames('AdvancedTextEditor', {
-                    'AdvancedTextEditor__attachment-disabled': !canUploadFiles,
+                    'AdvancedTextEditor__attachment-disabled': !canUploadFiles || isEphemeralActive,
                     scroll: renderScrollbar,
                     'formatting-bar': showFormattingBar,
+                    'AdvancedTextEditor--ephemeral-active': isEphemeralActive,
                 })}
             >
                 {!wasNotifiedOfLogIn && (
@@ -815,7 +823,7 @@ const AdvancedTextEditor = ({
                         tabIndex={-1}
                         className='AdvancedTextEditor__cell a11y__region'
                     >
-                        {!isInEditMode && (priorityLabels || burnOnReadLabels) && (
+                        {!isInEditMode && !isEphemeralActive && (priorityLabels || burnOnReadLabels) && (
                             <div className='AdvancedTextEditor__labels'>
                                 <UnifiedLabelsWrapper
                                     priorityLabels={priorityLabels}

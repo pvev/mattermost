@@ -11,6 +11,7 @@ import channelSelectorModal from './channel_selector_modal';
 import channelSidebar from './channel_sidebar';
 import drafts from './drafts';
 import emoji from './emoji';
+import ephemeralMode from './ephemeral_mode';
 import i18n from './i18n';
 import lhs from './lhs';
 import marketplace from './marketplace';
@@ -38,6 +39,7 @@ export default combineReducers({
     posts,
     modals,
     emoji,
+    ephemeralMode,
     i18n,
     lhs,
     search,

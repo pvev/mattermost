@@ -331,6 +331,7 @@ function PostComponent(props: Props) {
             'mention-comment': props.isCommentMention,
             'post--thread': isRHS,
             'post--modal': isModal,
+            'post--ephemeral-dm': post.props?.ephemeral_dm === true,
         });
     };
 
@@ -374,6 +375,11 @@ function PostComponent(props: Props) {
 
         // Prevent BoR messages from opening reply
         if (post.type === PostTypes.BURN_ON_READ) {
+            return;
+        }
+
+        // Prevent ephemeral DM messages from opening the RHS reply panel
+        if (post.props?.ephemeral_dm === true) {
             return;
         }
 
@@ -548,6 +554,18 @@ function PostComponent(props: Props) {
         );
     }
 
+    // Additional indicator for ephemeral DM mode posts
+    const isEphemeralDMPost = post.props?.ephemeral_dm === true;
+    const ephemeralDMBadge = isEphemeralDMPost ? (
+        <span
+            className='post__ephemeral-dm-badge'
+            title='Ephemeral — not saved'
+            aria-label='Ephemeral message, not saved'
+        >
+            {'🔒'}
+        </span>
+    ) : null;
+
     let profilePic;
     const hideProfilePicture = hasSameRoot(props) && (!post.root_id && !props.hasReplies) && !PostUtils.isFromBot(post);
     const hideProfileCase = !(props.location === Locations.RHS_COMMENT && props.compactDisplay && props.isConsecutivePost);
@@ -627,9 +645,9 @@ function PostComponent(props: Props) {
     ) : null;
     const channelDisplayName = getChannelName();
 
-    // Don't show reactions for unrevealed BoR posts - users can't react to concealed content
     const showReactions = (props.location !== Locations.SEARCH || props.isPinnedPosts || props.isFlaggedPosts) &&
-        !props.shouldDisplayBurnOnReadConcealed;
+        !props.shouldDisplayBurnOnReadConcealed &&
+        !isEphemeralDMPost;
 
     const getTestId = () => {
         let idPrefix: string;
@@ -815,6 +833,7 @@ function PostComponent(props: Props) {
                                 {priority}
                                 {burnOnReadBadge}
                                 {burnOnReadTimerChip}
+                                {isEphemeralDMPost && !props.isConsecutivePost && ephemeralDMBadge}
                                 {((!props.compactDisplay && !(hasSameRoot(props) && props.isConsecutivePost)) || (props.compactDisplay && isRHS)) &&
                                     PostUtils.hasAiGeneratedMetadata(post) && (
                                     <AiGeneratedIndicator
@@ -855,7 +874,7 @@ function PostComponent(props: Props) {
                                 }
                                 {visibleMessage}
                             </div>
-                            {!isModal && !props.isPostBeingEdited &&
+                            {!isModal && !props.isPostBeingEdited && !isEphemeralDMPost &&
                             <PostOptions
                                 {...props}
                                 teamId={teamId}

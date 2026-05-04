@@ -21,6 +21,7 @@ const FileUploadOverlay = makeAsyncComponent('FileUploadOverlay', lazy(() => imp
 const ChannelBookmarks = makeAsyncComponent('ChannelBookmarks', lazy(() => import('components/channel_bookmarks')));
 const AdvancedCreatePost = makeAsyncComponent('AdvancedCreatePost', lazy(() => import('components/advanced_create_post')));
 const ChannelBanner = makeAsyncComponent('ChannelBanner', lazy(() => import('components/channel_banner/channel_banner')));
+const EphemeralModeBanner = makeAsyncComponent('EphemeralModeBanner', lazy(() => import('components/ephemeral_dm/ephemeral_mode_banner')));
 
 export type Props = PropsFromRedux & RouteComponentProps<{
     postid?: string;
@@ -220,6 +221,7 @@ export default class ChannelView extends React.PureComponent<Props, State> {
                 />
                 <ChannelHeader/>
                 <ChannelBanner channelId={this.props.channelId}/>
+                <EphemeralModeBanner channelId={this.props.channelId}/>
                 {this.props.isChannelBookmarksEnabled && <ChannelBookmarks channelId={this.props.channelId}/>}
                 <DeferredPostView
                     channelId={this.props.channelId}

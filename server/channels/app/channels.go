@@ -296,6 +296,12 @@ func (ch *Channels) Start() error {
 		return errors.Wrapf(err, "unable to ensure PostAction cookie secret")
 	}
 
+	// Wire the ephemeral DM disconnect callback so the hub can notify the peer
+	// when a user's last WebSocket connection closes.
+	app := New(ServerConnector(ch.srv.Channels()))
+	ch.srv.Platform().SetOnUserDisconnect(app.OnUserDisconnectedForEphemeralDM)
+	app.StartEphemeralDMInactivityReaper(ch.interruptQuitChan)
+
 	return nil
 }
 

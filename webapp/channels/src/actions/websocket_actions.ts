@@ -132,6 +132,15 @@ import {
     getTeamsUsage,
 } from 'actions/cloud';
 import {loadCustomEmojisIfNeeded} from 'actions/emoji_actions';
+import {
+    ephemeralModeRequested,
+    ephemeralModeActivated,
+    ephemeralModeTerminated,
+    acknowledgeEphemeralModeTermination,
+    clearEphemeralDMPosts,
+} from 'actions/ephemeral_dm_actions';
+import EphemeralModeRequestModal from 'components/ephemeral_dm/ephemeral_mode_request_modal';
+import EphemeralModeTerminatedModal from 'components/ephemeral_dm/ephemeral_mode_terminated_modal';
 import {redirectUserToDefaultTeam} from 'actions/global_actions';
 import {sendDesktopNotification} from 'actions/notification_actions';
 import {handleNewPost} from 'actions/post_actions';
@@ -715,6 +724,20 @@ export function handleEvent(msg: WebSocketMessage) {
     case WebSocketEvents.ShowToast:
         dispatch(handleShowToast(msg));
         break;
+
+    case WebSocketEvents.EphemeralModeRequested:
+        dispatch(handleEphemeralModeRequestedEvent(msg));
+        break;
+    case WebSocketEvents.EphemeralModeActive:
+        dispatch(handleEphemeralModeActiveEvent(msg));
+        break;
+    case WebSocketEvents.EphemeralModeDeclined:
+        dispatch(handleEphemeralModeDeclinedEvent(msg));
+        break;
+    case WebSocketEvents.EphemeralModeEnded:
+        dispatch(handleEphemeralModeEndedEvent(msg));
+        break;
+
     default:
     }
 
@@ -2249,6 +2272,70 @@ function handleShowToast(msg: WebSocketMessages.ShowToast): ThunkActionFunc<void
                         doDispatch(closeModal(ModalIdentifiers.INFO_TOAST));
                     },
                 },
+            }));
+        }
+    };
+}
+
+// ─── Ephemeral DM Mode handlers ─────────────────────────────────────────────
+
+function handleEphemeralModeRequestedEvent(msg: WebSocketMessage): ThunkActionFunc<void> {
+    return (doDispatch, doGetState) => {
+        const channelId = msg.data.channel_id;
+        const requestedBy = msg.data.from_user_id;
+        if (channelId && requestedBy) {
+            doDispatch(ephemeralModeRequested(channelId, requestedBy));
+
+            // Only the peer sees the request modal; the initiator just waits.
+            // Also: dismiss any stale "session ended" modal for the peer so
+            // the request modal is not stacked on top of it.
+            const currentUserId = getCurrentUserId(doGetState());
+            if (requestedBy !== currentUserId) {
+                doDispatch(closeModal(ModalIdentifiers.EPHEMERAL_MODE_TERMINATED));
+                doDispatch(openModal({
+                    modalId: ModalIdentifiers.EPHEMERAL_MODE_REQUEST,
+                    dialogType: EphemeralModeRequestModal,
+                    dialogProps: {channelId},
+                }));
+            }
+        }
+    };
+}
+
+function handleEphemeralModeActiveEvent(msg: WebSocketMessage): ThunkActionFunc<void> {
+    return (doDispatch) => {
+        const channelId = msg.data.channel_id;
+        if (channelId) {
+            doDispatch(ephemeralModeActivated(channelId));
+        }
+    };
+}
+
+function handleEphemeralModeDeclinedEvent(msg: WebSocketMessage): ThunkActionFunc<void> {
+    return (doDispatch) => {
+        const channelId = msg.data.channel_id;
+        if (channelId) {
+            doDispatch(closeModal(ModalIdentifiers.EPHEMERAL_MODE_REQUEST));
+            // Fully clean up state immediately — no modal needed for a declined/cancelled request
+            doDispatch(acknowledgeEphemeralModeTermination(channelId));
+        }
+    };
+}
+
+function handleEphemeralModeEndedEvent(msg: WebSocketMessage): ThunkActionFunc<void> {
+    return (doDispatch) => {
+        const channelId = msg.data.channel_id;
+        const reason = msg.data.reason || 'manual';
+        if (channelId) {
+            doDispatch(ephemeralModeTerminated(channelId, reason));
+
+            // Wipe all ephemeral DM posts from the post list immediately.
+            doDispatch(clearEphemeralDMPosts(channelId));
+
+            doDispatch(openModal({
+                modalId: ModalIdentifiers.EPHEMERAL_MODE_TERMINATED,
+                dialogType: EphemeralModeTerminatedModal,
+                dialogProps: {channelId},
             }));
         }
     };

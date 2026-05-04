@@ -17,6 +17,7 @@ import PostComponent from 'components/post';
 import ChannelIntroMessage from 'components/post_view/channel_intro_message/';
 import CombinedUserActivityPost from 'components/post_view/combined_user_activity_post';
 import DateSeparator from 'components/post_view/date_separator';
+import EphemeralModeSeparator from 'components/post_view/ephemeral_mode_separator/ephemeral_mode_separator';
 import NewMessageSeparator from 'components/post_view/new_message_separator/new_message_separator';
 
 import {PostListRowListIds, Locations} from 'utils/constants';
@@ -57,6 +58,8 @@ export type PostListRowProps = {
     newMessagesSeparatorActions: NewMessagesSeparatorActionComponent[];
 
     isChannelAutotranslated: boolean;
+
+    isFirstEphemeralDMPost?: boolean;
 
     actions: {
 
@@ -188,12 +191,15 @@ export default class PostListRow extends React.PureComponent<PostListRowProps> {
         }
 
         return (
-            <PostComponent
-                post={this.props.post}
-                location={Locations.CENTER}
-                isChannelAutotranslated={this.props.isChannelAutotranslated}
-                {...postProps}
-            />
+            <>
+                {this.props.isFirstEphemeralDMPost && <EphemeralModeSeparator/>}
+                <PostComponent
+                    post={this.props.post}
+                    location={Locations.CENTER}
+                    isChannelAutotranslated={this.props.isChannelAutotranslated}
+                    {...postProps}
+                />
+            </>
         );
     }
 }

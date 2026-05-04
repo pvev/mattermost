@@ -170,8 +170,9 @@ function makeMapStateToProps() {
         }
 
         const isPostBurnOnRead = isBurnOnReadPost(state, post.id);
+        const isEphemeralDMPost = post.props?.ephemeral_dm === true;
         const isSearchPopout = isPopoutWindow() && ownProps.location === Locations.SEARCH;
-        const canReply = !isPostBurnOnRead && (isDMorGM || isSearchPopout || (channel.team_id === currentTeam?.id));
+        const canReply = !isPostBurnOnRead && !isEphemeralDMPost && (isDMorGM || isSearchPopout || (channel.team_id === currentTeam?.id));
         const directTeammate = getDirectTeammate(state, channel.id);
 
         const previewCollapsed = get(

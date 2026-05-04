@@ -24,6 +24,11 @@ import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selec
 import {canEditPost, comparePosts} from 'mattermost-redux/utils/post_utils';
 
 import {addRecentEmoji, addRecentEmojis} from 'actions/emoji_actions';
+import {
+    sendEphemeralDMPost,
+    ephemeralModeTerminated,
+    clearEphemeralDMPosts,
+} from 'actions/ephemeral_dm_actions';
 import {setGlobalItem} from 'actions/storage';
 import * as StorageActions from 'actions/storage';
 import {loadNewDMIfNeeded, loadNewGMIfNeeded} from 'actions/user_actions';
@@ -37,6 +42,7 @@ import {getSelectedPostId, getSelectedPostCardId, getRhsState} from 'selectors/r
 import {getGlobalItem} from 'selectors/storage';
 
 import ReactionLimitReachedModal from 'components/reaction_limit_reached_modal';
+import EphemeralModeTerminatedModal from 'components/ephemeral_dm/ephemeral_mode_terminated_modal';
 
 import {
     ActionTypes,
@@ -143,8 +149,41 @@ export function createPost(
     afterSubmit?: (response: SubmitPostReturnType) => void,
     options?: OnSubmitOptions,
 ): ActionFuncAsync<PostActions.CreatePostReturnType> {
-    return async (dispatch) => {
+    return async (dispatch, getState) => {
         dispatch(addRecentEmojisForMessage(post.message));
+
+        // Route to ephemeral DM endpoint if the channel is in active ephemeral mode
+        const state = getState();
+        const ephemeralModeState = state.views?.ephemeralMode?.[post.channel_id];
+        if (ephemeralModeState?.status === 'active') {
+            const result = await dispatch(sendEphemeralDMPost(post.channel_id, post));
+
+            if (result.error) {
+                const serverErrorId = (result.error as any)?.server_error_id;
+
+                // If the session no longer exists on the server (e.g. after a server restart),
+                // trigger graceful local termination immediately rather than waiting for the
+                // background verifyEphemeralSession call that fires on WS reconnect.
+                if (
+                    serverErrorId === 'app.ephemeral_dm.session_not_active' ||
+                    serverErrorId === 'app.ephemeral_dm.session_not_found'
+                ) {
+                    dispatch(ephemeralModeTerminated(post.channel_id, 'server_restart'));
+                    dispatch(clearEphemeralDMPosts(post.channel_id));
+                    dispatch(openModal({
+                        modalId: ModalIdentifiers.EPHEMERAL_MODE_TERMINATED,
+                        dialogType: EphemeralModeTerminatedModal,
+                        dialogProps: {channelId: post.channel_id},
+                    }));
+                    return {created: false};
+                }
+            }
+
+            return {
+                created: !result.error,
+                error: result.error,
+            };
+        }
 
         const result = await dispatch(PostActions.createPost(post, files, afterSubmit));
 

@@ -89,6 +89,18 @@
         --right-padding-for-preview-button: 32px;
     }
 
+    &--ephemeral-active {
+        .AdvancedTextEditor__body {
+            border-color: rgba(61, 184, 98, 0.6) !important;
+            box-shadow: 0 0 0 1px rgba(61, 184, 98, 0.25);
+
+            &:focus-within {
+                border-color: rgba(61, 184, 98, 0.9) !important;
+                box-shadow: 0 0 0 2px rgba(61, 184, 98, 0.2);
+            }
+        }
+    }
+
     &__body {
         position: relative;
         max-width: 100%;

@@ -15,6 +15,8 @@ import Timestamp from 'components/timestamp';
 import Tag from 'components/widgets/tag/tag';
 import WithTooltip from 'components/with_tooltip';
 
+import EphemeralModeButton from 'components/ephemeral_dm/ephemeral_mode_button';
+
 import CallButton from 'plugins/call_button';
 import ChannelHeaderPlug from 'plugins/channel_header_plug';
 import Pluggable from 'plugins/pluggable';
@@ -398,6 +400,7 @@ class ChannelHeader extends React.PureComponent<Props> {
                                     {muteTrigger}
                                     {memberListButton}
                                     {pinnedButton}
+                                    {isDirect && <EphemeralModeButton channelId={channel.id}/>}
                                     {this.props.isFileAttachmentsEnabled &&
                                         <HeaderIconWrapper
                                             buttonClass={channelFilesIconClass}

@@ -18,22 +18,29 @@ import type {GlobalState} from 'types/store';
 import PostListRow from './post_list_row';
 import type {PostListRowProps} from './post_list_row';
 
-type OwnProps = Pick<PostListRowProps, 'listId'>
+type OwnProps = Pick<PostListRowProps, 'listId' | 'previousListId'>
 
 function mapStateToProps(state: GlobalState, ownProps: OwnProps) {
     const shortcutReactToLastPostEmittedFrom = getShortcutReactToLastPostEmittedFrom(state);
     const post = getPost(state, ownProps.listId);
+    const previousPost = ownProps.previousListId ? getPost(state, ownProps.previousListId) : undefined;
     const currentUserId = getCurrentUserId(state);
     const newMessagesSeparatorActions = state.plugins.components.NewMessagesSeparatorAction;
 
+    // Show the ephemeral mode separator before the first ephemeral DM post in the list
+    const isFirstEphemeralDMPost =
+        post?.props?.ephemeral_dm === true &&
+        previousPost?.props?.ephemeral_dm !== true;
+
     const props: Pick<
     PostListRowProps,
-    'shortcutReactToLastPostEmittedFrom'| 'exceededLimitChannelId' | 'firstInaccessiblePostTime' | 'post' | 'currentUserId' | 'newMessagesSeparatorActions'
+    'shortcutReactToLastPostEmittedFrom'| 'exceededLimitChannelId' | 'firstInaccessiblePostTime' | 'post' | 'currentUserId' | 'newMessagesSeparatorActions' | 'isFirstEphemeralDMPost'
     > = {
         shortcutReactToLastPostEmittedFrom,
         post,
         currentUserId,
         newMessagesSeparatorActions,
+        isFirstEphemeralDMPost,
     };
     if ((ownProps.listId === PostListRowListIds.OLDER_MESSAGES_LOADER || ownProps.listId === PostListRowListIds.CHANNEL_INTRO_MESSAGE)) {
         const currentChannelId = getCurrentChannelId(state);

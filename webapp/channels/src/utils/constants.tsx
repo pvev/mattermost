@@ -330,6 +330,12 @@ export const ActionTypes = keyMirror({
 
     SET_READOUT: 'SET_READOUT',
     CLEAR_READOUT: 'CLEAR_READOUT',
+
+    // Ephemeral DM mode
+    EPHEMERAL_MODE_REQUESTED: null,
+    EPHEMERAL_MODE_ACTIVE: null,
+    EPHEMERAL_MODE_TERMINATED: null,
+    EPHEMERAL_MODE_ACKNOWLEDGE: null,
 });
 
 export const PostRequestTypes = keyMirror({
@@ -485,6 +491,10 @@ export const ModalIdentifiers = {
     FLAG_POST: 'flag_post',
     REMOVE_FLAGGED_POST: 'remove_flagged_post',
     CREATE_RECAP_MODAL: 'create_recap_modal',
+
+    // Ephemeral DM mode
+    EPHEMERAL_MODE_REQUEST: 'ephemeral_mode_request',
+    EPHEMERAL_MODE_TERMINATED: 'ephemeral_mode_terminated',
 };
 
 export const UserStatuses = {

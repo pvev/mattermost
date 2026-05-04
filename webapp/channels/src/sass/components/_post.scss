@@ -2240,6 +2240,17 @@
     animation-name: postHighlight;
 }
 
+// Ephemeral DM mode: very subtle green left border + tint on each message
+.post--ephemeral-dm {
+    background-color: rgba(61, 184, 98, 0.04);
+    box-shadow: inset 2px 0 0 rgba(61, 184, 98, 0.5);
+
+    &.post--hovered,
+    &:hover {
+        background-color: rgba(61, 184, 98, 0.08);
+    }
+}
+
 .post--pinned-or-flagged {
     background-color: rgb(var(--pinned-highlight-bg-mixed-rgb));
 

@@ -7301,5 +7301,18 @@
   "yourcomputer": "Your computer",
   "youtube_video.play_button.aria_label": "Play video",
   "youtube_video.play.aria_label": "Play {videoTitle} on YouTube",
-  "youtube_video.thumbnail.alt_text": "Thumbnail for {videoTitle} on YouTube"
+  "youtube_video.thumbnail.alt_text": "Thumbnail for {videoTitle} on YouTube",
+  "ephemeral_dm.start": "Start ephemeral mode",
+  "ephemeral_dm.stop": "End ephemeral mode",
+  "ephemeral_dm.cancel": "Cancel request",
+  "ephemeral_dm.active": "Ephemeral",
+  "ephemeral_dm.pending": "Waiting…",
+  "ephemeral_dm.accept": "Accept",
+  "ephemeral_dm.decline": "Decline",
+  "ephemeral_dm.session_start_separator": "Ephemeral mode started",
+  "ephemeral_dm.request_modal.title": "Start ephemeral mode?",
+  "ephemeral_dm.request_modal.body": "{name} wants to start an ephemeral conversation. Messages sent in this mode will not be saved to the server.",
+  "ephemeral_dm.banner_active": "Ephemeral mode is active — messages are not saved and will disappear when you leave.",
+  "ephemeral_dm.terminated_modal.got_it": "Got it",
+  "ephemeral_dm.terminated_modal.warning": "Any messages you send from now on will be saved normally."
 }

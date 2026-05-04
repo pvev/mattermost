@@ -115,6 +115,12 @@ const (
 	WebsocketEventShowToast                           WebsocketEventType = "show_toast"
 	WebsocketEventSharedChannelRemoteUpdated          WebsocketEventType = "shared_channel_remote_updated"
 
+	// Ephemeral DM Mode events — no DB persistence, memory-only session
+	WebsocketEventEphemeralModeRequested WebsocketEventType = "ephemeral_mode_requested"
+	WebsocketEventEphemeralModeActive    WebsocketEventType = "ephemeral_mode_active"
+	WebsocketEventEphemeralModeDeclined  WebsocketEventType = "ephemeral_mode_declined"
+	WebsocketEventEphemeralModeEnded     WebsocketEventType = "ephemeral_mode_ended"
+
 	WebSocketMsgTypeResponse = "response"
 	WebSocketMsgTypeEvent    = "event"
 )

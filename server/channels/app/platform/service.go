@@ -127,6 +127,10 @@ type PlatformService struct {
 
 	// logRootPathOverride overrides MM_LOG_PATH for log root path validation.
 	logRootPathOverride string
+
+	// onUserDisconnect is called when a user's last WebSocket connection closes.
+	// Used by optional features (e.g. ephemeral DM mode) to react to disconnections.
+	onUserDisconnect func(userID string)
 }
 
 // SetInstallTypeOverride sets the install type override for support packet diagnostics.
@@ -137,6 +141,13 @@ func (ps *PlatformService) SetInstallTypeOverride(v string) {
 // SetLogRootPathOverride sets the log root path override for log file validation.
 func (ps *PlatformService) SetLogRootPathOverride(v string) {
 	ps.logRootPathOverride = v
+}
+
+// SetOnUserDisconnect registers a callback invoked when a user's last
+// WebSocket connection on this node closes. The callback is called
+// asynchronously from the hub goroutine.
+func (ps *PlatformService) SetOnUserDisconnect(fn func(userID string)) {
+	ps.onUserDisconnect = fn
 }
 
 type HookRunner interface {

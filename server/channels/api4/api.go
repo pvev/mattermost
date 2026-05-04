@@ -342,6 +342,7 @@ func Init(srv *app.Server) (*API, error) {
 	api.InitBot()
 	api.InitTeam()
 	api.InitChannel()
+	api.InitEphemeralDM()
 	api.InitPost()
 	api.InitFile()
 	api.InitUpload()

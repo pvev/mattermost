@@ -96,4 +96,10 @@ export const enum WebSocketEvents {
     FileDownloadRejected = 'file_download_rejected',
     ShowToast = 'show_toast',
     SharedChannelRemoteUpdated = 'shared_channel_remote_updated',
+
+    // Ephemeral DM mode — memory-only session, no DB persistence
+    EphemeralModeRequested = 'ephemeral_mode_requested',
+    EphemeralModeActive = 'ephemeral_mode_active',
+    EphemeralModeDeclined = 'ephemeral_mode_declined',
+    EphemeralModeEnded = 'ephemeral_mode_ended',
 }

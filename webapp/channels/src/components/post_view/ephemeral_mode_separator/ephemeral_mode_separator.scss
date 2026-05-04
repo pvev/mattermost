@@ -1,0 +1,44 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+$ephemeral-green: rgba(61, 184, 98, 0.7);
+$ephemeral-green-text: #27ae60;
+
+.EphemeralModeSeparator {
+    position: relative;
+    z-index: 1;
+    height: 1px;
+    margin: 0;
+    margin-top: -1em;
+    margin-bottom: 1em;
+    pointer-events: none;
+    text-align: center;
+
+    .EphemeralModeSeparator__hr {
+        position: relative;
+        z-index: 5;
+        top: 1em;
+        border: none;
+        border-top: 1px solid $ephemeral-green;
+        margin: 0;
+    }
+
+    .EphemeralModeSeparator__text {
+        position: relative;
+        z-index: 5;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0 1em;
+        border-radius: 50px;
+        background: var(--center-channel-bg);
+        color: $ephemeral-green-text;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 2em;
+
+        .icon {
+            font-size: 14px;
+        }
+    }
+}

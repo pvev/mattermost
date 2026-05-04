@@ -628,6 +628,9 @@ func (h *Hub) Start() {
 						// active connections in other nodes as well.
 						if clusterCnt == 0 {
 							h.platform.QueueSetStatusOffline(userID, false)
+							if fn := h.platform.onUserDisconnect; fn != nil {
+								fn(userID)
+							}
 						}
 					})
 					continue

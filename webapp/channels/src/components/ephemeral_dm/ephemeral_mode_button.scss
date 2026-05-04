@@ -1,0 +1,71 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+.ephemeral-mode-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 4px 2px 6px;
+    border-radius: 12px;
+    background: rgba(61, 184, 98, 0.15);
+    border: 1px solid rgba(61, 184, 98, 0.4);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--online-indicator);
+    cursor: default;
+    user-select: none;
+
+    &--pending {
+        background: rgba(255, 188, 31, 0.12);
+        border-color: rgba(255, 188, 31, 0.35);
+        color: var(--away-indicator);
+    }
+
+    &__dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background-color: var(--online-indicator);
+        animation: ephemeral-pulse 1.8s ease-in-out infinite;
+        flex-shrink: 0;
+
+        &--pending {
+            background-color: var(--away-indicator);
+            animation: none;
+        }
+    }
+
+    &__label {
+        letter-spacing: 0.02em;
+    }
+
+    &__stop {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+        opacity: 0.7;
+        transition: opacity 0.15s, background 0.15s;
+
+        .icon {
+            font-size: 14px;
+        }
+
+        &:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.1);
+        }
+    }
+}
+
+@keyframes ephemeral-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}

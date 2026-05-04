@@ -24,11 +24,12 @@ type SendButtonProps = {
     handleSubmit: (schedulingInfo?: SchedulingInfo) => void;
     disabled: boolean;
     channelId: string;
+    hideScheduledPost?: boolean;
 }
 
-const SendButton = ({disabled, handleSubmit, channelId}: SendButtonProps) => {
+const SendButton = ({disabled, handleSubmit, channelId, hideScheduledPost}: SendButtonProps) => {
     const {formatMessage} = useIntl();
-    const isScheduledPostEnabled = useSelector(isScheduledPostsEnabled);
+    const isScheduledPostEnabled = useSelector(isScheduledPostsEnabled) && !hideScheduledPost;
 
     const sendMessage = useCallback((e: React.FormEvent, schedulingInfo?: SchedulingInfo) => {
         e?.stopPropagation();

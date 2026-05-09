@@ -624,7 +624,7 @@ function PolicyDetails({
                                         }
                                         setShowDeleteConfirmationModal(true);
                                     }}
-                                    isDisabled={hasChannels()}
+                                    isDisabled={hasChannels() || hasMaskedRows}
                                 />
                             </Card.Header>
                         </Card>

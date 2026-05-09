@@ -24,8 +24,11 @@ import {setFieldAsSharedOnly} from './masking_db_setup';
  *
  * Validates the attribute-value masking feature:
  * - Callers see only values they hold; non-held values appear as masked chips
- * - Hidden values survive save round-trips
- * - Non-held values are rejected on the write path (self-inclusion check)
+ * - Any caller with masked values in an existing policy cannot save changes (UI
+ *   disables Save; server returns HTTP 403) — no role-based bypass
+ * - Callers with full visibility (no masked values) can save and are subject to
+ *   self-inclusion validation
+ * - Non-held values are rejected on the write path via value-hold validation
  * - Feature flag gates all masking behaviour
  * - Raw CEL is redacted in GET and search API responses
  *
@@ -295,6 +298,19 @@ test.describe('Attribute-Value Masking', () => {
             if (await testRulesBtn.isVisible({timeout: 3000})) {
                 await expect(testRulesBtn).toBeDisabled();
             }
+
+            // Save button must be disabled when masked values are present
+            const saveBtn = page.getByRole('button', {name: 'Save'});
+            await expect(saveBtn).toBeDisabled();
+
+            // Add a new row with a different attribute — Save must REMAIN disabled
+            // because the Program row still has masked values
+            const addAttributeBtn = page.getByRole('button', {name: /add attribute/i});
+            if (await addAttributeBtn.isVisible({timeout: 3000}) && !(await addAttributeBtn.isDisabled())) {
+                await addAttributeBtn.click();
+                await page.waitForTimeout(500);
+                await expect(saveBtn).toBeDisabled();
+            }
         } finally {
             for (const id of policyIds) { try { await deletePolicy(adminClient, id); } catch {} }
             for (const id of fieldIds) { try { await deleteCPAField(adminClient, id); } catch {} }
@@ -302,7 +318,10 @@ test.describe('Attribute-Value Masking', () => {
         }
     });
 
-    test('E2E-2: Edit visible values and hidden values are preserved', async ({pw}) => {
+    test('E2E-2: Save is blocked (UI and server) when caller has masked values', async ({pw}) => {
+        // Validates the read-only-when-masked design: any caller with masked values
+        // in an existing policy cannot modify it. The Save button is disabled in the
+        // UI and the server returns HTTP 403 for direct API requests.
         test.setTimeout(120000);
         await pw.skipIfNoLicense();
 
@@ -317,7 +336,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
-            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
+            setFieldAsSharedOnly(fieldId);
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
@@ -334,45 +353,33 @@ test.describe('Attribute-Value Masking', () => {
             policyIds.push(policyId);
 
             await openExistingPolicy(page, policyName);
-            const storedPolicyId = await getPolicyIdFromURL(page);
 
-            // Verify initial state: Alpha + masked chip
+            // Confirm masked state (Alpha visible, Bravo/Charlie masked)
             await expect(page.locator('.select__multi-value').filter({hasText: 'Alpha'})).toBeVisible();
             await expect(page.locator('.select__multi-value--masked')).toBeVisible();
 
-            // Remove Alpha chip
-            const alphaChip = page.locator('.select__multi-value').filter({hasText: 'Alpha'});
-            await alphaChip.locator('.select__multi-value__remove').click();
-            await page.waitForTimeout(300);
+            // UI: Save button must be disabled
+            const saveBtn = page.getByRole('button', {name: 'Save'});
+            await expect(saveBtn).toBeDisabled();
 
-            // Only masked chip remains
-            await expect(page.locator('.select__multi-value').filter({hasText: 'Alpha'})).not.toBeVisible();
+            // Server: direct API save must return HTTP 403
+            const status = await page.evaluate(async ({policyId: id, fieldName: fn}: {policyId: string; fieldName: string}) => {
+                const resp = await fetch(`/api/v4/access_control/policies/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        name: 'Modified',
+                        type: 'member',
+                        rules: [{expression: `user.attributes.${fn} in ["Alpha"]`}],
+                    }),
+                });
+                return resp.status;
+            }, {policyId, fieldName});
 
-            // Re-add Alpha via value selector
-            const valueSelector = page.locator('[data-testid="valueSelectorMenuButton"]').first();
-            await valueSelector.click({force: true});
-            await page.waitForTimeout(500);
-            const alphaOption = page.locator('[id^="value-selector-menu"]').getByText('Alpha').first();
-            await alphaOption.click({force: true});
-            await page.waitForTimeout(300);
-            await page.keyboard.press('Escape');
-
-            // Alpha chip re-appears alongside masked chip
-            await expect(page.locator('.select__multi-value').filter({hasText: 'Alpha'})).toBeVisible();
-            await expect(page.locator('.select__multi-value--masked')).toBeVisible();
-
-            // Save
-            await page.getByRole('button', {name: 'Save'}).click();
-            await page.waitForLoadState('networkidle');
-
-            // Disable flag temporarily to read the raw expression and confirm Bravo/Charlie are still there
-            await disableMaskingFlag(adminClient);
-            const rawExpression = await getRawPolicyExpression(page, storedPolicyId);
-            await enableMaskingFlag(adminClient);
-
-            expect(rawExpression).toContain('Alpha');
-            expect(rawExpression).toContain('Bravo');
-            expect(rawExpression).toContain('Charlie');
+            expect(status).toBe(403);
         } finally {
             for (const id of policyIds) { try { await deletePolicy(adminClient, id); } catch {} }
             for (const id of fieldIds) { try { await deleteCPAField(adminClient, id); } catch {} }
@@ -453,7 +460,11 @@ test.describe('Attribute-Value Masking', () => {
         }
     });
 
-    test('E2E-4: Self-inclusion failure blocks save', async ({pw}) => {
+    test('E2E-4: Self-inclusion failure blocks save (caller has full visibility)', async ({pw}) => {
+        // Self-inclusion is only checked when the caller holds ALL values in the policy
+        // (no masked values). If masked values are present the 403 block fires first
+        // and the Save button is disabled. This test uses a single-value policy so the
+        // caller has full visibility, then removes their own satisfying value.
         test.setTimeout(120000);
         await pw.skipIfNoLicense();
 
@@ -468,9 +479,9 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
-            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
+            setFieldAsSharedOnly(fieldId);
 
-            // adminUser holds "Alpha"; policy has ["Alpha", "Bravo"]
+            // adminUser holds "Alpha"; policy has ONLY ["Alpha"] — no masked values
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
             await adminClient.addToTeam(team.id, adminUser.id);
 
@@ -479,29 +490,32 @@ test.describe('Attribute-Value Masking', () => {
             await navigateToABACPage(page);
             await enableABAC(page);
 
-            // Policy: MaskingProgram in ["Alpha", "Bravo"]
-            // Alpha is visible for the admin; Bravo is masked
+            // Policy: MaskingProgram in ["Alpha"] — admin holds ALL values, no masking
             const policyName = `MaskingPolicy ${pw.random.id()}`;
             const policyId = await createPolicyWithCEL(
                 page,
                 policyName,
-                `user.attributes.${fieldName} in ["Alpha", "Bravo"]`,
+                `user.attributes.${fieldName} in ["Alpha"]`,
             );
             policyIds.push(policyId);
 
             await openExistingPolicy(page, policyName);
 
-            // Alpha visible + Bravo masked
+            // Alpha visible, no masked chip — caller has full visibility
             await expect(page.locator('.select__multi-value').filter({hasText: 'Alpha'})).toBeVisible();
-            await expect(page.locator('.select__multi-value--masked')).toBeVisible();
+            await expect(page.locator('.select__multi-value--masked')).not.toBeVisible();
 
-            // Remove Alpha (the only held/visible value) — now only masked Bravo remains
+            // Save button is ENABLED (no masked values)
+            const saveBtn = page.getByRole('button', {name: 'Save'});
+            await expect(saveBtn).not.toBeDisabled();
+
+            // Remove Alpha — now the condition has no values (empty)
             const alphaChip = page.locator('.select__multi-value').filter({hasText: 'Alpha'});
             await alphaChip.locator('.select__multi-value__remove').click();
             await page.waitForTimeout(300);
 
             // Try to save — should be blocked (admin no longer satisfies the condition)
-            await page.getByRole('button', {name: 'Save'}).click();
+            await saveBtn.click();
             await page.waitForTimeout(2000);
 
             // An error message about self-inclusion should appear
@@ -713,6 +727,9 @@ test.describe('Attribute-Value Masking', () => {
                 await expect(testRulesBtn).not.toBeDisabled();
             }
 
+            // Save button must be ENABLED (caller has full visibility — no masked rows)
+            await expect(page.getByRole('button', {name: 'Save'})).not.toBeDisabled();
+
             // CEL mode is editable (no read-only)
             const advancedBtn = page.getByRole('button', {name: /advanced/i});
             if (await advancedBtn.isVisible({timeout: 3000})) {
@@ -835,7 +852,10 @@ test.describe('Attribute-Value Masking', () => {
         }
     });
 
-    test('E2E-10: Add held value alongside masked values', async ({pw}) => {
+    test('E2E-10: Save remains blocked when masked values exist even after adding a held value', async ({pw}) => {
+        // Validates that adding a new held value to a row that still has masked values
+        // does NOT unlock saving. hasMaskedRows remains true as long as any masked chip
+        // is visible, so the Save button stays disabled and the server returns 403.
         test.setTimeout(120000);
         await pw.skipIfNoLicense();
 
@@ -850,7 +870,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
-            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
+            setFieldAsSharedOnly(fieldId);
 
             // adminUser holds "Alpha"; policy has ["Bravo", "Charlie"] (admin holds none of these)
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
@@ -869,41 +889,51 @@ test.describe('Attribute-Value Masking', () => {
             policyIds.push(policyId);
 
             await openExistingPolicy(page, policyName);
-            const storedPolicyId = await getPolicyIdFromURL(page);
 
             // No visible chips (admin doesn't hold Bravo or Charlie); only masked chip
             await expect(page.locator('.select__multi-value').filter({hasText: 'Bravo'})).not.toBeVisible();
             await expect(page.locator('.select__multi-value').filter({hasText: 'Charlie'})).not.toBeVisible();
             await expect(page.locator('.select__multi-value--masked')).toBeVisible();
 
+            // Save button must be DISABLED (masked values present)
+            const saveBtn = page.getByRole('button', {name: 'Save'});
+            await expect(saveBtn).toBeDisabled();
+
             // Open value selector and add "Alpha" (the value the admin holds)
             const valueSelector = page.locator('[data-testid="valueSelectorMenuButton"]').first();
             await valueSelector.click({force: true});
             await page.waitForTimeout(500);
-
-            // "Alpha" should be available to add
             const alphaOption = page.locator('[id^="value-selector-menu"]').getByText('Alpha').first();
             await expect(alphaOption).toBeVisible({timeout: 5000});
             await alphaOption.click({force: true});
             await page.waitForTimeout(300);
             await page.keyboard.press('Escape');
 
-            // Now row shows Alpha chip + masked chip
+            // Row now shows Alpha chip + masked chip (Bravo, Charlie still masked)
             await expect(page.locator('.select__multi-value').filter({hasText: 'Alpha'})).toBeVisible();
             await expect(page.locator('.select__multi-value--masked')).toBeVisible();
 
-            // Save
-            await page.getByRole('button', {name: 'Save'}).click();
-            await page.waitForLoadState('networkidle');
+            // Save button must REMAIN disabled — Bravo and Charlie are still masked
+            await expect(saveBtn).toBeDisabled();
 
-            // Verify via API (flag off) that Bravo + Charlie are still stored
-            await disableMaskingFlag(adminClient);
-            const rawExpression = await getRawPolicyExpression(page, storedPolicyId);
-            await enableMaskingFlag(adminClient);
+            // Server also returns 403 for direct API attempt
+            const status = await page.evaluate(async ({policyId: id, fieldName: fn}: {policyId: string; fieldName: string}) => {
+                const resp = await fetch(`/api/v4/access_control/policies/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        name: 'Modified',
+                        type: 'member',
+                        rules: [{expression: `user.attributes.${fn} in ["Alpha", "Bravo", "Charlie"]`}],
+                    }),
+                });
+                return resp.status;
+            }, {policyId, fieldName});
 
-            expect(rawExpression).toContain('Alpha');
-            expect(rawExpression).toContain('Bravo');
-            expect(rawExpression).toContain('Charlie');
+            expect(status).toBe(403);
         } finally {
             for (const id of policyIds) { try { await deletePolicy(adminClient, id); } catch {} }
             for (const id of fieldIds) { try { await deleteCPAField(adminClient, id); } catch {} }
@@ -1295,13 +1325,10 @@ test.describe('Attribute-Value Masking', () => {
         }
     });
 
-    test('E2E-18: Removing visible row preserves fully-masked sibling conditions (security regression guard)', async ({pw}) => {
-        // Regression test for the bug where an admin who sees only one of N rules
-        // could delete that rule, save, and silently wipe the masked rules —
-        // collapsing the policy to "true" (wide-open).
-        //
-        // Fix: rowToCEL emits "user.attributes.X in []" placeholder for fully-masked
-        // rows so the backend merge locates and restores hidden values on save.
+    test('E2E-18: Save is blocked when any row has masked values (multi-condition policy)', async ({pw}) => {
+        // Validates that the 403 block applies to multi-condition policies: as long as
+        // ANY row has masked values the Save button is disabled and the server returns 403.
+        // The admin can delete rows in the UI but cannot commit the result.
         test.setTimeout(150000);
         await pw.skipIfNoLicense();
 
@@ -1313,27 +1340,24 @@ test.describe('Attribute-Value Masking', () => {
             await enableUserManagedAttributes(adminClient);
             await enableMaskingFlag(adminClient);
 
-            // Use two separate text fields so each row is masked independently.
-            // Admin holds "Alpha" in MaskingProgram, nothing in MaskingClearance.
+            // Two fields: admin holds "Alpha" in programField, nothing in clearanceField.
             const programFieldName = `MaskingProgram_${pw.random.id()}`;
             const clearanceFieldName = `MaskingClearance_${pw.random.id()}`;
             const programFieldId = await createMaskingTextField(adminClient, programFieldName);
             const clearanceFieldId = await createMaskingTextField(adminClient, clearanceFieldName);
             fieldIds.push(programFieldId, clearanceFieldId);
-            setFieldAsSharedOnly(programFieldId); // UNPLUG: remove to skip masking setup
-            setFieldAsSharedOnly(clearanceFieldId); // UNPLUG: remove to skip masking setup
+            setFieldAsSharedOnly(programFieldId);
+            setFieldAsSharedOnly(clearanceFieldId);
 
             await setUserAttribute(adminClient, adminUser.id, programFieldId, 'Alpha');
-            // Admin holds no value in clearanceField → both clearance rows are fully masked
+            // Admin holds nothing in clearanceField → clearance row is fully masked
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
             const page = systemConsolePage.page;
             await navigateToABACPage(page);
             await enableABAC(page);
 
-            // Create a policy with two conditions:
-            //   • MaskingProgram in ["Alpha","Bravo","Charlie"]  — admin sees Alpha, rest masked
-            //   • MaskingClearance in ["Secret","TopSecret"]     — fully masked (admin holds nothing)
+            // Policy with two conditions — both have masked values for this caller
             const policyName = `MaskingRegressionPolicy ${pw.random.id()}`;
             const policyId = await createPolicyWithCEL(
                 page,
@@ -1342,24 +1366,21 @@ test.describe('Attribute-Value Masking', () => {
             );
             policyIds.push(policyId);
 
-            // Get the policy ID for later API verification
             await openExistingPolicy(page, policyName);
             const storedPolicyId = await getPolicyIdFromURL(page);
 
-            // Sanity: masked chip visible, banner present
+            // Both rows are masked — banner visible, Save disabled
             await expect(page.locator('.select__multi-value--masked').first()).toBeVisible();
             await expect(page.locator('text="This policy contains restricted values"')).toBeVisible();
+            const saveBtn = page.getByRole('button', {name: 'Save'});
+            await expect(saveBtn).toBeDisabled();
 
-            // Count trash buttons — should be 2 (one per row)
+            // Delete the first row in the UI — clearance row still has masked values
             const trashButtons = page.locator('button[aria-label="Remove row"]');
-            await expect(trashButtons).toHaveCount(2);
-
-            // Click the trash on the FIRST row (MaskingProgram — partial masking, admin sees Alpha)
-            // This should open a confirmation modal (we added the masked-row delete guard)
             await trashButtons.first().click();
             await page.waitForTimeout(500);
 
-            // If a confirmation dialog appeared (masked row), confirm it
+            // If a confirmation dialog appeared (masked row), confirm deletion
             const confirmModal = page.locator('[role="dialog"]').filter({hasText: /restricted values/i});
             const modalVisible = await confirmModal.isVisible({timeout: 2000}).catch(() => false);
             if (modalVisible) {
@@ -1367,25 +1388,36 @@ test.describe('Attribute-Value Masking', () => {
                 await page.waitForTimeout(500);
             }
 
-            // Save the policy (now only MaskingClearance row should remain in the expression)
-            await page.getByRole('button', {name: 'Save'}).click();
-            await page.waitForLoadState('networkidle');
-            await page.waitForTimeout(1000);
+            // Save must still be DISABLED (clearance row still has masked values)
+            await expect(saveBtn).toBeDisabled();
 
-            // --- Verify via API (flag off) that MaskingClearance condition is still stored ---
-            // The critical assertion: the policy must NOT have collapsed to "true"
+            // Server also returns 403 — policy is unchanged
+            const status = await page.evaluate(async ({policyId: id, fieldName: fn}: {policyId: string; fieldName: string}) => {
+                const resp = await fetch(`/api/v4/access_control/policies/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        name: 'Modified',
+                        type: 'member',
+                        rules: [{expression: `user.attributes.${fn} in ["Secret", "TopSecret"]`}],
+                    }),
+                });
+                return resp.status;
+            }, {policyId, fieldName: clearanceFieldName});
+
+            expect(status).toBe(403);
+
+            // Verify via API (flag off) that the original policy is unchanged
             await disableMaskingFlag(adminClient);
             const rawExpression = await getRawPolicyExpression(page, storedPolicyId);
             await enableMaskingFlag(adminClient);
 
-            // MaskingClearance hidden values must be preserved
+            expect(rawExpression).toContain(programFieldName);
             expect(rawExpression).toContain(clearanceFieldName);
-            expect(rawExpression).toContain('Secret');
-            expect(rawExpression).toContain('TopSecret');
-
-            // Policy must NOT be "true" (the wide-open regression)
             expect(rawExpression.trim()).not.toBe('true');
-            expect(rawExpression.trim()).not.toBe('');
         } finally {
             for (const id of policyIds) { try { await deletePolicy(adminClient, id); } catch {} }
             for (const id of fieldIds) { try { await deleteCPAField(adminClient, id); } catch {} }

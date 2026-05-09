@@ -387,7 +387,10 @@ test.describe('Attribute-Value Masking', () => {
         }
     });
 
-    test('E2E-3: Delegated admin deletes a masked row', async ({pw}) => {
+    test('E2E-3: Row-remove button is disabled on masked rows', async ({pw}) => {
+        // The trash/remove button on a masked row is disabled — a caller with
+        // masked values cannot delete individual rows, matching the Save/Delete
+        // buttons which are also disabled when masked values are present.
         test.setTimeout(120000);
         await pw.skipIfNoLicense();
 
@@ -402,7 +405,7 @@ test.describe('Attribute-Value Masking', () => {
             const fieldName = `MaskingProgram_${pw.random.id()}`;
             const fieldId = await createMaskingTextField(adminClient, fieldName);
             fieldIds.push(fieldId);
-            setFieldAsSharedOnly(fieldId); // UNPLUG: remove to skip masking setup
+            setFieldAsSharedOnly(fieldId);
             await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
@@ -419,40 +422,17 @@ test.describe('Attribute-Value Masking', () => {
             policyIds.push(policyId);
 
             await openExistingPolicy(page, policyName);
-            const storedPolicyId = await getPolicyIdFromURL(page);
 
-            // Row is present
+            // Confirm masked state
             await expect(page.locator('.select__multi-value').filter({hasText: 'Alpha'})).toBeVisible();
+            await expect(page.locator('.select__multi-value--masked')).toBeVisible();
 
-            // Find and click the trash / delete-row button at the end of the rule row
-            const deleteRowBtn = page
-                .locator('[aria-label="Delete row"], [data-testid="deleteRuleRow"], button[title*="delete" i], button[title*="remove" i]')
-                .first();
-
-            if (await deleteRowBtn.isVisible({timeout: 5000})) {
-                await deleteRowBtn.click({force: true});
-            } else {
-                // Fallback: click the last button that is visually inside the table-editor rows area
-                const rowButtons = page.locator('.table-editor-row button, [class*="table"][class*="row"] button').last();
-                await rowButtons.click({force: true});
-            }
-            await page.waitForTimeout(500);
-
-            // Row should be gone — no chips
-            await expect(page.locator('.select__multi-value').filter({hasText: 'Alpha'})).not.toBeVisible();
-            await expect(page.locator('.select__multi-value--masked')).not.toBeVisible();
-
-            // Save
-            await page.getByRole('button', {name: 'Save'}).click();
-            await page.waitForLoadState('networkidle');
-
-            // Confirm via API: expression is now empty / policy has no rules
-            await disableMaskingFlag(adminClient);
-            const rawExpression = await getRawPolicyExpression(page, storedPolicyId);
-            await enableMaskingFlag(adminClient);
-
-            expect(rawExpression).not.toContain('Alpha');
-            expect(rawExpression).not.toContain('Bravo');
+            // Row-remove (trash) button must be disabled on the masked row
+            const removeRowBtn = page.locator(
+                'button[aria-label="Remove row"], button.table-editor__row-remove',
+            ).first();
+            await removeRowBtn.waitFor({state: 'visible', timeout: 5000});
+            await expect(removeRowBtn).toBeDisabled();
         } finally {
             for (const id of policyIds) { try { await deletePolicy(adminClient, id); } catch {} }
             for (const id of fieldIds) { try { await deleteCPAField(adminClient, id); } catch {} }
@@ -1325,7 +1305,75 @@ test.describe('Attribute-Value Masking', () => {
         }
     });
 
-    test('E2E-18: Save is blocked when any row has masked values (multi-condition policy)', async ({pw}) => {
+    test('E2E-18: Delete Policy is blocked (UI and server) when caller has masked values', async ({pw}) => {
+        // Validates that the read-only-when-masked invariant covers deletion:
+        // - Delete Policy button in the UI is disabled when hasMaskedRows is true
+        // - Server returns HTTP 403 for direct DELETE requests when caller has masked values
+        test.setTimeout(120000);
+        await pw.skipIfNoLicense();
+
+        const {adminUser, adminClient} = await pw.initSetup();
+        const fieldIds: string[] = [];
+        const policyIds: string[] = [];
+
+        try {
+            await enableUserManagedAttributes(adminClient);
+            await enableMaskingFlag(adminClient);
+
+            const fieldName = `MaskingProgram_${pw.random.id()}`;
+            const fieldId = await createMaskingTextField(adminClient, fieldName);
+            fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId);
+            await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
+
+            const {systemConsolePage} = await pw.testBrowser.login(adminUser);
+            const page = systemConsolePage.page;
+            await navigateToABACPage(page);
+            await enableABAC(page);
+
+            const policyName = `MaskingPolicy ${pw.random.id()}`;
+            const policyId = await createPolicyWithCEL(
+                page,
+                policyName,
+                `user.attributes.${fieldName} in ["Alpha", "Bravo", "Charlie"]`,
+            );
+            policyIds.push(policyId);
+
+            await openExistingPolicy(page, policyName);
+
+            // Confirm masked state
+            await expect(page.locator('.select__multi-value--masked')).toBeVisible();
+
+            // UI: Delete Policy button must be disabled when masked values present
+            const deleteBtn = page.getByRole('button', {name: /^delete$/i}).last();
+            if (await deleteBtn.isVisible({timeout: 5000})) {
+                await expect(deleteBtn).toBeDisabled();
+            }
+
+            // Server: direct DELETE must return HTTP 403
+            const status = await page.evaluate(async (id: string) => {
+                const resp = await fetch(`/api/v4/access_control/policies/${id}`, {
+                    method: 'DELETE',
+                    headers: {'X-Requested-With': 'XMLHttpRequest'},
+                });
+                return resp.status;
+            }, policyId);
+
+            expect(status).toBe(403);
+
+            // Verify policy still exists via API (flag off)
+            await disableMaskingFlag(adminClient);
+            const expression = await getRawPolicyExpression(page, policyId);
+            await enableMaskingFlag(adminClient);
+            expect(expression).toContain('Alpha');
+        } finally {
+            for (const id of policyIds) { try { await deletePolicy(adminClient, id); } catch {} }
+            for (const id of fieldIds) { try { await deleteCPAField(adminClient, id); } catch {} }
+            try { await disableMaskingFlag(adminClient); } catch {}
+        }
+    });
+
+    test('E2E-19: Save is blocked when any row has masked values (multi-condition policy)', async ({pw}) => {
         // Validates that the 403 block applies to multi-condition policies: as long as
         // ANY row has masked values the Save button is disabled and the server returns 403.
         // The admin can delete rows in the UI but cannot commit the result.

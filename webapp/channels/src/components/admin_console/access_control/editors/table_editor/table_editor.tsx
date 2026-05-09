@@ -457,7 +457,7 @@ function TableEditor({
                                         type='button'
                                         className='table-editor__row-remove'
                                         onClick={() => removeRow(index)}
-                                        disabled={disabled}
+                                        disabled={disabled || row.hasMaskedValues}
                                         aria-label={formatMessage({id: 'admin.access_control.table_editor.remove_row', defaultMessage: 'Remove row'})}
                                     >
                                         <i className='icon icon-trash-can-outline'/>

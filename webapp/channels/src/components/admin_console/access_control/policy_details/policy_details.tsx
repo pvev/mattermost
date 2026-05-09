@@ -729,7 +729,7 @@ function PolicyDetails({
 
             <div className='admin-console-save'>
                 <SaveButton
-                    disabled={!saveNeeded}
+                    disabled={!saveNeeded || hasMaskedRows}
                     saving={saving}
                     onClick={() => {
                         if (!preSaveCheck()) {

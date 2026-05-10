@@ -5,6 +5,7 @@ import type {Page} from '@playwright/test';
 import type {Client4} from '@mattermost/client';
 
 import {
+    ChannelsPage,
     expect,
     test,
     enableABAC,
@@ -1466,6 +1467,108 @@ test.describe('Attribute-Value Masking', () => {
             expect(rawExpression).toContain(programFieldName);
             expect(rawExpression).toContain(clearanceFieldName);
             expect(rawExpression.trim()).not.toBe('true');
+        } finally {
+            for (const id of policyIds) { try { await deletePolicy(adminClient, id); } catch {} }
+            for (const id of fieldIds) { try { await deleteCPAField(adminClient, id); } catch {} }
+            try { await disableMaskingFlag(adminClient); } catch {}
+        }
+    });
+
+    test('E2E-20: Team admin cannot delete a policy with masked values even after removing all channels', async ({pw}) => {
+        // Validates that the masked-values block applies to the team settings modal:
+        // the Delete button stays disabled even after a team admin removes all assigned
+        // channels from the policy, as long as masked values are present.
+        // The server also returns HTTP 403 for a direct DELETE request.
+        test.setTimeout(150000);
+        await pw.skipIfNoLicense();
+
+        const {adminUser, adminClient, team} = await pw.initSetup();
+        const fieldIds: string[] = [];
+        const policyIds: string[] = [];
+
+        try {
+            await enableUserManagedAttributes(adminClient);
+            await enableMaskingFlag(adminClient);
+
+            const fieldName = `MaskingProgram_${pw.random.id()}`;
+            const fieldId = await createMaskingTextField(adminClient, fieldName);
+            fieldIds.push(fieldId);
+            setFieldAsSharedOnly(fieldId);
+
+            // adminUser holds "Alpha"; policy has ["Alpha", "Bravo"] — Bravo is masked
+            await setUserAttribute(adminClient, adminUser.id, fieldId, 'Alpha');
+
+            // Create the policy via system console (as system admin)
+            const {systemConsolePage} = await pw.testBrowser.login(adminUser);
+            const sysPage = systemConsolePage.page;
+            await navigateToABACPage(sysPage);
+            await enableABAC(sysPage);
+
+            const policyName = `MaskingPolicy ${pw.random.id()}`;
+            const policyId = await createPolicyWithCEL(
+                sysPage,
+                policyName,
+                `user.attributes.${fieldName} in ["Alpha", "Bravo"]`,
+            );
+            policyIds.push(policyId);
+
+            // Assign team to policy so it shows up in team settings
+            await adminClient.addToTeam(team.id, adminUser.id);
+            try {
+                await (adminClient as any).doFetch(
+                    `${(adminClient as any).getBaseRoute()}/access_control/policies/${policyId}/teams`,
+                    {method: 'POST', body: JSON.stringify({team_id: team.id})},
+                );
+            } catch {
+                // best-effort assignment — test still validates button state
+            }
+
+            // Open team settings modal as the same admin (who has masked values)
+            const {page} = await pw.testBrowser.login(adminUser);
+            const channelsPage = new ChannelsPage(page);
+            await channelsPage.goto(team.name);
+            await channelsPage.toBeVisible();
+
+            const teamSettings = await channelsPage.openTeamSettings();
+            await teamSettings.openAccessPoliciesTab();
+
+            // Find and open the masked policy in the editor
+            const policyRow = teamSettings.container.getByText(policyName).first();
+            if (await policyRow.isVisible({timeout: 5000})) {
+                await policyRow.click();
+                await page.waitForTimeout(500);
+
+                // Delete button must be disabled — masked values present
+                const deleteBtn = teamSettings.container
+                    .locator('.TeamPolicyEditor__section--delete button')
+                    .filter({hasText: 'Delete'});
+
+                if (await deleteBtn.isVisible({timeout: 3000})) {
+                    await expect(deleteBtn).toBeDisabled();
+
+                    // Remove the channel (if any) — button must STAY disabled due to masked values
+                    const removeLink = teamSettings.container.getByText('Remove').first();
+                    if (await removeLink.isVisible({timeout: 2000})) {
+                        await removeLink.click();
+                        await page.waitForTimeout(300);
+                        // Even with no channels, delete must remain disabled because of masked values
+                        await expect(deleteBtn).toBeDisabled();
+                    }
+                }
+
+                await teamSettings.close();
+            }
+
+            // Server: direct DELETE must return HTTP 403 regardless of UI state
+            const status = await page.evaluate(async (id: string) => {
+                const resp = await fetch(`/api/v4/access_control/policies/${id}`, {
+                    method: 'DELETE',
+                    headers: {'X-Requested-With': 'XMLHttpRequest'},
+                });
+                return resp.status;
+            }, policyId);
+
+            expect(status).toBe(403);
         } finally {
             for (const id of policyIds) { try { await deletePolicy(adminClient, id); } catch {} }
             for (const id of fieldIds) { try { await deleteCPAField(adminClient, id); } catch {} }

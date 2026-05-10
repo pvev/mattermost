@@ -107,14 +107,19 @@ func (a *App) CreateOrUpdateAccessControlPolicy(rctx request.CTX, policy *model.
 		}
 		callerID := session.UserId
 
+		// Validate submitted values BEFORE merge: only the values the caller
+		// actually submitted should be checked against their holdings. Running
+		// validation after merge would reject the re-injected hidden values
+		// (e.g. Bravo, Charlie) that the caller legitimately cannot see.
+		if appErr := a.validatePolicyExpressionValues(rctx, policy, callerID); appErr != nil {
+			return nil, appErr
+		}
+
 		// Merge hidden values back in and block deletion of masked conditions.
 		if appErr := a.mergeStoredPolicyExpressions(rctx, policy, callerID); appErr != nil {
 			return nil, appErr
 		}
 
-		if appErr := a.validatePolicyExpressionValues(rctx, policy, callerID); appErr != nil {
-			return nil, appErr
-		}
 		if appErr := a.checkSelfInclusion(rctx, policy, callerID); appErr != nil {
 			return nil, appErr
 		}

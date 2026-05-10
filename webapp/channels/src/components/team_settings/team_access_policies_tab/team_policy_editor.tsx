@@ -618,7 +618,7 @@ export default function TeamPolicyEditor({
                             <button
                                 className='btn btn-danger'
                                 onClick={() => setShowDeleteModal(true)}
-                                disabled={hasChannels()}
+                                disabled={hasChannels() || hasMaskedRows}
                             >
                                 <FormattedMessage
                                     id='admin.access_control.policy.edit_policy.delete_policy.delete'

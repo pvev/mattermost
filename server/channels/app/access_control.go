@@ -6,6 +6,7 @@ package app
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -676,6 +677,235 @@ func filterConditionValues(condition *model.Condition, visibleNames map[string]s
 			condition.Value = nil
 			condition.HasMaskedValues = true
 		}
+	}
+}
+
+// extractStringValues converts a condition's Value to a slice of strings.
+func extractStringValues(value any) []string {
+	switch v := value.(type) {
+	case []any:
+		var result []string
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				result = append(result, s)
+			}
+		}
+		return result
+	case string:
+		return []string{v}
+	default:
+		return nil
+	}
+}
+
+// buildCELFromConditions reconstructs a CEL expression from conditions, joined with " && ".
+func buildCELFromConditions(conditions []model.Condition) string {
+	if len(conditions) == 0 {
+		return "true"
+	}
+
+	parts := make([]string, 0, len(conditions))
+	for _, cond := range conditions {
+		cel := conditionToCEL(cond)
+		if cel != "" {
+			parts = append(parts, cel)
+		}
+	}
+
+	if len(parts) == 0 {
+		return "true"
+	}
+
+	return strings.Join(parts, " && ")
+}
+
+// conditionToCEL converts a single Condition to its CEL string representation.
+func conditionToCEL(cond model.Condition) string {
+	attr := cond.Attribute
+
+	switch cond.Operator {
+	case "==", "!=", ">", ">=", "<", "<=":
+		if cond.Value == nil {
+			return ""
+		}
+		return attr + " " + cond.Operator + " " + celValueLiteral(cond.Value)
+
+	case "in":
+		values := extractStringValues(cond.Value)
+		if len(values) == 0 {
+			return ""
+		}
+		if cond.AttributeType == "multiselect" {
+			// multiselect: "v1" in attr && "v2" in attr
+			inParts := make([]string, 0, len(values))
+			for _, v := range values {
+				inParts = append(inParts, celStringLiteral(v)+" in "+attr)
+			}
+			return strings.Join(inParts, " && ")
+		}
+		// select: attr in ["v1", "v2"]
+		valLiterals := make([]string, 0, len(values))
+		for _, v := range values {
+			valLiterals = append(valLiterals, celStringLiteral(v))
+		}
+		return attr + " in [" + strings.Join(valLiterals, ", ") + "]"
+
+	case "hasAnyOf":
+		values := extractStringValues(cond.Value)
+		if len(values) == 0 {
+			return ""
+		}
+		orParts := make([]string, 0, len(values))
+		for _, v := range values {
+			orParts = append(orParts, celStringLiteral(v)+" in "+attr)
+		}
+		if len(orParts) == 1 {
+			return orParts[0]
+		}
+		return "(" + strings.Join(orParts, " || ") + ")"
+
+	case "hasAllOf":
+		values := extractStringValues(cond.Value)
+		if len(values) == 0 {
+			return ""
+		}
+		andParts := make([]string, 0, len(values))
+		for _, v := range values {
+			andParts = append(andParts, celStringLiteral(v)+" in "+attr)
+		}
+		return strings.Join(andParts, " && ")
+
+	case "contains", "startsWith", "endsWith":
+		if cond.Value == nil {
+			return ""
+		}
+		return attr + "." + cond.Operator + "(" + celValueLiteral(cond.Value) + ")"
+
+	default:
+		if cond.Value == nil {
+			return ""
+		}
+		return attr + " " + cond.Operator + " " + celValueLiteral(cond.Value)
+	}
+}
+
+// celStringLiteral wraps s in double quotes with backslash and quote escaping.
+func celStringLiteral(s string) string {
+	escaped := strings.ReplaceAll(s, `\`, `\\`)
+	escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+	return `"` + escaped + `"`
+}
+
+// celValueLiteral returns the CEL literal for a condition value.
+func celValueLiteral(value any) string {
+	switch v := value.(type) {
+	case string:
+		return celStringLiteral(v)
+	case float64:
+		return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%f", v), "0"), ".")
+	case int:
+		return fmt.Sprintf("%d", v)
+	case int64:
+		return fmt.Sprintf("%d", v)
+	case bool:
+		if v {
+			return "true"
+		}
+		return "false"
+	case nil:
+		return "null"
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+// maskedTokenValue is the sentinel the frontend uses for masked values; never a valid attribute value.
+const maskedTokenValue = "--------"
+
+// validatePolicyExpressionValues checks that all submitted literal values are held by the caller.
+// Returns the same generic error for every rejection to prevent value enumeration.
+func (a *App) validatePolicyExpressionValues(rctx request.CTX, policy *model.AccessControlPolicy, callerID string) *model.AppError {
+	cpaGroupID, appErr := a.CpaGroupID()
+	if appErr != nil {
+		return model.NewAppError("validatePolicyExpressionValues", "app.pap.validate_expression_values.app_error", nil, "", http.StatusInternalServerError).Wrap(appErr)
+	}
+
+	rctxWithCaller := RequestContextWithCallerID(rctx, callerID)
+
+	for _, rule := range policy.Rules {
+		if rule.Expression == "" || rule.Expression == "true" {
+			continue
+		}
+
+		visualAST, appErr := a.ExpressionToVisualAST(rctx, rule.Expression)
+		if appErr != nil {
+			return appErr
+		}
+
+		for _, cond := range visualAST.Conditions {
+			if appErr := a.validateConditionValues(rctxWithCaller, &cond, cpaGroupID); appErr != nil {
+				return appErr
+			}
+		}
+	}
+
+	return nil
+}
+
+// invalidValueError returns the same generic 400 for all write-path rejections (no enumeration leakage).
+func invalidValueError() *model.AppError {
+	return model.NewAppError("validatePolicyExpressionValues", "app.pap.save_policy.invalid_value", nil, "Invalid value.", http.StatusBadRequest)
+}
+
+// validateConditionValues checks that all literal values in a single condition are held by the caller.
+func (a *App) validateConditionValues(rctx request.CTX, cond *model.Condition, cpaGroupID string) *model.AppError {
+	if cond.ValueType == model.AttrValue {
+		return nil
+	}
+
+	values := extractStringValues(cond.Value)
+	for _, v := range values {
+		if v == maskedTokenValue {
+			return invalidValueError()
+		}
+	}
+
+	fieldName := extractFieldName(cond.Attribute)
+	if fieldName == "" {
+		return nil
+	}
+
+	field, appErr := a.GetPropertyFieldByName(rctx, cpaGroupID, "", fieldName)
+	if appErr != nil {
+		return invalidValueError() // reject unknown fields to prevent probing
+	}
+
+	switch getFieldAccessMode(field) {
+	case model.PropertyAccessModePublic:
+		return nil
+	case model.PropertyAccessModeSourceOnly:
+		if len(values) > 0 {
+			return invalidValueError()
+		}
+		return nil
+	case model.PropertyAccessModeSharedOnly:
+		var visibleNames map[string]struct{}
+		if field.Type == model.PropertyFieldTypeSelect || field.Type == model.PropertyFieldTypeMultiselect {
+			visibleNames = extractVisibleOptionNames(field)
+		} else {
+			visibleNames = a.getCallerTextValues(rctx, field, cpaGroupID)
+		}
+		for _, v := range values {
+			if _, visible := visibleNames[v]; !visible {
+				return invalidValueError()
+			}
+		}
+		return nil
+	default:
+		if len(values) > 0 {
+			return invalidValueError()
+		}
+		return nil
 	}
 }
 

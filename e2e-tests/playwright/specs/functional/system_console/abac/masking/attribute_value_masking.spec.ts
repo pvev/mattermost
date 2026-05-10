@@ -300,18 +300,9 @@ test.describe('Attribute-Value Masking', () => {
                 await expect(testRulesBtn).toBeDisabled();
             }
 
-            // Save button must be disabled when masked values are present
+            // Save button must be ENABLED — callers can save even with masked values present
             const saveBtn = page.getByRole('button', {name: 'Save'});
-            await expect(saveBtn).toBeDisabled();
-
-            // Add a new row with a different attribute — Save must REMAIN disabled
-            // because the Program row still has masked values
-            const addAttributeBtn = page.getByRole('button', {name: /add attribute/i});
-            if (await addAttributeBtn.isVisible({timeout: 3000}) && !(await addAttributeBtn.isDisabled())) {
-                await addAttributeBtn.click();
-                await page.waitForTimeout(500);
-                await expect(saveBtn).toBeDisabled();
-            }
+            await expect(saveBtn).not.toBeDisabled();
         } finally {
             for (const id of policyIds) { try { await deletePolicy(adminClient, id); } catch {} }
             for (const id of fieldIds) { try { await deleteCPAField(adminClient, id); } catch {} }
@@ -319,10 +310,10 @@ test.describe('Attribute-Value Masking', () => {
         }
     });
 
-    test('E2E-2: Save is blocked (UI and server) when caller has masked values', async ({pw}) => {
-        // Validates the read-only-when-masked design: any caller with masked values
-        // in an existing policy cannot modify it. The Save button is disabled in the
-        // UI and the server returns HTTP 403 for direct API requests.
+    test('E2E-2: Caller with masked values can save; hidden values are preserved by merge', async ({pw}) => {
+        // Validates that callers with masked values CAN save changes. Merge-on-save
+        // re-injects hidden values so Bravo and Charlie survive even though the caller
+        // only sees and submits Alpha. Save button is enabled (not gated on masked state).
         test.setTimeout(120000);
         await pw.skipIfNoLicense();
 
@@ -354,33 +345,41 @@ test.describe('Attribute-Value Masking', () => {
             policyIds.push(policyId);
 
             await openExistingPolicy(page, policyName);
+            const storedPolicyId = await getPolicyIdFromURL(page);
 
-            // Confirm masked state (Alpha visible, Bravo/Charlie masked)
+            // Alpha visible, Bravo+Charlie masked
             await expect(page.locator('.select__multi-value').filter({hasText: 'Alpha'})).toBeVisible();
             await expect(page.locator('.select__multi-value--masked')).toBeVisible();
 
-            // UI: Save button must be disabled
+            // Save button must be ENABLED — callers can save with masked values present
             const saveBtn = page.getByRole('button', {name: 'Save'});
-            await expect(saveBtn).toBeDisabled();
+            await expect(saveBtn).not.toBeDisabled();
 
-            // Server: direct API save must return HTTP 403
-            const status = await page.evaluate(async ({policyId: id, fieldName: fn}: {policyId: string; fieldName: string}) => {
-                const resp = await fetch(`/api/v4/access_control/policies/${id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    body: JSON.stringify({
-                        name: 'Modified',
-                        type: 'member',
-                        rules: [{expression: `user.attributes.${fn} in ["Alpha"]`}],
-                    }),
-                });
-                return resp.status;
-            }, {policyId, fieldName});
+            // Remove Alpha then re-add to produce a dirty state
+            const alphaChip = page.locator('.select__multi-value').filter({hasText: 'Alpha'});
+            await alphaChip.locator('.select__multi-value__remove').click();
+            await page.waitForTimeout(300);
 
-            expect(status).toBe(403);
+            const valueSelector = page.locator('[data-testid="valueSelectorMenuButton"]').first();
+            await valueSelector.click({force: true});
+            await page.waitForTimeout(500);
+            const alphaOption = page.locator('[id^="value-selector-menu"]').getByText('Alpha').first();
+            await alphaOption.click({force: true});
+            await page.waitForTimeout(300);
+            await page.keyboard.press('Escape');
+
+            // Save — must succeed
+            await saveBtn.click();
+            await page.waitForLoadState('networkidle');
+
+            // Verify via API (flag off): Bravo + Charlie preserved by merge-on-save
+            await disableMaskingFlag(adminClient);
+            const rawExpression = await getRawPolicyExpression(page, storedPolicyId);
+            await enableMaskingFlag(adminClient);
+
+            expect(rawExpression).toContain('Alpha');
+            expect(rawExpression).toContain('Bravo');
+            expect(rawExpression).toContain('Charlie');
         } finally {
             for (const id of policyIds) { try { await deletePolicy(adminClient, id); } catch {} }
             for (const id of fieldIds) { try { await deleteCPAField(adminClient, id); } catch {} }
@@ -833,10 +832,10 @@ test.describe('Attribute-Value Masking', () => {
         }
     });
 
-    test('E2E-10: Save remains blocked when masked values exist even after adding a held value', async ({pw}) => {
-        // Validates that adding a new held value to a row that still has masked values
-        // does NOT unlock saving. hasMaskedRows remains true as long as any masked chip
-        // is visible, so the Save button stays disabled and the server returns 403.
+    test('E2E-10: Add held value alongside masked values and save; all values preserved', async ({pw}) => {
+        // Validates that a caller can add their held value to a row that already has
+        // masked values, then save successfully. Merge-on-save preserves Bravo and
+        // Charlie even though the caller cannot see them.
         test.setTimeout(120000);
         await pw.skipIfNoLicense();
 
@@ -870,17 +869,18 @@ test.describe('Attribute-Value Masking', () => {
             policyIds.push(policyId);
 
             await openExistingPolicy(page, policyName);
+            const storedPolicyId = await getPolicyIdFromURL(page);
 
-            // No visible chips (admin doesn't hold Bravo or Charlie); only masked chip
+            // No visible chips (admin holds none of the existing values); only masked chip
             await expect(page.locator('.select__multi-value').filter({hasText: 'Bravo'})).not.toBeVisible();
             await expect(page.locator('.select__multi-value').filter({hasText: 'Charlie'})).not.toBeVisible();
             await expect(page.locator('.select__multi-value--masked')).toBeVisible();
 
-            // Save button must be DISABLED (masked values present)
+            // Save button is ENABLED even with masked values
             const saveBtn = page.getByRole('button', {name: 'Save'});
-            await expect(saveBtn).toBeDisabled();
+            await expect(saveBtn).not.toBeDisabled();
 
-            // Open value selector and add "Alpha" (the value the admin holds)
+            // Add "Alpha" (the value the admin holds)
             const valueSelector = page.locator('[data-testid="valueSelectorMenuButton"]').first();
             await valueSelector.click({force: true});
             await page.waitForTimeout(500);
@@ -890,31 +890,22 @@ test.describe('Attribute-Value Masking', () => {
             await page.waitForTimeout(300);
             await page.keyboard.press('Escape');
 
-            // Row now shows Alpha chip + masked chip (Bravo, Charlie still masked)
+            // Row now shows Alpha chip + masked chip
             await expect(page.locator('.select__multi-value').filter({hasText: 'Alpha'})).toBeVisible();
             await expect(page.locator('.select__multi-value--masked')).toBeVisible();
 
-            // Save button must REMAIN disabled — Bravo and Charlie are still masked
-            await expect(saveBtn).toBeDisabled();
+            // Save — must succeed
+            await saveBtn.click();
+            await page.waitForLoadState('networkidle');
 
-            // Server also returns 403 for direct API attempt
-            const status = await page.evaluate(async ({policyId: id, fieldName: fn}: {policyId: string; fieldName: string}) => {
-                const resp = await fetch(`/api/v4/access_control/policies/${id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    body: JSON.stringify({
-                        name: 'Modified',
-                        type: 'member',
-                        rules: [{expression: `user.attributes.${fn} in ["Alpha", "Bravo", "Charlie"]`}],
-                    }),
-                });
-                return resp.status;
-            }, {policyId, fieldName});
+            // Verify via API (flag off): Alpha added, Bravo + Charlie preserved by merge-on-save
+            await disableMaskingFlag(adminClient);
+            const rawExpression = await getRawPolicyExpression(page, storedPolicyId);
+            await enableMaskingFlag(adminClient);
 
-            expect(status).toBe(403);
+            expect(rawExpression).toContain('Alpha');
+            expect(rawExpression).toContain('Bravo');
+            expect(rawExpression).toContain('Charlie');
         } finally {
             for (const id of policyIds) { try { await deletePolicy(adminClient, id); } catch {} }
             for (const id of fieldIds) { try { await deleteCPAField(adminClient, id); } catch {} }
@@ -1374,10 +1365,10 @@ test.describe('Attribute-Value Masking', () => {
         }
     });
 
-    test('E2E-19: Save is blocked when any row has masked values (multi-condition policy)', async ({pw}) => {
-        // Validates that the 403 block applies to multi-condition policies: as long as
-        // ANY row has masked values the Save button is disabled and the server returns 403.
-        // The admin can delete rows in the UI but cannot commit the result.
+    test('E2E-19: Multi-condition save preserves all hidden values; deleting masked row is blocked', async ({pw}) => {
+        // Validates merge-on-save for a multi-condition policy. The caller (holds Alpha
+        // in programField, nothing in clearanceField) can save — both conditions survive
+        // with their hidden values intact. The server blocks deletion of masked conditions.
         test.setTimeout(150000);
         await pw.skipIfNoLicense();
 
@@ -1389,7 +1380,6 @@ test.describe('Attribute-Value Masking', () => {
             await enableUserManagedAttributes(adminClient);
             await enableMaskingFlag(adminClient);
 
-            // Two fields: admin holds "Alpha" in programField, nothing in clearanceField.
             const programFieldName = `MaskingProgram_${pw.random.id()}`;
             const clearanceFieldName = `MaskingClearance_${pw.random.id()}`;
             const programFieldId = await createMaskingTextField(adminClient, programFieldName);
@@ -1399,14 +1389,12 @@ test.describe('Attribute-Value Masking', () => {
             setFieldAsSharedOnly(clearanceFieldId);
 
             await setUserAttribute(adminClient, adminUser.id, programFieldId, 'Alpha');
-            // Admin holds nothing in clearanceField → clearance row is fully masked
 
             const {systemConsolePage} = await pw.testBrowser.login(adminUser);
             const page = systemConsolePage.page;
             await navigateToABACPage(page);
             await enableABAC(page);
 
-            // Policy with two conditions — both have masked values for this caller
             const policyName = `MaskingRegressionPolicy ${pw.random.id()}`;
             const policyId = await createPolicyWithCEL(
                 page,
@@ -1418,55 +1406,53 @@ test.describe('Attribute-Value Masking', () => {
             await openExistingPolicy(page, policyName);
             const storedPolicyId = await getPolicyIdFromURL(page);
 
-            // Both rows are masked — banner visible, Save disabled
+            // Both rows are masked — banner visible
             await expect(page.locator('.select__multi-value--masked').first()).toBeVisible();
             await expect(page.locator('text="This policy contains restricted values"')).toBeVisible();
+
+            // Save button is ENABLED — caller can save even with masked rows
             const saveBtn = page.getByRole('button', {name: 'Save'});
-            await expect(saveBtn).toBeDisabled();
+            await expect(saveBtn).not.toBeDisabled();
 
-            // Delete the first row in the UI — clearance row still has masked values
+            // Trash buttons on both masked rows must be DISABLED
             const trashButtons = page.locator('button[aria-label="Remove row"]');
-            await trashButtons.first().click();
-            await page.waitForTimeout(500);
-
-            // If a confirmation dialog appeared (masked row), confirm deletion
-            const confirmModal = page.locator('[role="dialog"]').filter({hasText: /restricted values/i});
-            const modalVisible = await confirmModal.isVisible({timeout: 2000}).catch(() => false);
-            if (modalVisible) {
-                await confirmModal.getByRole('button', {name: /remove rule/i}).click();
-                await page.waitForTimeout(500);
+            const firstTrash = trashButtons.first();
+            if (await firstTrash.isVisible({timeout: 3000})) {
+                await expect(firstTrash).toBeDisabled();
             }
 
-            // Save must still be DISABLED (clearance row still has masked values)
-            await expect(saveBtn).toBeDisabled();
+            // Save as-is (no changes) — must succeed
+            await saveBtn.click();
+            await page.waitForLoadState('networkidle');
 
-            // Server also returns 403 — policy is unchanged
-            const status = await page.evaluate(async ({policyId: id, fieldName: fn}: {policyId: string; fieldName: string}) => {
-                const resp = await fetch(`/api/v4/access_control/policies/${id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    body: JSON.stringify({
-                        name: 'Modified',
-                        type: 'member',
-                        rules: [{expression: `user.attributes.${fn} in ["Secret", "TopSecret"]`}],
-                    }),
-                });
-                return resp.status;
-            }, {policyId, fieldName: clearanceFieldName});
-
-            expect(status).toBe(403);
-
-            // Verify via API (flag off) that the original policy is unchanged
+            // Verify via API (flag off): all hidden values still present
             await disableMaskingFlag(adminClient);
             const rawExpression = await getRawPolicyExpression(page, storedPolicyId);
             await enableMaskingFlag(adminClient);
 
             expect(rawExpression).toContain(programFieldName);
+            expect(rawExpression).toContain('Bravo');
+            expect(rawExpression).toContain('Charlie');
             expect(rawExpression).toContain(clearanceFieldName);
-            expect(rawExpression.trim()).not.toBe('true');
+            expect(rawExpression).toContain('Secret');
+            expect(rawExpression).toContain('TopSecret');
+
+            // Server blocks a direct API attempt to remove a masked condition
+            const status = await page.evaluate(async ({policyId: id, fn}: {policyId: string; fn: string}) => {
+                const resp = await fetch(`/api/v4/access_control/policies/${id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+                    body: JSON.stringify({
+                        name: 'Modified',
+                        type: 'member',
+                        // Only clearance condition — program condition intentionally omitted (deletion attempt)
+                        rules: [{expression: `user.attributes.${fn} in ["Secret", "TopSecret"]`}],
+                    }),
+                });
+                return resp.status;
+            }, {policyId, fn: clearanceFieldName});
+
+            expect(status).toBe(403);
         } finally {
             for (const id of policyIds) { try { await deletePolicy(adminClient, id); } catch {} }
             for (const id of fieldIds) { try { await deleteCPAField(adminClient, id); } catch {} }

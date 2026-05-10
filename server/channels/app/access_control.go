@@ -19,7 +19,6 @@ import (
 )
 
 const attributeViewRefreshInterval = 30 * time.Second
-const accessControlChildPolicySearchLimit = 1000
 
 func (a *App) GetChannelsForPolicy(rctx request.CTX, policyID string, cursor model.AccessControlPolicyCursor, limit int) ([]*model.ChannelWithTeamData, int64, *model.AppError) {
 	policy, appErr := a.GetAccessControlPolicy(rctx, policyID)
@@ -88,23 +87,6 @@ func (a *App) CreateOrUpdateAccessControlPolicy(rctx request.CTX, policy *model.
 		policy.ID = model.NewId()
 	}
 
-	// Channel-scope policies are pinned to a single channel by ID. Validate
-	// channel eligibility here (default / DM / GM / group-constrained / shared
-	// channels are ineligible) so this guard protects all callers — including
-	// system admins, whose request goes through the api4 handler's permission
-	// fast-path that skips the per-channel ValidateChannelAccessControlPolicyCreation
-	// check, and the parent-policy AssignAccessControlPolicyToChannels flow,
-	// which validates eligibility there but bypasses this entry point.
-	if policy.Type == model.AccessControlPolicyTypeChannel {
-		channel, appErr := a.GetChannel(rctx, policy.ID)
-		if appErr != nil {
-			return nil, appErr
-		}
-		if appErr := a.ValidateChannelEligibilityForAccessControl(rctx, channel); appErr != nil {
-			return nil, appErr
-		}
-	}
-
 	policy.Version = model.AccessControlPolicyVersionV0_3
 	for i, rule := range policy.Rules {
 		for j, action := range rule.Actions {
@@ -114,20 +96,95 @@ func (a *App) CreateOrUpdateAccessControlPolicy(rctx request.CTX, policy *model.
 		}
 	}
 
+	// Masking is attribute-based, not role-based. Any caller (including system admins)
+	// who holds masked values in an existing policy cannot modify it — 403 for all.
+	// Callers with full visibility are validated and must satisfy the policy themselves.
+	if a.Config().FeatureFlags.AttributeBasedAccessControl && a.Config().FeatureFlags.AttributeValueMasking {
+		session := rctx.Session()
+		if session == nil {
+			return nil, model.NewAppError("CreateOrUpdateAccessControlPolicy", "api.context.session_expired.app_error", nil, "session required for masking validation", http.StatusUnauthorized)
+		}
+		callerID := session.UserId
+
+		// Block all callers who have masked values in the stored policy.
+		if hasMasked, appErr := a.policyHasMaskedValuesForCaller(rctx, policy.ID, callerID); appErr != nil {
+			return nil, appErr
+		} else if hasMasked {
+			return nil, model.NewAppError("CreateOrUpdateAccessControlPolicy", "app.pap.save_policy.masked_values", nil,
+				"policy contains attribute values you do not hold; you cannot modify this policy", http.StatusForbidden)
+		}
+
+		if appErr := a.validatePolicyExpressionValues(rctx, policy, callerID); appErr != nil {
+			return nil, appErr
+		}
+		if appErr := a.checkSelfInclusion(rctx, policy, callerID); appErr != nil {
+			return nil, appErr
+		}
+	}
+
 	var appErr *model.AppError
 	policy, appErr = acs.SavePolicy(rctx, policy)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	switch policy.Type {
-	case model.AccessControlPolicyTypeChannel:
-		a.publishChannelPolicyEnforcedUpdate(rctx, policy.ID)
-	case model.AccessControlPolicyTypeParent:
-		a.publishChannelPolicyEnforcedForChannelPoliciesWithImport(rctx, policy.ID)
+	return policy, nil
+}
+
+// policyHasMaskedValuesForCaller returns true if the stored policy (identified by id)
+// contains any attribute values that are not visible to callerID under the current masking rules.
+// Returns false for new policies (not found) — new policies have no hidden values yet.
+func (a *App) policyHasMaskedValuesForCaller(rctx request.CTX, id, callerID string) (bool, *model.AppError) {
+	acs := a.Srv().ch.AccessControl
+	if acs == nil {
+		return false, nil
 	}
 
-	return policy, nil
+	existingPolicy, appErr := acs.GetPolicy(rctx, id)
+	if appErr != nil {
+		if appErr.StatusCode == http.StatusNotFound {
+			return false, nil
+		}
+		return false, appErr
+	}
+
+	for _, rule := range existingPolicy.Rules {
+		if rule.Expression == "" || rule.Expression == "true" {
+			continue
+		}
+		maskedAST, appErr := a.GetMaskedVisualAST(rctx, rule.Expression, callerID)
+		if appErr != nil {
+			return false, appErr
+		}
+		for _, cond := range maskedAST.Conditions {
+			if cond.HasMaskedValues {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
+}
+
+// checkSelfInclusion verifies the caller satisfies all policy rules after their edit.
+func (a *App) checkSelfInclusion(rctx request.CTX, policy *model.AccessControlPolicy, callerID string) *model.AppError {
+	for _, rule := range policy.Rules {
+		if rule.Expression == "" || rule.Expression == "true" {
+			continue
+		}
+
+		matches, appErr := a.ValidateExpressionAgainstRequester(rctx, rule.Expression, callerID)
+		if appErr != nil {
+			return appErr
+		}
+		if !matches {
+			return model.NewAppError("CreateOrUpdateAccessControlPolicy",
+				"app.pap.save_policy.self_exclusion", nil,
+				"You do not satisfy one or more conditions in this policy.", http.StatusBadRequest)
+		}
+	}
+
+	return nil
 }
 
 func (a *App) DeleteAccessControlPolicy(rctx request.CTX, id string) *model.AppError {
@@ -136,27 +193,22 @@ func (a *App) DeleteAccessControlPolicy(rctx request.CTX, id string) *model.AppE
 		return model.NewAppError("DeleteAccessControlPolicy", "app.pap.delete_access_control_policy.app_error", nil, "Policy Administration Point is not initialized", http.StatusNotImplemented)
 	}
 
-	// Resolve the policy first so we know whether to broadcast a channel
-	// access control update after deletion (channel-type policies share the
-	// channel's ID, so we can use the policy ID as the channel ID).
-	policy, appErr := acs.GetPolicy(rctx, id)
+	if a.Config().FeatureFlags.AttributeBasedAccessControl && a.Config().FeatureFlags.AttributeValueMasking {
+		session := rctx.Session()
+		if session != nil {
+			callerID := session.UserId
+			if hasMasked, appErr := a.policyHasMaskedValuesForCaller(rctx, id, callerID); appErr != nil {
+				return appErr
+			} else if hasMasked {
+				return model.NewAppError("DeleteAccessControlPolicy", "app.pap.delete_policy.masked_values", nil,
+					"policy contains attribute values you do not hold; you cannot delete this policy", http.StatusForbidden)
+			}
+		}
+	}
+
+	appErr := acs.DeletePolicy(rctx, id)
 	if appErr != nil {
 		return appErr
-	}
-
-	var affectedChannelIDs []string
-	if policy != nil && policy.Type != model.AccessControlPolicyTypeChannel {
-		affectedChannelIDs = a.channelPolicyIDsWithImport(rctx, id)
-	}
-
-	if appErr := acs.DeletePolicy(rctx, id); appErr != nil {
-		return appErr
-	}
-
-	if policy != nil && policy.Type == model.AccessControlPolicyTypeChannel {
-		a.publishChannelPolicyEnforcedUpdate(rctx, id)
-	} else if policy.Type == model.AccessControlPolicyTypeParent {
-		a.publishChannelPolicyEnforcedUpdatesForChannels(rctx, affectedChannelIDs)
 	}
 
 	return nil
@@ -212,7 +264,7 @@ func (a *App) AssignAccessControlPolicyToChannels(rctx request.CTX, parentID str
 
 	policies := make([]*model.AccessControlPolicy, 0, len(channelIDs))
 	for _, channel := range channels {
-		if appErr := a.ValidateChannelEligibilityForAccessControl(rctx, channel); appErr != nil {
+		if appErr := ValidateChannelEligibilityForAccessControl(channel); appErr != nil {
 			return nil, appErr
 		}
 
@@ -240,7 +292,6 @@ func (a *App) AssignAccessControlPolicyToChannels(rctx request.CTX, parentID str
 		if appErr != nil {
 			return nil, appErr
 		}
-		a.publishChannelPolicyEnforcedUpdate(rctx, child.ID)
 		policies = append(policies, child)
 	}
 
@@ -286,15 +337,14 @@ func (a *App) UnassignPoliciesFromChannels(rctx request.CTX, policyID string, ch
 			if err := acs.DeletePolicy(rctx, child.ID); err != nil {
 				return model.NewAppError("UnassignPoliciesFromChannels", "app.pap.unassign_access_control_policy_from_channels.app_error", nil, err.Error(), http.StatusInternalServerError)
 			}
-			// invalidate the channel cache and broadcast the policy change
-			a.publishChannelPolicyEnforcedUpdate(rctx, channelID)
+			// invalidate the channel cache
+			a.Srv().Store().Channel().InvalidateChannel(channelID)
 			continue
 		}
 		_, appErr = acs.SavePolicy(rctx, child)
 		if appErr != nil {
 			return model.NewAppError("UnassignPoliciesFromChannels", "app.pap.unassign_access_control_policy_from_channels.app_error", nil, appErr.Error(), http.StatusInternalServerError)
 		}
-		a.publishChannelPolicyEnforcedUpdate(rctx, channelID)
 	}
 
 	return nil
@@ -373,14 +423,6 @@ func (a *App) UpdateAccessControlPoliciesActive(rctx request.CTX, updates []mode
 	if err != nil {
 		return nil, model.NewAppError("UpdateAccessControlPoliciesActive", "app.pap.update_access_control_policies_active.app_error", nil, err.Error(), http.StatusInternalServerError)
 	}
-
-	for _, policy := range policies {
-		// only channel policies use the active state
-		if policy.Type == model.AccessControlPolicyTypeChannel {
-			a.publishChannelPolicyEnforcedUpdate(rctx, policy.ID)
-		}
-	}
-
 	return policies, nil
 }
 
@@ -396,90 +438,6 @@ func (a *App) ExpressionToVisualAST(rctx request.CTX, expression string) (*model
 	}
 
 	return visualAST, nil
-}
-
-// publishChannelPolicyEnforcedForChannelPoliciesWithImport broadcasts
-// channel_access_control_updated for every channel-type policy that lists
-// importID in its imports. Call only after the imported policy (parent,
-// permission, etc.) is persisted.
-func (a *App) publishChannelPolicyEnforcedForChannelPoliciesWithImport(rctx request.CTX, importID string) {
-	a.publishChannelPolicyEnforcedUpdatesForChannels(rctx, a.channelPolicyIDsWithImport(rctx, importID))
-}
-
-func (a *App) publishChannelPolicyEnforcedUpdatesForChannels(rctx request.CTX, channelIDs []string) {
-	seen := make(map[string]struct{}, len(channelIDs))
-	for _, channelID := range channelIDs {
-		if channelID == "" {
-			continue
-		}
-		if _, ok := seen[channelID]; ok {
-			continue
-		}
-		seen[channelID] = struct{}{}
-		a.publishChannelPolicyEnforcedUpdate(rctx, channelID)
-	}
-}
-
-func (a *App) channelPolicyIDsWithImport(rctx request.CTX, importID string) []string {
-	channelIDs := []string{}
-	var cursor model.AccessControlPolicyCursor
-	for {
-		children, _, err := a.Srv().Store().AccessControlPolicy().SearchPolicies(rctx, model.AccessControlPolicySearch{
-			Type:     model.AccessControlPolicyTypeChannel,
-			ParentID: importID,
-			Cursor:   cursor,
-			Limit:    accessControlChildPolicySearchLimit,
-		})
-		if err != nil {
-			rctx.Logger().Warn("Failed to list channel policies that import a policy; skipping channel access control fan-out",
-				mlog.String("imported_policy_id", importID),
-				mlog.Err(err),
-			)
-			return channelIDs
-		}
-		for _, child := range children {
-			channelIDs = append(channelIDs, child.ID)
-		}
-		if len(children) < accessControlChildPolicySearchLimit {
-			break
-		}
-		cursor.ID = children[len(children)-1].ID
-	}
-	return channelIDs
-}
-
-// publishChannelPolicyEnforcedUpdate invalidates the channel cache for the
-// given channel ID and broadcasts a channel_access_control_updated websocket
-// event so that connected clients can refresh their view of the channel's
-// access control state (e.g. the policy_enforced flag and the set of
-// attributes used by the policy). A dedicated event is used rather than
-// channel_updated because this is fired on every policy mutation and clients
-// only need to refresh access control state — not run the full
-// channel_updated reducer/router pipeline.
-func (a *App) publishChannelPolicyEnforcedUpdate(rctx request.CTX, channelID string) {
-	a.Srv().Store().Channel().InvalidateChannel(channelID)
-
-	channel, appErr := a.GetChannel(rctx, channelID)
-	if appErr != nil {
-		rctx.Logger().Warn("Failed to load channel after access control policy change",
-			mlog.String("channel_id", channelID),
-			mlog.Err(appErr),
-		)
-		return
-	}
-
-	channelJSON, jsonErr := json.Marshal(channel)
-	if jsonErr != nil {
-		rctx.Logger().Warn("Failed to marshal channel after access control policy change",
-			mlog.String("channel_id", channelID),
-			mlog.Err(jsonErr),
-		)
-		return
-	}
-
-	messageWs := model.NewWebSocketEvent(model.WebsocketEventChannelAccessControlUpdated, "", channel.Id, "", nil, "")
-	messageWs.Add("channel", string(channelJSON))
-	a.Publish(messageWs)
 }
 
 func (a *App) GetMaskedVisualAST(rctx request.CTX, expression string, callerID string) (*model.VisualExpression, *model.AppError) {
@@ -571,6 +529,112 @@ func (a *App) maskConditionValues(rctx request.CTX, callerID string, condition *
 	default:
 		condition.Value = nil
 		condition.HasMaskedValues = true
+	}
+}
+
+// GetMaskedExpression returns expression with non-held literal values replaced by the masked token.
+// The result is valid CEL that the visual AST endpoint can parse.
+func (a *App) GetMaskedExpression(rctx request.CTX, expression string, callerID string) (string, *model.AppError) {
+	if expression == "" || expression == "true" {
+		return expression, nil
+	}
+
+	visualAST, appErr := a.ExpressionToVisualAST(rctx, expression)
+	if appErr != nil {
+		return "true", nil
+	}
+
+	cpaGroupID, appErr := a.CpaGroupID()
+	if appErr != nil {
+		return "true", nil
+	}
+
+	rctxWithCaller := RequestContextWithCallerID(rctx, callerID)
+
+	for i := range visualAST.Conditions {
+		a.maskConditionValuesWithToken(rctxWithCaller, callerID, &visualAST.Conditions[i], cpaGroupID)
+	}
+
+	return buildCELFromConditions(visualAST.Conditions), nil
+}
+
+// maskConditionValuesWithToken replaces non-held values with the masked token in place,
+// preserving expression structure so the visual AST endpoint can still parse it.
+func (a *App) maskConditionValuesWithToken(rctx request.CTX, callerID string, condition *model.Condition, cpaGroupID string) {
+	if condition.ValueType == model.AttrValue {
+		return
+	}
+
+	fieldName := extractFieldName(condition.Attribute)
+	if fieldName == "" {
+		return
+	}
+
+	field, appErr := a.GetPropertyFieldByName(rctx, cpaGroupID, "", fieldName)
+	if appErr != nil {
+		condition.Value = maskedTokenValue // fail closed
+		return
+	}
+
+	switch getFieldAccessMode(field) {
+	case model.PropertyAccessModePublic:
+		return
+	case model.PropertyAccessModeSourceOnly:
+		condition.Value = maskedTokenValue
+	case model.PropertyAccessModeSharedOnly:
+		var visibleNames map[string]struct{}
+		if field.Type == model.PropertyFieldTypeSelect || field.Type == model.PropertyFieldTypeMultiselect {
+			visibleNames = extractVisibleOptionNames(field)
+		} else {
+			visibleNames = a.getCallerTextValues(rctx, callerID, field, cpaGroupID)
+		}
+		replaceHiddenValuesWithToken(condition, visibleNames)
+	default:
+		condition.Value = maskedTokenValue
+	}
+}
+
+// replaceHiddenValuesWithToken keeps visible values and appends a single masked token if any were hidden.
+// One token regardless of count prevents count-based inference about the number of hidden values.
+func replaceHiddenValuesWithToken(condition *model.Condition, visibleNames map[string]struct{}) {
+	switch v := condition.Value.(type) {
+	case []any:
+		var result []any
+		hasMasked := false
+		for _, val := range v {
+			if strVal, ok := val.(string); ok {
+				if _, visible := visibleNames[strVal]; visible {
+					result = append(result, val)
+				} else {
+					hasMasked = true
+				}
+			} else {
+				result = append(result, val)
+			}
+		}
+		if hasMasked {
+			result = append(result, maskedTokenValue)
+		}
+		condition.Value = result
+	case string:
+		if _, visible := visibleNames[v]; !visible {
+			condition.Value = maskedTokenValue
+		}
+	}
+}
+
+// MaskPolicyExpressions masks non-held literal values in all policy rule expressions, in place.
+func (a *App) MaskPolicyExpressions(rctx request.CTX, policy *model.AccessControlPolicy, callerID string) {
+	for i, rule := range policy.Rules {
+		if rule.Expression == "" || rule.Expression == "true" {
+			continue
+		}
+		maskedExpr, appErr := a.GetMaskedExpression(rctx, rule.Expression, callerID)
+		if appErr != nil {
+			policy.Rules[i].Expression = "true" // fail closed
+			continue
+		}
+		policy.Rules[i].Expression = maskedExpr
 	}
 }
 
@@ -811,9 +875,6 @@ func conditionToCEL(cond model.Condition) string {
 
 	switch cond.Operator {
 	case "==", "!=", ">", ">=", "<", "<=":
-		if cond.Value == nil {
-			return ""
-		}
 		return attr + " " + cond.Operator + " " + celValueLiteral(cond.Value)
 
 	case "in":
@@ -862,15 +923,9 @@ func conditionToCEL(cond model.Condition) string {
 		return strings.Join(andParts, " && ")
 
 	case "contains", "startsWith", "endsWith":
-		if cond.Value == nil {
-			return ""
-		}
 		return attr + "." + cond.Operator + "(" + celValueLiteral(cond.Value) + ")"
 
 	default:
-		if cond.Value == nil {
-			return ""
-		}
 		return attr + " " + cond.Operator + " " + celValueLiteral(cond.Value)
 	}
 }
@@ -997,13 +1052,12 @@ func (a *App) validateConditionValues(rctx request.CTX, cond *model.Condition, c
 }
 
 // ValidateChannelEligibilityForAccessControl checks that a channel is eligible for
-// access control policy assignment: must be public or private (DM/GM excluded),
-// not group-constrained, not shared, and not a team default channel (e.g. town-square).
-func (a *App) ValidateChannelEligibilityForAccessControl(rctx request.CTX, channel *model.Channel) *model.AppError {
-	if channel.Type != model.ChannelTypePrivate && channel.Type != model.ChannelTypeOpen {
+// access control policy assignment: must be private, not group-constrained, not shared.
+func ValidateChannelEligibilityForAccessControl(channel *model.Channel) *model.AppError {
+	if channel.Type != model.ChannelTypePrivate {
 		return model.NewAppError("ValidateChannelEligibilityForAccessControl",
-			"app.pap.access_control.channel_type_not_supported",
-			nil, "Policies can only be applied to public or private channels", http.StatusBadRequest)
+			"app.pap.access_control.channel_not_private",
+			nil, "Channel is not of type private", http.StatusBadRequest)
 	}
 
 	if channel.IsGroupConstrained() {
@@ -1016,12 +1070,6 @@ func (a *App) ValidateChannelEligibilityForAccessControl(rctx request.CTX, chann
 		return model.NewAppError("ValidateChannelEligibilityForAccessControl",
 			"app.pap.access_control.channel_shared",
 			nil, "Channel is shared", http.StatusBadRequest)
-	}
-
-	if slices.Contains(a.DefaultChannelNames(rctx), channel.Name) {
-		return model.NewAppError("ValidateChannelEligibilityForAccessControl",
-			"app.pap.access_control.channel_default",
-			nil, "Channel is a team default channel", http.StatusBadRequest)
 	}
 
 	return nil
@@ -1040,7 +1088,7 @@ func (a *App) ValidateChannelAccessControlPermission(rctx request.CTX, userID, c
 		return model.NewAppError("ValidateChannelAccessControlPermission", "app.pap.access_control.insufficient_channel_permissions", nil, "user_id="+userID+" channel_id="+channelID, http.StatusForbidden)
 	}
 
-	if appErr := a.ValidateChannelEligibilityForAccessControl(rctx, channel); appErr != nil {
+	if appErr := ValidateChannelEligibilityForAccessControl(channel); appErr != nil {
 		return appErr
 	}
 

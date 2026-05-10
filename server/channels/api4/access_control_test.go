@@ -5,7 +5,6 @@ package api4
 
 import (
 	"context"
-	"net/http"
 	"os"
 	"testing"
 
@@ -327,44 +326,6 @@ func TestCreateAccessControlPolicy(t *testing.T) {
 		require.NoError(t, err)
 		CheckOKStatus(t, resp)
 	})
-
-	t.Run("system admin cannot create a channel-scope policy on a team default channel", func(t *testing.T) {
-		// The api4 handler short-circuits validation for system admins, so the
-		// eligibility guard must live in the app layer. This test rides that
-		// path: SystemAdmin → handler skips ValidateChannelAccessControlPolicyCreation
-		// → CreateOrUpdateAccessControlPolicy must still reject default channels.
-		ok := th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
-		require.True(t, ok, "SetLicense should return true")
-
-		mockAccessControlService := &mocks.AccessControlServiceInterface{}
-		th.App.Srv().Channels().AccessControl = mockAccessControlService
-		// SavePolicy should never be reached — the guard rejects before that.
-		mockAccessControlService.On("SavePolicy", mock.Anything, mock.Anything).
-			Return(nil, model.NewAppError("SavePolicy", "should.not.be.called", nil, "", http.StatusInternalServerError)).Maybe()
-
-		th.App.UpdateConfig(func(cfg *model.Config) {
-			cfg.AccessControlSettings.EnableAttributeBasedAccessControl = model.NewPointer(true)
-		})
-
-		townSquare, appErr := th.App.GetChannelByName(th.Context, model.DefaultChannelName, th.BasicTeam.Id, false)
-		require.Nil(t, appErr)
-
-		defaultChannelPolicy := &model.AccessControlPolicy{
-			ID:       townSquare.Id,
-			Type:     model.AccessControlPolicyTypeChannel,
-			Name:     "default-channel-policy",
-			Version:  model.AccessControlPolicyVersionV0_3,
-			Revision: 1,
-			Rules: []model.AccessControlPolicyRule{
-				{Actions: []string{"membership"}, Expression: "true"},
-			},
-		}
-
-		_, resp, err := th.SystemAdminClient.CreateAccessControlPolicy(context.Background(), defaultChannelPolicy)
-		require.Error(t, err, "default channels must not accept ABAC policies, even for system admins")
-		CheckBadRequestStatus(t, resp)
-		mockAccessControlService.AssertNotCalled(t, "SavePolicy", mock.Anything, mock.Anything)
-	})
 }
 
 func TestGetAccessControlPolicy(t *testing.T) {
@@ -474,15 +435,6 @@ func TestDeleteAccessControlPolicy(t *testing.T) {
 
 		mockAccessControlService := &mocks.AccessControlServiceInterface{}
 		th.App.Srv().Channels().AccessControl = mockAccessControlService
-		// DeleteAccessControlPolicy resolves the policy first to decide
-		// whether to broadcast a channel access control update; return a
-		// parent policy so the channel-update path is not exercised here.
-		parentPolicy := &model.AccessControlPolicy{
-			ID:      samplePolicyID,
-			Type:    model.AccessControlPolicyTypeParent,
-			Version: model.AccessControlPolicyVersionV0_3,
-		}
-		mockAccessControlService.On("GetPolicy", mock.AnythingOfType("*request.Context"), samplePolicyID).Return(parentPolicy, nil).Times(1)
 		mockAccessControlService.On("DeletePolicy", mock.AnythingOfType("*request.Context"), samplePolicyID).Return(nil).Times(1)
 
 		th.App.UpdateConfig(func(cfg *model.Config) {
@@ -1105,113 +1057,20 @@ func TestSearchChannelsForAccessControlPolicy(t *testing.T) {
 		require.NotNil(t, channelsResp)
 	})
 
-	t.Run("public channels assigned to the policy appear in search results", func(t *testing.T) {
-		setupLicenseAndABAC(t)
-
-		parentPolicy := newSamplePolicy()
-		savedParent, err := th.App.Srv().Store().AccessControlPolicy().Save(th.Context, parentPolicy)
-		require.NoError(t, err)
-		t.Cleanup(func() {
-			_ = th.App.Srv().Store().AccessControlPolicy().Delete(th.Context, savedParent.ID)
-		})
-
-		// Public channels were previously hidden from this search by a hardcoded
-		// Private: true filter. Removing that filter is the whole point of the
-		// public-channel ABAC change; this test prevents regressions if someone
-		// re-introduces the filter in a future cleanup.
-		publicChannel := th.CreateChannelWithClientAndTeam(t, th.SystemAdminClient, model.ChannelTypeOpen, th.BasicTeam.Id)
-		childPolicy := &model.AccessControlPolicy{
-			ID:       publicChannel.Id,
-			Type:     model.AccessControlPolicyTypeChannel,
-			Version:  model.AccessControlPolicyVersionV0_3,
-			Revision: 1,
-			Imports:  []string{savedParent.ID},
-			Rules: []model.AccessControlPolicyRule{
-				{
-					Expression: "user.attributes.team == 'engineering'",
-					Actions:    []string{"membership"},
-				},
-			},
-		}
-		_, err = th.App.Srv().Store().AccessControlPolicy().Save(th.Context, childPolicy)
-		require.NoError(t, err)
-		t.Cleanup(func() {
-			_ = th.App.Srv().Store().AccessControlPolicy().Delete(th.Context, publicChannel.Id)
-		})
-
-		channelsResp, resp, err := th.SystemAdminClient.SearchChannelsForAccessControlPolicy(
-			context.Background(), savedParent.ID,
-			model.ChannelSearch{TeamIds: []string{th.BasicTeam.Id}})
-		require.NoError(t, err)
-		CheckOKStatus(t, resp)
-		require.NotNil(t, channelsResp)
-
-		channelsByID := make(map[string]*model.ChannelWithTeamData, len(channelsResp.Channels))
-		for _, ch := range channelsResp.Channels {
-			channelsByID[ch.Id] = ch
-		}
-		require.Contains(t, channelsByID, publicChannel.Id,
-			"public channel assigned to the policy should appear in search results")
-		require.Equal(t, model.ChannelTypeOpen, channelsByID[publicChannel.Id].Type,
-			"expected the matched channel to be public")
-
-		// Same fetch via the team-admin path used by the team-settings policy
-		// editor (?team_id=…). The team-scoped branch must also surface public
-		// channels — there's no longer any reason to filter them out.
-		th.LinkUserToTeam(t, th.TeamAdminUser, th.BasicTeam)
-		th.UpdateUserToTeamAdmin(t, th.TeamAdminUser, th.BasicTeam)
-		th.LoginTeamAdmin(t)
-		t.Cleanup(func() { th.LoginBasic(t) })
-
-		teamScopedResp, resp, err := th.Client.SearchChannelsForAccessControlPolicyForTeam(
-			context.Background(), savedParent.ID, th.BasicTeam.Id, model.ChannelSearch{})
-		require.NoError(t, err)
-		CheckOKStatus(t, resp)
-		require.NotNil(t, teamScopedResp)
-
-		teamChannelsByID := make(map[string]*model.ChannelWithTeamData, len(teamScopedResp.Channels))
-		for _, ch := range teamScopedResp.Channels {
-			teamChannelsByID[ch.Id] = ch
-		}
-		require.Contains(t, teamChannelsByID, publicChannel.Id,
-			"team-admin policy editor must also surface public channels assigned to the policy")
-	})
-
 	t.Run("team admin body TeamIds forced to authorized team", func(t *testing.T) {
 		setupLicenseAndABAC(t)
 
-		parentPolicy := newSamplePolicy()
-		savedParent, err := th.App.Srv().Store().AccessControlPolicy().Save(th.Context, parentPolicy)
+		policy := newSamplePolicy()
+		savedPolicy, err := th.App.Srv().Store().AccessControlPolicy().Save(th.Context, policy)
 		require.NoError(t, err)
 		defer func() {
-			_ = th.App.Srv().Store().AccessControlPolicy().Delete(th.Context, savedParent.ID)
+			_ = th.App.Srv().Store().AccessControlPolicy().Delete(th.Context, savedPolicy.ID)
 		}()
 
-		// Two teams, each with one private channel. The BasicTeam channel is
-		// linked to the parent policy so it shows up in the search; the
-		// otherTeam channel is unrelated. The override-correctness test then
-		// proves both that the BasicTeam channel IS returned (the search
-		// isn't trivially empty) and that the otherTeam channel is NOT
-		// returned even though the request body asked for it explicitly.
-		basicTeamChannel := th.CreateChannelWithClientAndTeam(t, th.SystemAdminClient, model.ChannelTypePrivate, th.BasicTeam.Id)
-		basicTeamChild := &model.AccessControlPolicy{
-			ID:       basicTeamChannel.Id,
-			Type:     model.AccessControlPolicyTypeChannel,
-			Version:  model.AccessControlPolicyVersionV0_3,
-			Revision: 1,
-			Imports:  []string{savedParent.ID},
-			Rules: []model.AccessControlPolicyRule{
-				{Expression: "user.attributes.team == 'engineering'", Actions: []string{"membership"}},
-			},
-		}
-		_, err = th.App.Srv().Store().AccessControlPolicy().Save(th.Context, basicTeamChild)
-		require.NoError(t, err)
-		defer func() {
-			_ = th.App.Srv().Store().AccessControlPolicy().Delete(th.Context, basicTeamChannel.Id)
-		}()
-
+		// Create a second team with a private channel
 		otherTeam := th.CreateTeam(t)
 		otherChannel := th.CreateChannelWithClientAndTeam(t, th.SystemAdminClient, model.ChannelTypePrivate, otherTeam.Id)
+		_ = otherChannel
 
 		th.LinkUserToTeam(t, th.TeamAdminUser, th.BasicTeam)
 		th.UpdateUserToTeamAdmin(t, th.TeamAdminUser, th.BasicTeam)
@@ -1221,26 +1080,19 @@ func TestSearchChannelsForAccessControlPolicy(t *testing.T) {
 
 		// Attempt to search with body TeamIds pointing to a different team.
 		// The authZ is against BasicTeam (via team_id query param), but the
-		// body tries to query otherTeam's channels. The handler should force
+		// body tries to query otherTeam's channels. The fix should force
 		// TeamIds to BasicTeam.Id regardless of what the body says.
 		channelsResp, resp, err := th.Client.SearchChannelsForAccessControlPolicyForTeam(
-			context.Background(), savedParent.ID, th.BasicTeam.Id,
+			context.Background(), savedPolicy.ID, th.BasicTeam.Id,
 			model.ChannelSearch{TeamIds: []string{otherTeam.Id}})
 		require.NoError(t, err)
 		CheckOKStatus(t, resp)
 		require.NotNil(t, channelsResp)
 
-		channelsByID := make(map[string]*model.ChannelWithTeamData, len(channelsResp.Channels))
-		for _, ch := range channelsResp.Channels {
-			channelsByID[ch.Id] = ch
-		}
-		require.Contains(t, channelsByID, basicTeamChannel.Id,
-			"BasicTeam channel must surface — proves the search is exercised, not just trivially empty")
-		require.NotContains(t, channelsByID, otherChannel.Id,
-			"otherTeam channel must NOT surface even though body asked for it — proves the team_id query param overrides body TeamIds")
+		// None of the returned channels should belong to the other team
 		for _, ch := range channelsResp.Channels {
 			require.Equal(t, th.BasicTeam.Id, ch.TeamId,
-				"team admin must only see channels from the authorized team, got channel %s from team %s", ch.Id, ch.TeamId)
+				"team admin should only see channels from the authorized team, got channel %s from team %s", ch.Id, ch.TeamId)
 		}
 	})
 
@@ -2320,4 +2172,196 @@ func TestScopeReconciliationCrossTeam(t *testing.T) {
 		require.Equal(t, model.AccessControlPolicyScopeTeam, reloaded.Scope, "scope must be preserved when no channels exist")
 		require.Equal(t, th.BasicTeam.Id, reloaded.ScopeID, "scope_id must be preserved when no channels exist")
 	})
+}
+
+// TestCreateAccessControlPolicyResponseMasking_Enabled verifies that the create/update handler
+// masks policy expressions in the response when AttributeValueMasking is enabled. Feature flags
+// must be set via env vars BEFORE Setup(t) — UpdateConfig does not reliably toggle feature flags
+// at runtime in tests.
+func TestCreateAccessControlPolicyResponseMasking_Enabled(t *testing.T) {
+	th := SetupConfig(t, func(cfg *model.Config) {
+		cfg.FeatureFlags.AttributeBasedAccessControl = true
+		cfg.FeatureFlags.AttributeValueMasking = true
+	}).InitBasic(t)
+
+	ok := th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
+	require.True(t, ok, "SetLicense should return true")
+
+	th.App.UpdateConfig(func(cfg *model.Config) {
+		cfg.AccessControlSettings.EnableAttributeBasedAccessControl = model.NewPointer(true)
+	})
+
+	rawExpr := `user.attributes.department == "engineering"`
+	notFoundErr := model.NewAppError("GetPolicy", "app.pap.get_policy.app_error", nil, "not found", 404)
+	parseErr := model.NewAppError("ExpressionToVisualAST", "app.pap.expression_to_visual_ast.app_error", nil, "parse error", 500)
+
+	policy := &model.AccessControlPolicy{
+		ID:      th.BasicChannel.Id,
+		Type:    model.AccessControlPolicyTypeChannel,
+		Version: model.AccessControlPolicyVersionV0_3,
+		Rules: []model.AccessControlPolicyRule{
+			{Expression: rawExpr, Actions: []string{"membership"}},
+		},
+	}
+	saved := *policy
+
+	mockACS := &mocks.AccessControlServiceInterface{}
+	th.App.Srv().Channels().AccessControl = mockACS
+	// mergeStoredPolicyExpressions: new policy, no existing stored version
+	mockACS.On("GetPolicy", mock.AnythingOfType("*request.Context"), policy.ID).
+		Return(nil, notFoundErr)
+	// SavePolicy returns the policy as-is (simulates successful store write)
+	mockACS.On("SavePolicy", mock.AnythingOfType("*request.Context"), mock.AnythingOfType("*model.AccessControlPolicy")).
+		Return(&saved, nil)
+	// MaskPolicyExpressions → ExpressionToVisualAST fails → GetMaskedExpression returns "true" (fail-closed)
+	mockACS.On("ExpressionToVisualAST", mock.AnythingOfType("*request.Context"), rawExpr).
+		Return(nil, parseErr)
+
+	resp, _, err := th.SystemAdminClient.CreateAccessControlPolicy(context.Background(), policy)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Len(t, resp.Rules, 1)
+	require.Equal(t, "true", resp.Rules[0].Expression,
+		"response expression must be masked (fail-closed to 'true') when ExpressionToVisualAST fails")
+	mockACS.AssertExpectations(t)
+}
+
+// TestCreateAccessControlPolicyResponseMasking_Disabled verifies that the create/update handler
+// returns the original expression unchanged when AttributeValueMasking is disabled (default).
+func TestCreateAccessControlPolicyResponseMasking_Disabled(t *testing.T) {
+	th := SetupConfig(t, func(cfg *model.Config) {
+		cfg.FeatureFlags.AttributeBasedAccessControl = true
+	}).InitBasic(t)
+
+	ok := th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
+	require.True(t, ok, "SetLicense should return true")
+
+	th.App.UpdateConfig(func(cfg *model.Config) {
+		cfg.AccessControlSettings.EnableAttributeBasedAccessControl = model.NewPointer(true)
+	})
+
+	rawExpr := `user.attributes.department == "engineering"`
+
+	policy := &model.AccessControlPolicy{
+		ID:      th.BasicChannel.Id,
+		Type:    model.AccessControlPolicyTypeChannel,
+		Version: model.AccessControlPolicyVersionV0_3,
+		Rules: []model.AccessControlPolicyRule{
+			{Expression: rawExpr, Actions: []string{"membership"}},
+		},
+	}
+	saved := *policy
+
+	mockACS := &mocks.AccessControlServiceInterface{}
+	th.App.Srv().Channels().AccessControl = mockACS
+	mockACS.On("SavePolicy", mock.AnythingOfType("*request.Context"), mock.AnythingOfType("*model.AccessControlPolicy")).
+		Return(&saved, nil)
+
+	resp, _, err := th.SystemAdminClient.CreateAccessControlPolicy(context.Background(), policy)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Len(t, resp.Rules, 1)
+	require.Equal(t, rawExpr, resp.Rules[0].Expression,
+		"response expression must be the original value when masking is disabled")
+	mockACS.AssertExpectations(t)
+}
+
+// TestSetActiveStatusResponseMasking_Enabled verifies that the set-active-status handler masks
+// policy expressions in the response when AttributeValueMasking is enabled.
+func TestSetActiveStatusResponseMasking_Enabled(t *testing.T) {
+	th := SetupConfig(t, func(cfg *model.Config) {
+		cfg.FeatureFlags.AttributeBasedAccessControl = true
+		cfg.FeatureFlags.AttributeValueMasking = true
+	}).InitBasic(t)
+
+	ok := th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
+	require.True(t, ok, "SetLicense should return true")
+
+	th.App.UpdateConfig(func(cfg *model.Config) {
+		cfg.AccessControlSettings.EnableAttributeBasedAccessControl = model.NewPointer(true)
+	})
+
+	rawExpr := `user.attributes.clearance == "secret"`
+	parseErr := model.NewAppError("ExpressionToVisualAST", "app.pap.expression_to_visual_ast.app_error", nil, "parse error", 500)
+
+	// Pre-save a policy directly to the store so UpdateAccessControlPoliciesActive can retrieve it.
+	storedPolicy := &model.AccessControlPolicy{
+		ID:      th.BasicChannel.Id,
+		Type:    model.AccessControlPolicyTypeChannel,
+		Version: model.AccessControlPolicyVersionV0_3,
+		Rules: []model.AccessControlPolicyRule{
+			{Expression: rawExpr, Actions: []string{"membership"}},
+		},
+	}
+	storedPolicy, storeErr := th.App.Srv().Store().AccessControlPolicy().Save(th.Context, storedPolicy)
+	require.NoError(t, storeErr)
+	defer func() {
+		_ = th.App.Srv().Store().AccessControlPolicy().Delete(th.Context, storedPolicy.ID)
+	}()
+
+	updateReq := model.AccessControlPolicyActiveUpdateRequest{
+		Entries: []model.AccessControlPolicyActiveUpdate{
+			{ID: storedPolicy.ID, Active: true},
+		},
+	}
+
+	mockACS := &mocks.AccessControlServiceInterface{}
+	th.App.Srv().Channels().AccessControl = mockACS
+	// UpdateAccessControlPoliciesActive only checks acs != nil, then hits the store directly.
+	// MaskPolicyExpressions → ExpressionToVisualAST fails → fail-closed "true"
+	mockACS.On("ExpressionToVisualAST", mock.AnythingOfType("*request.Context"), rawExpr).
+		Return(nil, parseErr)
+
+	policies, _, err := th.SystemAdminClient.SetAccessControlPolicyActive(context.Background(), updateReq)
+	require.NoError(t, err)
+	require.Len(t, policies, 1)
+	require.Equal(t, "true", policies[0].Rules[0].Expression,
+		"response expression must be masked (fail-closed to 'true') when ExpressionToVisualAST fails")
+	mockACS.AssertExpectations(t)
+}
+
+// TestSetActiveStatusResponseMasking_Disabled verifies that the set-active-status handler returns
+// expressions unchanged when AttributeValueMasking is disabled (default).
+func TestSetActiveStatusResponseMasking_Disabled(t *testing.T) {
+	th := SetupConfig(t, func(cfg *model.Config) {
+		cfg.FeatureFlags.AttributeBasedAccessControl = true
+	}).InitBasic(t)
+
+	ok := th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
+	require.True(t, ok, "SetLicense should return true")
+
+	th.App.UpdateConfig(func(cfg *model.Config) {
+		cfg.AccessControlSettings.EnableAttributeBasedAccessControl = model.NewPointer(true)
+	})
+
+	rawExpr := `user.attributes.clearance == "secret"`
+
+	storedPolicy := &model.AccessControlPolicy{
+		ID:      th.BasicChannel.Id,
+		Type:    model.AccessControlPolicyTypeChannel,
+		Version: model.AccessControlPolicyVersionV0_3,
+		Rules: []model.AccessControlPolicyRule{
+			{Expression: rawExpr, Actions: []string{"membership"}},
+		},
+	}
+	storedPolicy, storeErr := th.App.Srv().Store().AccessControlPolicy().Save(th.Context, storedPolicy)
+	require.NoError(t, storeErr)
+	defer func() {
+		_ = th.App.Srv().Store().AccessControlPolicy().Delete(th.Context, storedPolicy.ID)
+	}()
+
+	updateReq := model.AccessControlPolicyActiveUpdateRequest{
+		Entries: []model.AccessControlPolicyActiveUpdate{
+			{ID: storedPolicy.ID, Active: true},
+		},
+	}
+
+	mockACS := &mocks.AccessControlServiceInterface{}
+	th.App.Srv().Channels().AccessControl = mockACS
+
+	policies, _, err := th.SystemAdminClient.SetAccessControlPolicyActive(context.Background(), updateReq)
+	require.NoError(t, err)
+	require.Len(t, policies, 1)
+	require.Equal(t, rawExpr, policies[0].Rules[0].Expression,
+		"response expression must be unchanged when masking is disabled")
 }

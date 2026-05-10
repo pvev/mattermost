@@ -8,6 +8,7 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBuildCELFromConditions(t *testing.T) {
@@ -217,5 +218,93 @@ func TestConditionToCEL_NilValue(t *testing.T) {
 		}
 		assert.Equal(t, "", conditionToCEL(cond), "operator %q with nil value must produce empty string", op)
 	}
+}
+
+func TestMergeConditionValues(t *testing.T) {
+	t.Run("no hidden values returns submitted as-is", func(t *testing.T) {
+		submitted := model.Condition{Attribute: "user.attributes.Program", Operator: "in", Value: []any{"Alpha"}}
+		result := mergeConditionValues(submitted, nil)
+		assert.Equal(t, []any{"Alpha"}, result.Value)
+	})
+
+	t.Run("appends hidden values without duplicates", func(t *testing.T) {
+		submitted := model.Condition{Attribute: "user.attributes.Program", Operator: "in", Value: []any{"Alpha"}}
+		result := mergeConditionValues(submitted, []string{"Bravo", "Charlie"})
+		values, ok := result.Value.([]any)
+		require.True(t, ok)
+		assert.Len(t, values, 3)
+		assert.Contains(t, values, "Alpha")
+		assert.Contains(t, values, "Bravo")
+		assert.Contains(t, values, "Charlie")
+	})
+
+	t.Run("deduplicates overlapping values", func(t *testing.T) {
+		submitted := model.Condition{Attribute: "user.attributes.Program", Operator: "in", Value: []any{"Alpha", "Bravo"}}
+		result := mergeConditionValues(submitted, []string{"Bravo", "Charlie"})
+		values, ok := result.Value.([]any)
+		require.True(t, ok)
+		assert.Len(t, values, 3)
+	})
+
+	t.Run("restores hidden values when submitted is nil (fully-masked placeholder)", func(t *testing.T) {
+		submitted := model.Condition{Attribute: "user.attributes.Program", Operator: "in", Value: nil}
+		result := mergeConditionValues(submitted, []string{"Bravo", "Charlie"})
+		values, ok := result.Value.([]any)
+		require.True(t, ok)
+		assert.Len(t, values, 2)
+	})
+
+	t.Run("restores single hidden value when submitted is nil", func(t *testing.T) {
+		submitted := model.Condition{Attribute: "user.attributes.Location", Operator: "==", Value: nil}
+		result := mergeConditionValues(submitted, []string{"Building 7"})
+		assert.Equal(t, "Building 7", result.Value)
+	})
+}
+
+func TestGetHiddenValues(t *testing.T) {
+	var a *App
+
+	options := []any{
+		map[string]any{"id": "id1", "name": "Alpha"},
+		map[string]any{"id": "id2", "name": "Bravo"},
+	}
+	makeField := func(accessMode string, fieldType model.PropertyFieldType) *model.PropertyField {
+		attrs := model.StringInterface{model.PropertyAttrsAccessMode: accessMode}
+		if fieldType == model.PropertyFieldTypeSelect || fieldType == model.PropertyFieldTypeMultiselect {
+			attrs[model.PropertyFieldAttributeOptions] = options
+		}
+		return &model.PropertyField{Type: fieldType, Attrs: attrs}
+	}
+
+	t.Run("AttrValue condition: returns nil immediately", func(t *testing.T) {
+		stored := &model.Condition{Attribute: "user.attributes.Team", Value: "user.attributes.Dept", ValueType: model.AttrValue}
+		assert.Nil(t, a.getHiddenValues(nil, "caller", stored, "", nil))
+	})
+
+	t.Run("field missing from prefetch map: returns nil (fail closed)", func(t *testing.T) {
+		stored := &model.Condition{Attribute: "user.attributes.Program", Value: []any{"Alpha", "Bravo"}, ValueType: model.LiteralValue}
+		assert.Nil(t, a.getHiddenValues(nil, "caller", stored, "", map[string]*model.PropertyField{}))
+	})
+
+	t.Run("source_only: all stored values treated as hidden", func(t *testing.T) {
+		stored := &model.Condition{Attribute: "user.attributes.Clearance", Value: []any{"Top Secret", "Secret"}, ValueType: model.LiteralValue}
+		fields := map[string]*model.PropertyField{"Clearance": makeField(model.PropertyAccessModeSourceOnly, model.PropertyFieldTypeSelect)}
+		result := a.getHiddenValues(nil, "caller", stored, "", fields)
+		assert.Equal(t, []string{"Top Secret", "Secret"}, result)
+	})
+
+	t.Run("shared_only select: values absent from options are hidden", func(t *testing.T) {
+		stored := &model.Condition{Attribute: "user.attributes.Program", Value: []any{"Alpha", "Charlie"}, ValueType: model.LiteralValue}
+		fields := map[string]*model.PropertyField{"Program": makeField(model.PropertyAccessModeSharedOnly, model.PropertyFieldTypeSelect)}
+		result := a.getHiddenValues(nil, "caller", stored, "", fields)
+		assert.Equal(t, []string{"Charlie"}, result)
+	})
+
+	t.Run("public field: no values hidden", func(t *testing.T) {
+		stored := &model.Condition{Attribute: "user.attributes.Dept", Value: []any{"Eng", "Sales"}, ValueType: model.LiteralValue}
+		fields := map[string]*model.PropertyField{"Dept": makeField(model.PropertyAccessModePublic, model.PropertyFieldTypeSelect)}
+		result := a.getHiddenValues(nil, "caller", stored, "", fields)
+		assert.Nil(t, result)
+	})
 }
 

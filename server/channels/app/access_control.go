@@ -680,6 +680,92 @@ func filterConditionValues(condition *model.Condition, visibleNames map[string]s
 	}
 }
 
+// getHiddenValues returns the subset of stored condition values not visible to callerID.
+// fieldsByName is pre-fetched by the caller to avoid N+1 lookups; a missing entry is
+// treated as fail-closed (no hidden values injected for that condition).
+func (a *App) getHiddenValues(rctx request.CTX, callerID string, stored *model.Condition, cpaGroupID string, fieldsByName map[string]*model.PropertyField) []string {
+	if stored.ValueType == model.AttrValue {
+		return nil
+	}
+
+	fieldName := extractFieldName(stored.Attribute)
+	if fieldName == "" {
+		return nil
+	}
+
+	field, ok := fieldsByName[fieldName]
+	if !ok {
+		return nil
+	}
+
+	switch getFieldAccessMode(field) {
+	case model.PropertyAccessModeSourceOnly:
+		return extractStringValues(stored.Value)
+	case model.PropertyAccessModeSharedOnly:
+		var visibleNames map[string]struct{}
+		if field.Type == model.PropertyFieldTypeSelect || field.Type == model.PropertyFieldTypeMultiselect {
+			visibleNames = extractVisibleOptionNames(field)
+		} else {
+			visibleNames = a.getCallerTextValues(rctx, callerID, field, cpaGroupID)
+		}
+		var hidden []string
+		for _, val := range extractStringValues(stored.Value) {
+			if _, visible := visibleNames[val]; !visible {
+				hidden = append(hidden, val)
+			}
+		}
+		return hidden
+	default:
+		return nil
+	}
+}
+
+// mergeConditionValues appends hiddenValues into the submitted condition's values,
+// deduplicating. A nil submitted value is restored from hidden values alone.
+func mergeConditionValues(submitted model.Condition, hiddenValues []string) model.Condition {
+	if len(hiddenValues) == 0 {
+		return submitted
+	}
+
+	merged := submitted
+
+	switch v := submitted.Value.(type) {
+	case []any:
+		seen := make(map[string]struct{})
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				seen[s] = struct{}{}
+			}
+		}
+		result := make([]any, 0, len(v)+len(hiddenValues))
+		result = append(result, v...)
+		for _, hidden := range hiddenValues {
+			if _, exists := seen[hidden]; !exists {
+				result = append(result, hidden)
+			}
+		}
+		merged.Value = result
+
+	case string:
+		if v == "" && len(hiddenValues) > 0 {
+			merged.Value = hiddenValues[0]
+		}
+
+	case nil:
+		if len(hiddenValues) == 1 {
+			merged.Value = hiddenValues[0]
+		} else if len(hiddenValues) > 1 {
+			result := make([]any, 0, len(hiddenValues))
+			for _, h := range hiddenValues {
+				result = append(result, h)
+			}
+			merged.Value = result
+		}
+	}
+
+	return merged
+}
+
 // extractStringValues converts a condition's Value to a slice of strings.
 func extractStringValues(value any) []string {
 	switch v := value.(type) {

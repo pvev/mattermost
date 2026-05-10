@@ -262,7 +262,7 @@ export default function TeamPolicyEditor({
             setSaveChangesPanelState(SAVE_RESULT_ERROR);
             return false;
         }
-        if (expression.includes('== ""') || expression.includes("== ''") || expression.includes('in []')) {
+        if (expression.includes('== ""') || expression.includes("== ''")) {
             setFormError(formatMessage({id: 'team_settings.policy_editor.error.incomplete_rule', defaultMessage: 'Please complete all attribute rules with a value'}));
             setSaveChangesPanelState(SAVE_RESULT_ERROR);
             return false;

@@ -275,6 +275,19 @@ func (a *App) mergeExpressionWithMaskedValues(rctx request.CTX, submittedExpr, s
 		merged := mergeConditionValues(submitted, hiddenValues)
 		merged.Operator = stored.Operator
 		merged.AttributeType = stored.AttributeType
+		// Frontend emits "attr in []" as the placeholder for any fully-masked row
+		// regardless of the stored operator. After we restore the original operator,
+		// the value shape may not match (e.g., "==" with a []any value). Normalize
+		// scalar operators to a single string from the array.
+		if isScalarOperator(merged.Operator) {
+			if arr, ok := merged.Value.([]any); ok {
+				if len(arr) == 0 {
+					merged.Value = nil
+				} else if s, ok := arr[0].(string); ok {
+					merged.Value = s
+				}
+			}
+		}
 		mergedConditions = append(mergedConditions, merged)
 	}
 
@@ -897,6 +910,16 @@ func (a *App) getHiddenValues(rctx request.CTX, callerID string, stored *model.C
 	default:
 		return nil
 	}
+}
+
+// isScalarOperator reports whether the operator expects a single value (not a list).
+// Used by merge-on-save to normalize the value shape after restoring the stored operator.
+func isScalarOperator(op string) bool {
+	switch op {
+	case "==", "!=", ">", ">=", "<", "<=", "contains", "startsWith", "endsWith":
+		return true
+	}
+	return false
 }
 
 // mergeConditionValues appends hiddenValues into the submitted condition's values,

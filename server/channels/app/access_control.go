@@ -990,6 +990,9 @@ func conditionToCEL(cond model.Condition) string {
 
 	switch cond.Operator {
 	case "==", "!=", ">", ">=", "<", "<=":
+		if cond.Value == nil {
+			return ""
+		}
 		return attr + " " + cond.Operator + " " + celValueLiteral(cond.Value)
 
 	case "in":
@@ -1038,9 +1041,15 @@ func conditionToCEL(cond model.Condition) string {
 		return strings.Join(andParts, " && ")
 
 	case "contains", "startsWith", "endsWith":
+		if cond.Value == nil {
+			return ""
+		}
 		return attr + "." + cond.Operator + "(" + celValueLiteral(cond.Value) + ")"
 
 	default:
+		if cond.Value == nil {
+			return ""
+		}
 		return attr + " " + cond.Operator + " " + celValueLiteral(cond.Value)
 	}
 }

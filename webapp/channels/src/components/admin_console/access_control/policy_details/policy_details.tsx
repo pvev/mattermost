@@ -591,6 +591,23 @@ function PolicyDetails({
                             expanded={true}
                             className={'console delete-policy'}
                         >
+                            {hasMaskedRows && (
+                                <div className='admin-console__warning-notice EditPolicy__delete-masked-values-warning'>
+                                    <SectionNotice
+                                        type='warning'
+                                        title={
+                                            <FormattedMessage
+                                                id='admin.access_control.policy.edit_policy.delete_policy.masked_values_warning.title'
+                                                defaultMessage='This policy contains restricted values - Deletion not allowed'
+                                            />
+                                        }
+                                        text={formatMessage({
+                                            id: 'admin.access_control.policy.edit_policy.delete_policy.masked_values_warning.text',
+                                            defaultMessage: 'Removing this policy could affect access for users you cannot fully account for.',
+                                        })}
+                                    />
+                                </div>
+                            )}
                             <Card.Header>
                                 <TitleAndButtonCardHeader
                                     title={

@@ -318,7 +318,7 @@ func (a *App) ValidateTeamScopePolicyChannelAssignment(rctx request.CTX, teamID 
 				"channel does not belong to this team", http.StatusBadRequest)
 		}
 
-		if appErr := a.ValidateChannelEligibilityForAccessControl(rctx, channel); appErr != nil {
+		if appErr := ValidateChannelEligibilityForAccessControl(channel); appErr != nil {
 			return appErr
 		}
 	}

@@ -220,6 +220,21 @@ func TestConditionToCEL_NilValue(t *testing.T) {
 	}
 }
 
+func TestConditionToCEL_UnknownOperatorWithValue(t *testing.T) {
+	// An unknown operator with a non-nil value produces a best-effort CEL expression.
+	// buildCELFromConditions will include it as-is; if the operator is truly unknown
+	// the downstream CEL engine will reject the expression during validation.
+	// This documents the intended (pass-through) behaviour for forward-compatibility.
+	cond := model.Condition{
+		Attribute: "user.attributes.Clearance",
+		Operator:  "futureOp",
+		Value:     "Secret",
+		ValueType: model.LiteralValue,
+	}
+	result := conditionToCEL(cond)
+	assert.Equal(t, `user.attributes.Clearance futureOp "Secret"`, result)
+}
+
 func TestMergeConditionValues(t *testing.T) {
 	t.Run("no hidden values returns submitted as-is", func(t *testing.T) {
 		submitted := model.Condition{Attribute: "user.attributes.Program", Operator: "in", Value: []any{"Alpha"}}

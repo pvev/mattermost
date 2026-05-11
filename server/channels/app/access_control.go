@@ -979,7 +979,8 @@ func (a *App) validateConditionValues(rctx request.CTX, cond *model.Condition, c
 		if field.Type == model.PropertyFieldTypeSelect || field.Type == model.PropertyFieldTypeMultiselect {
 			visibleNames = extractVisibleOptionNames(field)
 		} else {
-			visibleNames = a.getCallerTextValues(rctx, field, cpaGroupID)
+			callerID, _ := CallerIDFromRequestContext(rctx)
+			visibleNames = a.getCallerTextValues(rctx, callerID, field, cpaGroupID)
 		}
 		for _, v := range values {
 			if _, visible := visibleNames[v]; !visible {

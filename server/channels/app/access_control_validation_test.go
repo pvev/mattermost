@@ -11,15 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidateConditionValues_SharedOnly(t *testing.T) {
-	// These tests validate the validateConditionValues helper directly.
-	// They require an App instance because field lookup goes through PropertyAccessService.
-	// For pure unit tests of the logic, we test the building blocks instead.
-
-	// The actual App-level integration tests will be in BE-5.
-	// Here we test the helper functions that validateConditionValues uses.
-}
-
 func TestInvalidValueError(t *testing.T) {
 	err := invalidValueError()
 	require.NotNil(t, err)

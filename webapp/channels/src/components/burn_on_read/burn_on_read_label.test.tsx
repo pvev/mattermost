@@ -83,4 +83,15 @@ describe('BurnOnReadLabel', () => {
         expect(container.querySelector('.BurnOnReadLabel__icon')).toBeInTheDocument();
         expect(container.querySelector('.BurnOnReadLabel__text')).toBeInTheDocument();
     });
+
+    it('should show pinned badge when pin mode is enabled', () => {
+        renderWithContext(
+            <BurnOnReadLabel
+                {...defaultProps}
+                isPinned={true}
+            />,
+        );
+
+        expect(screen.getByText('PINNED')).toBeInTheDocument();
+    });
 });

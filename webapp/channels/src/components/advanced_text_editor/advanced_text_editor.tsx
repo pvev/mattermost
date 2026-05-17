@@ -401,12 +401,12 @@ const AdvancedTextEditor = ({
     const handleRemoveAllLabels = useCallback(() => {
         // Remove priority from metadata and burn-on-read type
         // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unused-vars
-        const {priority: _priority, ...restMetadata} = draft.metadata || {};
+        const {priority: _priority, burn_on_read_pinned: _burnOnReadPinned, ...restMetadata} = draft.metadata || {};
 
         const updatedDraft = {
             ...draft,
             type: undefined, // Remove burn-on-read type
-            metadata: restMetadata, // Remove priority from metadata
+            metadata: Object.keys(restMetadata).length > 0 ? restMetadata : undefined, // Remove priority and burn-on-read pin metadata
         };
 
         handleDraftChange(updatedDraft, {instant: true});

@@ -87,19 +87,33 @@ const useBurnOnRead = (
     }, [channel, currentUser, otherUser]);
 
     const hasBurnOnReadSet = isEnabled && draft.type === PostTypes.BURN_ON_READ;
+    const isBurnOnReadPinned = isEnabled && Boolean(draft.metadata?.burn_on_read_pinned);
 
-    const handleBurnOnReadApply = useCallback((enabled: boolean) => {
+    const handleBurnOnReadApply = useCallback((enabled: boolean, pinned = false) => {
+        const currentMetadata = draft.metadata || {};
+        const {burn_on_read_pinned: _burnOnReadPinned, ...restMetadata} = currentMetadata;
+        const metadataWithoutPin = Object.keys(restMetadata).length > 0 ? restMetadata : undefined;
+
         const updatedDraft = {
             ...draft,
             type: enabled ? PostTypes.BURN_ON_READ : undefined,
+            metadata: pinned ? {
+                ...(metadataWithoutPin || {}),
+                burn_on_read_pinned: true,
+            } : metadataWithoutPin,
         };
 
         handleDraftChange(updatedDraft, {instant: true});
         focusTextbox();
     }, [draft, handleDraftChange, focusTextbox]);
 
+    const handleSetBurnOnReadPinned = useCallback((pinned: boolean) => {
+        const shouldEnableBurnOnRead = pinned || hasBurnOnReadSet;
+        handleBurnOnReadApply(shouldEnableBurnOnRead, pinned);
+    }, [handleBurnOnReadApply, hasBurnOnReadSet]);
+
     const handleRemoveBurnOnRead = useCallback(() => {
-        handleBurnOnReadApply(false);
+        handleBurnOnReadApply(false, false);
     }, [handleBurnOnReadApply]);
 
     // Label component (shows above editor when active)
@@ -109,9 +123,10 @@ const useBurnOnRead = (
                 canRemove={showIndividualCloseButton && !shouldShowPreview}
                 onRemove={handleRemoveBurnOnRead}
                 durationMinutes={durationMinutes}
+                isPinned={isBurnOnReadPinned}
             />
         ) : undefined
-    ), [hasBurnOnReadSet, rootId, showIndividualCloseButton, shouldShowPreview, handleRemoveBurnOnRead, durationMinutes]);
+    ), [hasBurnOnReadSet, rootId, showIndividualCloseButton, shouldShowPreview, handleRemoveBurnOnRead, durationMinutes, isBurnOnReadPinned]);
 
     // Button component with tour tip wrapper (in formatting bar)
     const additionalControl = useMemo(() =>
@@ -123,16 +138,18 @@ const useBurnOnRead = (
                 <BurnOnReadButton
                     key='burn-on-read-button-key'
                     enabled={hasBurnOnReadSet}
+                    pinned={isBurnOnReadPinned}
                     onToggle={handleBurnOnReadApply}
+                    onSetPinned={handleSetBurnOnReadPinned}
                     disabled={shouldShowPreview}
                     durationMinutes={durationMinutes}
                 />
                 <BurnOnReadTourTip
                     key='burn-on-read-tour-tip-key'
-                    onTryItOut={() => handleBurnOnReadApply(true)}
+                    onTryItOut={() => handleBurnOnReadApply(true, false)}
                 />
             </div>
-        ) : undefined), [rootId, isEnabled, canSend, isAllowedInChannel, hasBurnOnReadSet, handleBurnOnReadApply, shouldShowPreview, durationMinutes]);
+        ) : undefined), [rootId, isEnabled, canSend, isAllowedInChannel, hasBurnOnReadSet, isBurnOnReadPinned, handleBurnOnReadApply, handleSetBurnOnReadPinned, shouldShowPreview, durationMinutes]);
 
     return {
         labels,

@@ -33,6 +33,7 @@ export type PostDraft = {
             persistent_notifications?: boolean;
         };
         files?: FileInfo[];
+        burn_on_read_pinned?: boolean;
     };
 };
 

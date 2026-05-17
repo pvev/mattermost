@@ -11,6 +11,7 @@ import type {SchedulingInfo} from '@mattermost/types/schedule_post';
 import {FileTypes} from 'mattermost-redux/action_types';
 import {getChannelTimezones} from 'mattermost-redux/actions/channels';
 import {Permissions} from 'mattermost-redux/constants';
+import {PostTypes} from 'mattermost-redux/constants/posts';
 import {getChannel, getAllChannelStats} from 'mattermost-redux/selectors/entities/channels';
 import {makeGetFileIdsForPost} from 'mattermost-redux/selectors/entities/files';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
@@ -208,6 +209,7 @@ const useSubmit = (
             }
 
             setServerError(null);
+            const isBurnOnReadPinned = submittingDraft.metadata?.burn_on_read_pinned === true;
             handleDraftChange({
                 message: '',
                 fileInfos: [],
@@ -216,6 +218,10 @@ const useSubmit = (
                 updateAt: 0,
                 channelId,
                 rootId,
+                ...(isBurnOnReadPinned ? {
+                    type: PostTypes.BURN_ON_READ,
+                    metadata: {burn_on_read_pinned: true},
+                } : {}),
             }, {instant: true});
         } catch (err: unknown) {
             if (isServerError(err)) {

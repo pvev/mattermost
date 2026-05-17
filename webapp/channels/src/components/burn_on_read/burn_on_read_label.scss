@@ -28,6 +28,10 @@
         fill: currentColor;
     }
 
+    &__pinned {
+        letter-spacing: 0.02em;
+    }
+
     &__close {
         display: flex;
         align-items: center;

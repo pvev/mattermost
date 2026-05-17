@@ -39,6 +39,10 @@ jest.mock('mattermost-redux/selectors/entities/users', () => ({
     getUser: jest.fn(),
 }));
 
+jest.mock('components/burn_on_read/burn_on_read_button', () => () => null);
+jest.mock('components/burn_on_read/burn_on_read_label', () => () => null);
+jest.mock('components/burn_on_read/burn_on_read_tour_tip', () => () => null);
+
 // Import mocked selectors
 
 describe('useBurnOnRead', () => {
@@ -459,6 +463,120 @@ describe('useBurnOnRead', () => {
 
             expect(result.current.handleRemoveBurnOnRead).toBeDefined();
             expect(typeof result.current.handleRemoveBurnOnRead).toBe('function');
+        });
+
+        it('handleBurnOnReadApply(true) enables BoR without pin', () => {
+            const publicChannel = createMockChannel('O');
+            (getChannel as jest.Mock).mockReturnValue(publicChannel);
+
+            const {result} = renderHook(
+                () => useBurnOnRead(
+                    createMockDraft(),
+                    mockHandleDraftChange,
+                    mockFocusTextbox,
+                    false,
+                    true,
+                ),
+                {wrapper},
+            );
+
+            result.current.handleBurnOnReadApply(true);
+
+            expect(mockHandleDraftChange).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: PostTypes.BURN_ON_READ,
+                    metadata: undefined,
+                }),
+                {instant: true},
+            );
+        });
+
+        it('handleBurnOnReadApply(true, true) enables BoR with pin', () => {
+            const publicChannel = createMockChannel('O');
+            (getChannel as jest.Mock).mockReturnValue(publicChannel);
+
+            const {result} = renderHook(
+                () => useBurnOnRead(
+                    createMockDraft(),
+                    mockHandleDraftChange,
+                    mockFocusTextbox,
+                    false,
+                    true,
+                ),
+                {wrapper},
+            );
+
+            result.current.handleBurnOnReadApply(true, true);
+
+            expect(mockHandleDraftChange).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: PostTypes.BURN_ON_READ,
+                    metadata: {burn_on_read_pinned: true},
+                }),
+                {instant: true},
+            );
+        });
+
+        it('handleBurnOnReadApply(false) disables BoR and removes pin', () => {
+            const publicChannel = createMockChannel('O');
+            (getChannel as jest.Mock).mockReturnValue(publicChannel);
+
+            const draftWithBoRAndPin = {
+                ...createMockDraft(PostTypes.BURN_ON_READ),
+                metadata: {burn_on_read_pinned: true as const},
+            };
+
+            const {result} = renderHook(
+                () => useBurnOnRead(
+                    draftWithBoRAndPin,
+                    mockHandleDraftChange,
+                    mockFocusTextbox,
+                    false,
+                    true,
+                ),
+                {wrapper},
+            );
+
+            result.current.handleBurnOnReadApply(false, false);
+
+            expect(mockHandleDraftChange).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: undefined,
+                    metadata: undefined,
+                }),
+                {instant: true},
+            );
+        });
+
+        it('handleRemoveBurnOnRead clears both BoR type and pin', () => {
+            const publicChannel = createMockChannel('O');
+            (getChannel as jest.Mock).mockReturnValue(publicChannel);
+
+            const draftWithBoRAndPin = {
+                ...createMockDraft(PostTypes.BURN_ON_READ),
+                metadata: {burn_on_read_pinned: true as const},
+            };
+
+            const {result} = renderHook(
+                () => useBurnOnRead(
+                    draftWithBoRAndPin,
+                    mockHandleDraftChange,
+                    mockFocusTextbox,
+                    false,
+                    true,
+                ),
+                {wrapper},
+            );
+
+            result.current.handleRemoveBurnOnRead();
+
+            expect(mockHandleDraftChange).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: undefined,
+                    metadata: undefined,
+                }),
+                {instant: true},
+            );
         });
     });
 });

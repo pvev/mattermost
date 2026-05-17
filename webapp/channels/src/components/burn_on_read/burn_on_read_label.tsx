@@ -18,9 +18,12 @@ type Props = {
 
     // The configured duration in minutes for BoR messages
     durationMinutes: number;
+
+    // Whether composer is pinned for consecutive BoR messages
+    isPinned?: boolean;
 }
 
-const BurnOnReadLabel = ({canRemove, onRemove, durationMinutes}: Props) => {
+const BurnOnReadLabel = ({canRemove, onRemove, durationMinutes, isPinned = false}: Props) => {
     const {formatMessage} = useIntl();
 
     const formatDuration = () => {
@@ -66,6 +69,14 @@ const BurnOnReadLabel = ({canRemove, onRemove, durationMinutes}: Props) => {
                 <span className='BurnOnReadLabel__text'>
                     {formatDuration()}
                 </span>
+                {isPinned && (
+                    <span className='BurnOnReadLabel__pinned'>
+                        {formatMessage({
+                            id: 'burn_on_read.label.pinned',
+                            defaultMessage: 'PINNED',
+                        })}
+                    </span>
+                )}
             </div>
             {canRemove && (
                 <button

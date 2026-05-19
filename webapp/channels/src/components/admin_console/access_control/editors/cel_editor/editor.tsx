@@ -341,14 +341,11 @@ function CELEditor({
             <MonacoLanguageProvider schemas={schemas}/>
 
             {hasMaskedRows && (
-                <div
-                    className='cel-editor__masked-banner'
-                    role='alert'
-                >
-                    <i className='icon icon-alert-outline'/>
+                <div className='cel-editor__masked-banner'>
+                    <i className='icon icon-lock-outline'/>
                     <FormattedMessage
                         id='admin.access_control.cel.masked_values_banner'
-                        defaultMessage='This expression contains restricted values. Switch to Simple mode to edit the values you have access to.'
+                        defaultMessage='Read-only: This expression contains restricted values.'
                     />
                 </div>
             )}

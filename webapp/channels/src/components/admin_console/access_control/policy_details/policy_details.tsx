@@ -536,7 +536,7 @@ function PolicyDetails({
                                         }
                                         text={formatMessage({
                                             id: 'admin.access_control.policy.edit_policy.masked_values_warning.text',
-                                            defaultMessage: 'Some rules include attribute values you cannot see. Editing or deleting these rules may change who has access in ways you cannot fully anticipate.',
+                                            defaultMessage: 'Some rules include attribute values you cannot see. Editing or deleting these rules may change access in unpredictable ways.',
                                         })}
                                     />
                                 </div>
@@ -649,23 +649,6 @@ function PolicyDetails({
                             expanded={true}
                             className={'console delete-policy'}
                         >
-                            {hasMaskedRows && (
-                                <div className='admin-console__warning-notice EditPolicy__delete-masked-values-warning'>
-                                    <SectionNotice
-                                        type='warning'
-                                        title={
-                                            <FormattedMessage
-                                                id='admin.access_control.policy.edit_policy.delete_policy.masked_values_warning.title'
-                                                defaultMessage='This policy contains restricted values - Deletion not allowed'
-                                            />
-                                        }
-                                        text={formatMessage({
-                                            id: 'admin.access_control.policy.edit_policy.delete_policy.masked_values_warning.text',
-                                            defaultMessage: 'Removing this policy could affect access for users you cannot fully account for.',
-                                        })}
-                                    />
-                                </div>
-                            )}
                             <Card.Header>
                                 <TitleAndButtonCardHeader
                                     title={
@@ -700,6 +683,10 @@ function PolicyDetails({
                                         setShowDeleteConfirmationModal(true);
                                     }}
                                     isDisabled={hasChannels() || hasMaskedRows}
+                                    tooltipText={hasMaskedRows ? formatMessage({
+                                        id: 'admin.access_control.policy.edit_policy.delete_policy.masked_values_tooltip',
+                                        defaultMessage: 'Deletion is unavailable because this policy contains restricted attribute values.',
+                                    }) : undefined}
                                 />
                             </Card.Header>
                         </Card>

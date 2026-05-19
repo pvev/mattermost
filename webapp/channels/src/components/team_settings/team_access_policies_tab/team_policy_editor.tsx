@@ -523,7 +523,7 @@ export default function TeamPolicyEditor({
                             }
                             text={formatMessage({
                                 id: 'admin.access_control.policy.edit_policy.masked_values_warning.text',
-                                defaultMessage: 'Some rules include attribute values you cannot see. Editing or deleting these rules may change who has access in ways you cannot fully anticipate.',
+                                defaultMessage: 'Some rules include attribute values you cannot see. Editing or deleting these rules may change access in unpredictable ways.',
                             })}
                         />
                     </div>

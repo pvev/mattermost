@@ -33,6 +33,8 @@
         overflow: hidden;
         flex-grow: 1;
         flex-wrap: wrap;
+        align-items: center;
+        padding-left: 22px;
         gap: 2px;
     }
 
@@ -92,12 +94,21 @@
         }
     }
 
+    // When the selector is disabled the remove icon is not rendered, so equalise
+    // the label padding to avoid asymmetric spacing on the right side.
+    .field-selector-menu-button.disabled .select__multi-value:not(.select__multi-value--masked) {
+        .select__multi-value__label {
+            padding-right: 8px;
+        }
+    }
+
     .select__multi-value--masked {
         background-color: rgba(var(--center-channel-color-rgb), 0.08);
         cursor: default;
         user-select: none;
 
         .select__multi-value__label {
+            padding: 0 8px;
             color: rgba(var(--center-channel-color-rgb), 0.64);
             font-family: monospace;
             letter-spacing: 1px;

@@ -70,6 +70,7 @@ type Store struct {
 	PropertyFieldStore              mocks.PropertyFieldStore
 	PropertyValueStore              mocks.PropertyValueStore
 	AccessControlPolicyStore        mocks.AccessControlPolicyStore
+	AccessControlBypassStore        mocks.AccessControlBypassStore
 	AttributesStore                 mocks.AttributesStore
 	AutoTranslationStore            mocks.AutoTranslationStore
 	ContentFlaggingStore            mocks.ContentFlaggingStore
@@ -165,6 +166,9 @@ func (s *Store) ReplicaLagTime() error { return nil }
 func (s *Store) AccessControlPolicy() store.AccessControlPolicyStore {
 	return &s.AccessControlPolicyStore
 }
+func (s *Store) AccessControlBypass() store.AccessControlBypassStore {
+	return &s.AccessControlBypassStore
+}
 func (s *Store) Attributes() store.AttributesStore {
 	return &s.AttributesStore
 }
@@ -244,6 +248,7 @@ func (s *Store) AssertExpectations(t mock.TestingT) bool {
 		&s.ChannelGuardStore,
 		&s.ScheduledPostStore,
 		&s.AccessControlPolicyStore,
+		&s.AccessControlBypassStore,
 		&s.AttributesStore,
 		&s.AutoTranslationStore,
 		&s.ContentFlaggingStore,

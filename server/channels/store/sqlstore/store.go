@@ -112,6 +112,7 @@ type SqlStoreStores struct {
 	propertyField              store.PropertyFieldStore
 	propertyValue              store.PropertyValueStore
 	accessControlPolicy        store.AccessControlPolicyStore
+	accessControlBypass        store.AccessControlBypassStore
 	Attributes                 store.AttributesStore
 	autotranslation            store.AutoTranslationStore
 	ContentFlagging            store.ContentFlaggingStore
@@ -300,6 +301,7 @@ func New(settings model.SqlSettings, logger mlog.LoggerIFace, metrics einterface
 	store.stores.propertyField = newPropertyFieldStore(store)
 	store.stores.propertyValue = newPropertyValueStore(store)
 	store.stores.accessControlPolicy = newSqlAccessControlPolicyStore(store, metrics)
+	store.stores.accessControlBypass = newSqlAccessControlBypassStore(store)
 	store.stores.Attributes = newSqlAttributesStore(store, metrics)
 	store.stores.autotranslation = newSqlAutoTranslationStore(store)
 	store.stores.ContentFlagging = newContentFlaggingStore(store)
@@ -937,6 +939,10 @@ func (ss *SqlStore) PropertyValue() store.PropertyValueStore {
 
 func (ss *SqlStore) AccessControlPolicy() store.AccessControlPolicyStore {
 	return ss.stores.accessControlPolicy
+}
+
+func (ss *SqlStore) AccessControlBypass() store.AccessControlBypassStore {
+	return ss.stores.accessControlBypass
 }
 
 func (ss *SqlStore) Attributes() store.AttributesStore {

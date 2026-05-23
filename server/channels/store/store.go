@@ -97,6 +97,7 @@ type Store interface {
 	PropertyField() PropertyFieldStore
 	PropertyValue() PropertyValueStore
 	AccessControlPolicy() AccessControlPolicyStore
+	AccessControlBypass() AccessControlBypassStore
 	Attributes() AttributesStore
 	AutoTranslation() AutoTranslationStore
 	GetSchemaDefinition() (*model.SupportPacketDatabaseSchema, error)
@@ -1217,6 +1218,15 @@ type AccessControlPolicyStore interface {
 	// channel-list reads to avoid an N+1 against AccessControlPolicies.
 	// Empty input returns an empty map and fires no SQL.
 	GetActionsForPolicies(rctx request.CTX, policyIDs []string) (map[string]map[string]bool, error)
+}
+
+type AccessControlBypassStore interface {
+	Save(rctx request.CTX, bypasses []*model.AccessControlBypass) ([]*model.AccessControlBypass, error)
+	Get(rctx request.CTX, id string) (*model.AccessControlBypass, error)
+	Search(rctx request.CTX, opts model.AccessControlBypassSearch) ([]*model.AccessControlBypass, int64, error)
+	Revoke(rctx request.CTX, id string, deleteAt int64, deletedBy string) (*model.AccessControlBypass, error)
+	HasActive(rctx request.CTX, check model.AccessControlBypassActiveCheck) (bool, error)
+	DeleteExpiredBatch(rctx request.CTX, now int64, limit int) (int64, error)
 }
 
 type AttributesStore interface {

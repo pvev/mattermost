@@ -70,6 +70,11 @@ type AccessControlBypassCreateResponse struct {
 	Bypasses []*AccessControlBypass `json:"bypasses"`
 }
 
+type AccessControlBypassesWithCount struct {
+	Bypasses []*AccessControlBypass `json:"bypasses"`
+	Total    int64                  `json:"total"`
+}
+
 type AccessControlBypassSearch struct {
 	SubjectType  string `json:"subject_type,omitempty"`
 	SubjectID    string `json:"subject_id,omitempty"`
@@ -119,6 +124,25 @@ func (b *AccessControlBypass) Status(now int64) string {
 		return AccessControlBypassStatusExpired
 	}
 	return AccessControlBypassStatusActive
+}
+
+func (b *AccessControlBypass) Auditable() map[string]any {
+	return map[string]any{
+		"id":                 b.ID,
+		"subject_type":       b.SubjectType,
+		"subject_id":         b.SubjectID,
+		"resource_type":      b.ResourceType,
+		"resource_id":        b.ResourceID,
+		"action":             b.Action,
+		"invite_mode":        b.InviteMode,
+		"membership_created": b.MembershipCreated,
+		"create_at":          b.CreateAt,
+		"update_at":          b.UpdateAt,
+		"expires_at":         b.ExpiresAt,
+		"delete_at":          b.DeleteAt,
+		"created_by":         b.CreatedBy,
+		"deleted_by":         b.DeletedBy,
+	}
 }
 
 func (b *AccessControlBypass) IsValid() *AppError {

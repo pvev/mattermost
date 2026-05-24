@@ -211,6 +211,66 @@ export type AccessControlPolicyActiveUpdate = {
     active: boolean;
 }
 
+export type AccessControlBypassSubject = {
+    type: 'user';
+    id: string;
+}
+
+export type AccessControlBypassResource = {
+    type: 'team' | 'channel';
+    id: string;
+}
+
+export type AccessControlBypass = {
+    id: string;
+    subject_type: string;
+    subject_id: string;
+    resource_type: string;
+    resource_id: string;
+    action: string;
+    reason: string;
+    invite_mode?: string;
+    accepted_at?: number;
+    joined_at?: number;
+    membership_created?: boolean;
+    create_at: number;
+    update_at: number;
+    expires_at: number;
+    delete_at: number;
+    created_by: string;
+    deleted_by?: string;
+}
+
+export type AccessControlBypassCreateRequest = {
+    subjects: AccessControlBypassSubject[];
+    resources: AccessControlBypassResource[];
+    actions: string[];
+    expires_at: number;
+    reason: string;
+    invite_mode?: 'none' | 'prompt';
+}
+
+export type AccessControlBypassCreateResponse = {
+    bypasses: AccessControlBypass[];
+}
+
+export type AccessControlBypassSearch = {
+    subject_type?: string;
+    subject_id?: string;
+    resource_type?: string;
+    resource_id?: string;
+    action?: string;
+    created_by?: string;
+    status?: 'active' | 'expired' | 'revoked';
+    page?: number;
+    per_page?: number;
+}
+
+export type AccessControlBypassesResult = {
+    bypasses: AccessControlBypass[];
+    total: number;
+}
+
 /**
  * Sources of deny attribution returned by the simulate endpoint.
  *

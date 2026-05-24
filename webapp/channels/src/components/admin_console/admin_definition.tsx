@@ -45,6 +45,7 @@ import {ID_PATH_PATTERN} from 'utils/path';
 import {getSiteURL} from 'utils/url';
 
 import PolicyList from './access_control';
+import AccessControlBypasses from './access_control/bypasses';
 import AccessControlPolicyJobs from './access_control/jobs';
 import PolicyDetails from './access_control/policy_details';
 import * as DefinitionConstants from './admin_definition_constants';
@@ -670,6 +671,16 @@ const AdminDefinition: AdminDefinitionType = {
                     id: 'AttributeBasedAccessControl',
                     name: defineMessage({id: 'admin.accesscontrol.title', defaultMessage: 'Attribute-Based Access'}),
                     sections: [
+                        {
+                            key: 'admin.accesscontrol.bypasses',
+                            settings: [
+                                {
+                                    type: 'custom',
+                                    component: AccessControlBypasses,
+                                    key: 'AccessControlBypasses',
+                                },
+                            ],
+                        },
                         {
                             key: 'admin.accesscontrol.settings',
                             settings: [

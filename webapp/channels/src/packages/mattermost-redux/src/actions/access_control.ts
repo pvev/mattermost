@@ -3,7 +3,7 @@
 
 import {batchActions} from 'redux-batched-actions';
 
-import type {AccessControlPoliciesResult, AccessControlPolicy, AccessControlPolicyActiveUpdate, AccessControlTestResult, PolicySimulationResponse, PolicySimulationByUsersParams} from '@mattermost/types/access_control';
+import type {AccessControlBypass, AccessControlBypassCreateRequest, AccessControlBypassCreateResponse, AccessControlBypassSearch, AccessControlBypassesResult, AccessControlPoliciesResult, AccessControlPolicy, AccessControlPolicyActiveUpdate, AccessControlTestResult, PolicySimulationResponse, PolicySimulationByUsersParams} from '@mattermost/types/access_control';
 import type {ChannelSearchOpts, ChannelsWithTotalCount} from '@mattermost/types/channels';
 import type {ServerError} from '@mattermost/types/errors';
 
@@ -141,6 +141,45 @@ export function unassignChannelsFromAccessControlPolicy(policyId: string, channe
         onSuccess: [AdminTypes.UNASSIGN_CHANNELS_FROM_ACCESS_CONTROL_POLICY_SUCCESS],
         params: [],
     });
+}
+
+export function createAccessControlBypasses(request: AccessControlBypassCreateRequest): ActionFuncAsync<AccessControlBypassCreateResponse> {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client4.createAccessControlBypasses(request);
+        } catch (error) {
+            forceLogoutIfNecessary(error as ServerError, dispatch, getState);
+            return {error};
+        }
+        return {data};
+    };
+}
+
+export function searchAccessControlBypasses(opts: AccessControlBypassSearch = {}): ActionFuncAsync<AccessControlBypassesResult> {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client4.searchAccessControlBypasses(opts);
+        } catch (error) {
+            forceLogoutIfNecessary(error as ServerError, dispatch, getState);
+            return {error};
+        }
+        return {data};
+    };
+}
+
+export function revokeAccessControlBypass(id: string): ActionFuncAsync<AccessControlBypass> {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client4.revokeAccessControlBypass(id);
+        } catch (error) {
+            forceLogoutIfNecessary(error as ServerError, dispatch, getState);
+            return {error};
+        }
+        return {data};
+    };
 }
 
 export function getAccessControlFields(after: string, limit: number, channelId?: string, teamId?: string) {

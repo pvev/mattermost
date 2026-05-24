@@ -195,6 +195,106 @@
           $ref: "#/components/responses/InternalServerError"
         "501":
           $ref: "#/components/responses/NotImplemented"
+  /api/v4/access_control/bypasses:
+    post:
+      tags:
+        - access control
+      summary: Create temporary access control bypasses
+      description: |
+        Creates temporary ABAC-only bypasses for selected subjects and resources.
+        ##### Permissions
+        Must have the `manage_system` permission.
+      operationId: CreateAccessControlBypasses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccessControlBypassCreateRequest"
+      responses:
+        "200":
+          description: Access control bypasses created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessControlBypassCreateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    get:
+      tags:
+        - access control
+      summary: Search temporary access control bypasses
+      description: |
+        Searches temporary ABAC-only bypasses.
+        ##### Permissions
+        Must have the `manage_system` permission.
+      operationId: SearchAccessControlBypasses
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, expired, revoked]
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Access control bypass search results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessControlBypassesWithCount"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v4/access_control/bypasses/{bypass_id}:
+    delete:
+      tags:
+        - access control
+      summary: Revoke a temporary access control bypass
+      description: |
+        Revokes a temporary ABAC-only bypass early.
+        ##### Permissions
+        Must have the `manage_system` permission.
+      operationId: RevokeAccessControlBypass
+      parameters:
+        - name: bypass_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Access control bypass revoked successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessControlBypass"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/v4/access_control_policies/search:
     post:
       tags:

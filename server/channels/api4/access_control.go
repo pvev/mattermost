@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 	"github.com/mattermost/mattermost/server/v8/channels/app"
@@ -29,6 +30,9 @@ func (api *API) InitAccessControlPolicy() {
 	api.BaseRoutes.AccessControlPolicies.Handle("", api.APISessionRequired(createAccessControlPolicy)).Methods(http.MethodPut)
 	api.BaseRoutes.AccessControlPolicies.Handle("/search", api.APISessionRequired(searchAccessControlPolicies)).Methods(http.MethodPost)
 	api.BaseRoutes.AccessControlPolicies.Handle("/activate", api.APISessionRequired(setActiveStatus)).Methods(http.MethodPut)
+	api.BaseRoutes.AccessControlBypasses.Handle("", api.APISessionRequired(createAccessControlBypasses)).Methods(http.MethodPost)
+	api.BaseRoutes.AccessControlBypasses.Handle("", api.APISessionRequired(searchAccessControlBypasses)).Methods(http.MethodGet)
+	api.BaseRoutes.AccessControlBypass.Handle("", api.APISessionRequired(revokeAccessControlBypass)).Methods(http.MethodDelete)
 
 	api.BaseRoutes.AccessControlPolicies.Handle("/cel/check", api.APISessionRequired(checkExpression)).Methods(http.MethodPost)
 	api.BaseRoutes.AccessControlPolicies.Handle("/cel/test", api.APISessionRequired(testExpression)).Methods(http.MethodPost)
@@ -165,6 +169,117 @@ func createAccessControlPolicy(c *Context, w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if _, err := w.Write(js); err != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(err))
+	}
+}
+
+func createAccessControlBypasses(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !c.App.SessionHasPermissionTo(*c.AppContext.Session(), model.PermissionManageSystem) {
+		c.SetPermissionError(model.PermissionManageSystem)
+		return
+	}
+
+	var req model.AccessControlBypassCreateRequest
+	if jsonErr := json.NewDecoder(r.Body).Decode(&req); jsonErr != nil {
+		c.SetInvalidParamWithErr("bypass", jsonErr)
+		return
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventCreateAccessControlBypass, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterToAuditRec(auditRec, "subject_count", len(req.Subjects))
+	model.AddEventParameterToAuditRec(auditRec, "resource_count", len(req.Resources))
+	model.AddEventParameterToAuditRec(auditRec, "action_count", len(req.Actions))
+
+	bypasses, appErr := c.App.CreateAccessControlBypasses(c.AppContext, req, c.AppContext.Session().UserId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.Success()
+	auditRec.AddEventObjectType("access_control_bypass")
+	model.AddEventParameterToAuditRec(auditRec, "created_count", len(bypasses))
+
+	js, err := json.Marshal(model.AccessControlBypassCreateResponse{Bypasses: bypasses})
+	if err != nil {
+		c.Err = model.NewAppError("createAccessControlBypasses", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
+		return
+	}
+	if _, err := w.Write(js); err != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(err))
+	}
+}
+
+func searchAccessControlBypasses(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !c.App.SessionHasPermissionTo(*c.AppContext.Session(), model.PermissionManageSystem) {
+		c.SetPermissionError(model.PermissionManageSystem)
+		return
+	}
+
+	query := r.URL.Query()
+	page, _ := strconv.Atoi(query.Get("page"))
+	perPage, _ := strconv.Atoi(query.Get("per_page"))
+	opts := model.AccessControlBypassSearch{
+		SubjectType:  query.Get("subject_type"),
+		SubjectID:    query.Get("subject_id"),
+		ResourceType: query.Get("resource_type"),
+		ResourceID:   query.Get("resource_id"),
+		Action:       query.Get("action"),
+		CreatedBy:    query.Get("created_by"),
+		Status:       query.Get("status"),
+		Page:         page,
+		PerPage:      perPage,
+	}
+
+	bypasses, total, appErr := c.App.SearchAccessControlBypasses(c.AppContext, opts)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	js, err := json.Marshal(model.AccessControlBypassesWithCount{Bypasses: bypasses, Total: total})
+	if err != nil {
+		c.Err = model.NewAppError("searchAccessControlBypasses", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
+		return
+	}
+	if _, err := w.Write(js); err != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(err))
+	}
+}
+
+func revokeAccessControlBypass(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !c.App.SessionHasPermissionTo(*c.AppContext.Session(), model.PermissionManageSystem) {
+		c.SetPermissionError(model.PermissionManageSystem)
+		return
+	}
+
+	bypassID := mux.Vars(r)["bypass_id"]
+	if bypassID == "" || !model.IsValidId(bypassID) {
+		c.SetInvalidParam("bypass_id")
+		return
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventRevokeAccessControlBypass, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterToAuditRec(auditRec, "id", bypassID)
+
+	bypass, appErr := c.App.RevokeAccessControlBypass(c.AppContext, bypassID, c.AppContext.Session().UserId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.Success()
+	auditRec.AddEventObjectType("access_control_bypass")
+	auditRec.AddEventResultState(bypass)
+
+	js, err := json.Marshal(bypass)
+	if err != nil {
+		c.Err = model.NewAppError("revokeAccessControlBypass", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
+		return
+	}
 	if _, err := w.Write(js); err != nil {
 		c.Logger.Warn("Error while writing response", mlog.Err(err))
 	}

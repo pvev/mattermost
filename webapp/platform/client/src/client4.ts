@@ -3,7 +3,7 @@
 
 /* eslint-disable max-lines */
 
-import type {AccessControlPolicy, CELExpressionError, AccessControlTestResult, AccessControlPoliciesResult, AccessControlPolicyChannelsResult, AccessControlVisualAST, AccessControlAttributes, AccessControlPolicyActiveUpdate, PolicySimulationResponse, PolicySimulationByUsersParams} from '@mattermost/types/access_control';
+import type {AccessControlPolicy, CELExpressionError, AccessControlTestResult, AccessControlPoliciesResult, AccessControlPolicyChannelsResult, AccessControlVisualAST, AccessControlAttributes, AccessControlPolicyActiveUpdate, AccessControlBypassCreateRequest, AccessControlBypassCreateResponse, AccessControlBypassSearch, AccessControlBypassesResult, AccessControlBypass, PolicySimulationResponse, PolicySimulationByUsersParams} from '@mattermost/types/access_control';
 import type {ClusterInfo, AnalyticsRow, SchemaMigration, LogFilterQuery} from '@mattermost/types/admin';
 import type {Agent, LLMService} from '@mattermost/types/agents';
 import type {AppBinding, AppCallRequest, AppCallResponse} from '@mattermost/types/apps';
@@ -4901,6 +4901,34 @@ export default class Client4 {
         return this.doFetch<StatusOK>(
             `${this.getBaseRoute()}/access_control_policies/${policyId}/unassign`,
             {method: 'delete', body: JSON.stringify({channel_ids: channelIds, ...(teamId && {team_id: teamId})})},
+        );
+    };
+
+    createAccessControlBypasses = (request: AccessControlBypassCreateRequest) => {
+        return this.doFetch<AccessControlBypassCreateResponse>(
+            `${this.getBaseRoute()}/access_control/bypasses`,
+            {method: 'post', body: JSON.stringify(request)},
+        );
+    };
+
+    searchAccessControlBypasses = (opts: AccessControlBypassSearch = {}) => {
+        const params = new URLSearchParams();
+        Object.entries(opts).forEach(([key, value]) => {
+            if (value !== undefined && value !== '') {
+                params.set(key, String(value));
+            }
+        });
+        const query = params.toString();
+        return this.doFetch<AccessControlBypassesResult>(
+            `${this.getBaseRoute()}/access_control/bypasses${query ? `?${query}` : ''}`,
+            {method: 'get'},
+        );
+    };
+
+    revokeAccessControlBypass = (id: string) => {
+        return this.doFetch<AccessControlBypass>(
+            `${this.getBaseRoute()}/access_control/bypasses/${id}`,
+            {method: 'delete'},
         );
     };
 

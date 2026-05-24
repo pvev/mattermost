@@ -279,6 +279,54 @@ func (s *SqlAccessControlBypassStore) HasActive(_ request.CTX, check model.Acces
 	return true, nil
 }
 
+func (s *SqlAccessControlBypassStore) GetExpiredBatch(_ request.CTX, now int64, limit int) ([]*model.AccessControlBypass, error) {
+	if now == 0 {
+		now = model.GetMillis()
+	}
+	if limit <= 0 {
+		return nil, store.NewErrInvalidInput("AccessControlBypass", "limit", limit)
+	}
+
+	query := s.selectQuery.
+		Where(sq.Eq{"DeleteAt": 0}).
+		Where(sq.LtOrEq{"ExpiresAt": now}).
+		OrderBy("ExpiresAt ASC", "Id ASC").
+		Limit(uint64(limit))
+
+	var bypasses []*model.AccessControlBypass
+	if err := s.GetReplica().SelectBuilder(&bypasses, query); err != nil {
+		return nil, errors.Wrap(err, "failed to get expired AccessControlBypasses")
+	}
+
+	return bypasses, nil
+}
+
+func (s *SqlAccessControlBypassStore) DeleteByIDs(_ request.CTX, ids []string) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	for _, id := range ids {
+		if !model.IsValidId(id) {
+			return 0, store.NewErrInvalidInput("AccessControlBypass", "id", id)
+		}
+	}
+
+	query := s.getQueryBuilder().
+		Delete(accessControlBypassesTable).
+		Where(sq.Eq{"Id": ids})
+
+	res, err := s.GetMaster().ExecBuilder(query)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to delete AccessControlBypasses by ids")
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to read RowsAffected on AccessControlBypass delete")
+	}
+
+	return rows, nil
+}
+
 func (s *SqlAccessControlBypassStore) DeleteExpiredBatch(_ request.CTX, now int64, limit int) (int64, error) {
 	if now == 0 {
 		now = model.GetMillis()

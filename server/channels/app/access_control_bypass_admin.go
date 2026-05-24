@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
 	"github.com/mattermost/mattermost/server/public/shared/request"
 	"github.com/mattermost/mattermost/server/v8/channels/store"
 )
@@ -246,6 +247,67 @@ func (a *App) publishAccessControlBypassPrompts(bypasses []*model.AccessControlB
 		message := model.NewWebSocketEvent(model.WebsocketEventAccessControlBypassPrompt, "", "", bypass.SubjectID, nil, "")
 		message.Add("bypass", string(bypassJSON))
 		a.Publish(message)
+	}
+}
+
+func (a *App) ExpireAccessControlBypassesBatch(rctx request.CTX, now int64, limit int) (int64, int64, *model.AppError) {
+	if now == 0 {
+		now = model.GetMillis()
+	}
+	if limit <= 0 {
+		return 0, 0, model.NewAppError("ExpireAccessControlBypassesBatch", "app.access_control_bypass.expire.limit.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	bypasses, err := a.Srv().Store().AccessControlBypass().GetExpiredBatch(rctx, now, limit)
+	if err != nil {
+		return 0, 0, model.NewAppError("ExpireAccessControlBypassesBatch", "app.access_control_bypass.expire.get.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+	if len(bypasses) == 0 {
+		return 0, 0, nil
+	}
+
+	ids := make([]string, 0, len(bypasses))
+	var removedMemberships int64
+	for _, bypass := range bypasses {
+		if bypass.MembershipCreated {
+			if appErr := a.removeAccessControlBypassMembership(rctx, bypass); appErr != nil {
+				rctx.Logger().Warn("Failed to remove expired access control bypass membership",
+					mlog.String("bypass_id", bypass.ID),
+					mlog.String("resource_type", bypass.ResourceType),
+					mlog.String("resource_id", bypass.ResourceID),
+					mlog.String("subject_id", bypass.SubjectID),
+					mlog.Err(appErr),
+				)
+				return 0, removedMemberships, appErr
+			}
+			removedMemberships++
+		}
+		ids = append(ids, bypass.ID)
+	}
+
+	deleted, err := a.Srv().Store().AccessControlBypass().DeleteByIDs(rctx, ids)
+	if err != nil {
+		return 0, removedMemberships, model.NewAppError("ExpireAccessControlBypassesBatch", "app.access_control_bypass.expire.delete.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+
+	return deleted, removedMemberships, nil
+}
+
+func (a *App) removeAccessControlBypassMembership(rctx request.CTX, bypass *model.AccessControlBypass) *model.AppError {
+	if bypass.SubjectType != model.AccessControlBypassSubjectTypeUser {
+		return nil
+	}
+	switch bypass.ResourceType {
+	case model.AccessControlBypassResourceTypeTeam:
+		return a.RemoveUserFromTeam(rctx, bypass.ResourceID, bypass.SubjectID, bypass.SubjectID)
+	case model.AccessControlBypassResourceTypeChannel:
+		channel, appErr := a.GetChannel(rctx, bypass.ResourceID)
+		if appErr != nil {
+			return appErr
+		}
+		return a.RemoveUserFromChannel(rctx, bypass.SubjectID, bypass.SubjectID, channel)
+	default:
+		return nil
 	}
 }
 

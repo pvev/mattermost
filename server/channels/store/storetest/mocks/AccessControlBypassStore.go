@@ -34,6 +34,44 @@ func (_m *AccessControlBypassStore) DeleteExpiredBatch(rctx request.CTX, now int
 	return r0, r1
 }
 
+func (_m *AccessControlBypassStore) DeleteByIDs(rctx request.CTX, ids []string) (int64, error) {
+	ret := _m.Called(rctx, ids)
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(request.CTX, []string) int64); ok {
+		r0 = rf(rctx, ids)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if rf, ok := ret.Get(1).(func(request.CTX, []string) error); ok {
+		r1 = rf(rctx, ids)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+func (_m *AccessControlBypassStore) GetExpiredBatch(rctx request.CTX, now int64, limit int) ([]*model.AccessControlBypass, error) {
+	ret := _m.Called(rctx, now, limit)
+
+	var r0 []*model.AccessControlBypass
+	var r1 error
+	if rf, ok := ret.Get(0).(func(request.CTX, int64, int) []*model.AccessControlBypass); ok {
+		r0 = rf(rctx, now, limit)
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]*model.AccessControlBypass)
+	}
+	if rf, ok := ret.Get(1).(func(request.CTX, int64, int) error); ok {
+		r1 = rf(rctx, now, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 func (_m *AccessControlBypassStore) Get(rctx request.CTX, id string) (*model.AccessControlBypass, error) {
 	ret := _m.Called(rctx, id)
 

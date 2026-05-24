@@ -4,6 +4,7 @@
 package app
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -99,6 +100,8 @@ func (a *App) CreateAccessControlBypasses(rctx request.CTX, req model.AccessCont
 		return nil, model.NewAppError("CreateAccessControlBypasses", "app.access_control_bypass.create.save.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
 	}
 
+	a.publishAccessControlBypassPrompts(saved)
+
 	return saved, nil
 }
 
@@ -128,6 +131,122 @@ func (a *App) RevokeAccessControlBypass(rctx request.CTX, id string, deletedBy s
 	}
 
 	return bypass, nil
+}
+
+func (a *App) GetActiveAccessControlBypassesForUser(rctx request.CTX, userID string) ([]*model.AccessControlBypass, *model.AppError) {
+	if !model.IsValidId(userID) {
+		return nil, model.NewAppError("GetActiveAccessControlBypassesForUser", "app.access_control_bypass.user.id.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	bypasses, _, err := a.Srv().Store().AccessControlBypass().Search(rctx, model.AccessControlBypassSearch{
+		SubjectType: model.AccessControlBypassSubjectTypeUser,
+		SubjectID:   userID,
+		Status:      model.AccessControlBypassStatusActive,
+		PerPage:     200,
+	})
+	if err != nil {
+		return nil, model.NewAppError("GetActiveAccessControlBypassesForUser", "app.access_control_bypass.user.search.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+
+	return bypasses, nil
+}
+
+func (a *App) AcceptAccessControlBypass(rctx request.CTX, id string, userID string) (*model.AccessControlBypass, *model.AppError) {
+	if !model.IsValidId(id) || !model.IsValidId(userID) {
+		return nil, model.NewAppError("AcceptAccessControlBypass", "app.access_control_bypass.accept.id.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	bypass, err := a.Srv().Store().AccessControlBypass().Get(rctx, id)
+	if err != nil {
+		var nfErr *store.ErrNotFound
+		if errors.As(err, &nfErr) {
+			return nil, model.NewAppError("AcceptAccessControlBypass", "app.access_control_bypass.accept.not_found.app_error", nil, "", http.StatusNotFound).Wrap(err)
+		}
+		return nil, model.NewAppError("AcceptAccessControlBypass", "app.access_control_bypass.accept.get.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+	if bypass.SubjectType != model.AccessControlBypassSubjectTypeUser || bypass.SubjectID != userID || bypass.DeleteAt != 0 || bypass.ExpiresAt <= model.GetMillis() {
+		return nil, model.NewAppError("AcceptAccessControlBypass", "app.access_control_bypass.accept.invalid.app_error", nil, "", http.StatusForbidden)
+	}
+	if bypass.Action != model.AccessControlPolicyActionMembership {
+		return nil, model.NewAppError("AcceptAccessControlBypass", "app.access_control_bypass.accept.action.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	now := model.GetMillis()
+	membershipCreated := false
+	switch bypass.ResourceType {
+	case model.AccessControlBypassResourceTypeTeam:
+		created, appErr := a.ensureAccessControlBypassTeamMembership(rctx, bypass.ResourceID, userID)
+		if appErr != nil {
+			return nil, appErr
+		}
+		membershipCreated = created
+	case model.AccessControlBypassResourceTypeChannel:
+		channel, appErr := a.GetChannel(rctx, bypass.ResourceID)
+		if appErr != nil {
+			return nil, appErr
+		}
+		if channel.TeamId != "" {
+			if _, appErr = a.ensureAccessControlBypassTeamMembership(rctx, channel.TeamId, userID); appErr != nil {
+				return nil, appErr
+			}
+		}
+		created, appErr := a.ensureAccessControlBypassChannelMembership(rctx, channel, userID)
+		if appErr != nil {
+			return nil, appErr
+		}
+		membershipCreated = created
+	default:
+		return nil, model.NewAppError("AcceptAccessControlBypass", "app.access_control_bypass.accept.resource_type.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	updated, err := a.Srv().Store().AccessControlBypass().MarkAccepted(rctx, bypass.ID, now, now, membershipCreated)
+	if err != nil {
+		return nil, model.NewAppError("AcceptAccessControlBypass", "app.access_control_bypass.accept.update.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+
+	return updated, nil
+}
+
+func (a *App) ensureAccessControlBypassTeamMembership(rctx request.CTX, teamID string, userID string) (bool, *model.AppError) {
+	member, err := a.Srv().Store().Team().GetMember(rctx, teamID, userID)
+	if err == nil && member.DeleteAt == 0 {
+		return false, nil
+	}
+	var nfErr *store.ErrNotFound
+	if err != nil && !errors.As(err, &nfErr) {
+		return false, model.NewAppError("ensureAccessControlBypassTeamMembership", "app.team.get_member.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+	if _, appErr := a.AddTeamMember(rctx, teamID, userID); appErr != nil {
+		return false, appErr
+	}
+	return true, nil
+}
+
+func (a *App) ensureAccessControlBypassChannelMembership(rctx request.CTX, channel *model.Channel, userID string) (bool, *model.AppError) {
+	if _, err := a.Srv().Store().Channel().GetMember(rctx, channel.Id, userID); err == nil {
+		return false, nil
+	} else if nfErr := new(store.ErrNotFound); !errors.As(err, &nfErr) {
+		return false, model.NewAppError("ensureAccessControlBypassChannelMembership", "app.channel.get_member.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+	if _, appErr := a.AddChannelMember(rctx, userID, channel, ChannelMemberOpts{SkipTeamMemberIntegrityCheck: true}); appErr != nil {
+		return false, appErr
+	}
+	return true, nil
+}
+
+func (a *App) publishAccessControlBypassPrompts(bypasses []*model.AccessControlBypass) {
+	for _, bypass := range bypasses {
+		if bypass.InviteMode != model.AccessControlBypassInviteModePrompt || bypass.SubjectType != model.AccessControlBypassSubjectTypeUser {
+			continue
+		}
+		bypassJSON, err := json.Marshal(bypass)
+		if err != nil {
+			continue
+		}
+		message := model.NewWebSocketEvent(model.WebsocketEventAccessControlBypassPrompt, "", "", bypass.SubjectID, nil, "")
+		message.Add("bypass", string(bypassJSON))
+		a.Publish(message)
+	}
 }
 
 func (a *App) validateAccessControlBypassResource(rctx request.CTX, resource model.AccessControlBypassResource) *model.AppError {

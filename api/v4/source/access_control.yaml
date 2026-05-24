@@ -295,6 +295,54 @@
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalServerError"
+  /api/v4/access_control/bypasses/me:
+    get:
+      tags:
+        - access control
+      summary: Get my active access control bypasses
+      description: Returns active temporary ABAC bypasses for the current user.
+      operationId: GetMyAccessControlBypasses
+      responses:
+        "200":
+          description: Active bypasses for the current user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessControlBypassesWithCount"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v4/access_control/bypasses/{bypass_id}/accept:
+    post:
+      tags:
+        - access control
+      summary: Accept a temporary access control bypass invitation
+      description: Accepts a prompt-mode temporary ABAC bypass and joins the user to the target resource when needed.
+      operationId: AcceptAccessControlBypass
+      parameters:
+        - name: bypass_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Access control bypass accepted successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessControlBypass"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/v4/access_control_policies/search:
     post:
       tags:

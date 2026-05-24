@@ -32,6 +32,8 @@ func (api *API) InitAccessControlPolicy() {
 	api.BaseRoutes.AccessControlPolicies.Handle("/activate", api.APISessionRequired(setActiveStatus)).Methods(http.MethodPut)
 	api.BaseRoutes.AccessControlBypasses.Handle("", api.APISessionRequired(createAccessControlBypasses)).Methods(http.MethodPost)
 	api.BaseRoutes.AccessControlBypasses.Handle("", api.APISessionRequired(searchAccessControlBypasses)).Methods(http.MethodGet)
+	api.BaseRoutes.AccessControlBypasses.Handle("/me", api.APISessionRequired(getMyAccessControlBypasses)).Methods(http.MethodGet)
+	api.BaseRoutes.AccessControlBypass.Handle("/accept", api.APISessionRequired(acceptAccessControlBypass)).Methods(http.MethodPost)
 	api.BaseRoutes.AccessControlBypass.Handle("", api.APISessionRequired(revokeAccessControlBypass)).Methods(http.MethodDelete)
 
 	api.BaseRoutes.AccessControlPolicies.Handle("/cel/check", api.APISessionRequired(checkExpression)).Methods(http.MethodPost)
@@ -278,6 +280,46 @@ func revokeAccessControlBypass(c *Context, w http.ResponseWriter, r *http.Reques
 	js, err := json.Marshal(bypass)
 	if err != nil {
 		c.Err = model.NewAppError("revokeAccessControlBypass", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
+		return
+	}
+	if _, err := w.Write(js); err != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(err))
+	}
+}
+
+func getMyAccessControlBypasses(c *Context, w http.ResponseWriter, r *http.Request) {
+	bypasses, appErr := c.App.GetActiveAccessControlBypassesForUser(c.AppContext, c.AppContext.Session().UserId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	js, err := json.Marshal(model.AccessControlBypassesWithCount{Bypasses: bypasses, Total: int64(len(bypasses))})
+	if err != nil {
+		c.Err = model.NewAppError("getMyAccessControlBypasses", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
+		return
+	}
+	if _, err := w.Write(js); err != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(err))
+	}
+}
+
+func acceptAccessControlBypass(c *Context, w http.ResponseWriter, r *http.Request) {
+	bypassID := mux.Vars(r)["bypass_id"]
+	if bypassID == "" || !model.IsValidId(bypassID) {
+		c.SetInvalidParam("bypass_id")
+		return
+	}
+
+	bypass, appErr := c.App.AcceptAccessControlBypass(c.AppContext, bypassID, c.AppContext.Session().UserId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	js, err := json.Marshal(bypass)
+	if err != nil {
+		c.Err = model.NewAppError("acceptAccessControlBypass", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
 		return
 	}
 	if _, err := w.Write(js); err != nil {

@@ -9,6 +9,7 @@ import {batchActions} from 'redux-batched-actions';
 import type {WebSocketMessage, WebSocketMessages} from '@mattermost/client';
 import {WebSocketEvents} from '@mattermost/client';
 import {AlertCircleOutlineIcon, InformationOutlineIcon} from '@mattermost/compass-icons/components';
+import type {AccessControlBypass} from '@mattermost/types/access_control';
 import type {ChannelBookmarkWithFileInfo, UpdateChannelBookmarkResponse} from '@mattermost/types/channel_bookmarks';
 import type {Channel, ChannelMembership} from '@mattermost/types/channels';
 import type {Draft} from '@mattermost/types/drafts';
@@ -164,6 +165,7 @@ import {
 import {EntityType, invalidateAccessControlAttributesCache} from 'components/common/hooks/useAccessControlAttributes';
 import DialogRouter from 'components/dialog_router';
 import InfoToast from 'components/info_toast/info_toast';
+import AccessControlBypassInviteModal from 'components/access_control_bypass_invite_modal';
 import RemovedFromChannelModal from 'components/removed_from_channel_modal';
 
 import WebSocketClient from 'client/web_websocket_client';
@@ -552,6 +554,10 @@ export function handleEvent(msg: WebSocketMessage) {
         dispatch(handleChannelAccessControlUpdatedEvent(msg));
         break;
 
+    case WebSocketEvents.AccessControlBypassPrompt:
+        handleAccessControlBypassPromptEvent(msg);
+        break;
+
     case WebSocketEvents.DirectAdded:
         dispatch(handleDirectAddedEvent(msg));
         break;
@@ -811,6 +817,30 @@ function handleChannelConvertedEvent(msg: WebSocketMessages.ChannelConverted) {
             });
         }
     }
+}
+
+function handleAccessControlBypassPromptEvent(msg: WebSocketMessage) {
+    const rawBypass = msg.data?.bypass;
+    let bypass: AccessControlBypass | null = null;
+    if (typeof rawBypass === 'string') {
+        try {
+            bypass = JSON.parse(rawBypass);
+        } catch {
+            return;
+        }
+    } else if (rawBypass && typeof rawBypass === 'object') {
+        bypass = rawBypass as AccessControlBypass;
+    }
+
+    if (!bypass) {
+        return;
+    }
+
+    dispatch(openModal({
+        modalId: ModalIdentifiers.ABAC_BYPASS_INVITE,
+        dialogType: AccessControlBypassInviteModal,
+        dialogProps: {bypass},
+    }));
 }
 
 export function handleChannelUpdatedEvent(msg: WebSocketMessages.ChannelUpdated): ThunkActionFunc<void> {

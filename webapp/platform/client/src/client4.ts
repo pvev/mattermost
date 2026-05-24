@@ -4932,6 +4932,20 @@ export default class Client4 {
         );
     };
 
+    getMyAccessControlBypasses = () => {
+        return this.doFetch<AccessControlBypassesResult>(
+            `${this.getBaseRoute()}/access_control/bypasses/me`,
+            {method: 'get'},
+        );
+    };
+
+    acceptAccessControlBypass = (id: string) => {
+        return this.doFetch<AccessControlBypass>(
+            `${this.getBaseRoute()}/access_control/bypasses/${id}/accept`,
+            {method: 'post'},
+        );
+    };
+
     createAccessControlSyncJob = (jobData: {[key: string]: string}) => {
         const job = {
             type: 'access_control_sync' as JobType,

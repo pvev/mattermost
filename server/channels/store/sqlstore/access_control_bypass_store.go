@@ -218,6 +218,37 @@ func (s *SqlAccessControlBypassStore) Revoke(rctx request.CTX, id string, delete
 	return s.Get(rctx, id)
 }
 
+func (s *SqlAccessControlBypassStore) MarkAccepted(rctx request.CTX, id string, acceptedAt int64, joinedAt int64, membershipCreated bool) (*model.AccessControlBypass, error) {
+	if !model.IsValidId(id) {
+		return nil, store.NewErrInvalidInput("AccessControlBypass", "id", id)
+	}
+	if acceptedAt == 0 {
+		acceptedAt = model.GetMillis()
+	}
+
+	query := s.getQueryBuilder().
+		Update(accessControlBypassesTable).
+		Set("AcceptedAt", acceptedAt).
+		Set("JoinedAt", joinedAt).
+		Set("MembershipCreated", membershipCreated).
+		Set("UpdateAt", model.GetMillis()).
+		Where(sq.Eq{"Id": id})
+
+	res, err := s.GetMaster().ExecBuilder(query)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to mark AccessControlBypass accepted with id=%s", id)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read RowsAffected on AccessControlBypass accept")
+	}
+	if rows == 0 {
+		return nil, store.NewErrNotFound("AccessControlBypass", id)
+	}
+
+	return s.Get(rctx, id)
+}
+
 func (s *SqlAccessControlBypassStore) HasActive(_ request.CTX, check model.AccessControlBypassActiveCheck) (bool, error) {
 	if check.Now == 0 {
 		check.Now = model.GetMillis()

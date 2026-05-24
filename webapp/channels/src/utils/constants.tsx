@@ -350,6 +350,7 @@ export const ModalIdentifiers = {
     TEAM_MEMBERS: 'team_members',
     TEST_RESULTS: 'test_results',
     ADD_USER_TO_CHANNEL: 'add_user_to_channel',
+    ABAC_BYPASS_INVITE: 'abac_bypass_invite',
     ADD_USER_TO_ROLE: 'add_user_to_role',
     ADD_USER_TO_TEAM: 'add_user_to_team',
     CREATE_DM_CHANNEL: 'create_dm_channel',

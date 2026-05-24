@@ -1225,6 +1225,7 @@ type AccessControlBypassStore interface {
 	Get(rctx request.CTX, id string) (*model.AccessControlBypass, error)
 	Search(rctx request.CTX, opts model.AccessControlBypassSearch) ([]*model.AccessControlBypass, int64, error)
 	Revoke(rctx request.CTX, id string, deleteAt int64, deletedBy string) (*model.AccessControlBypass, error)
+	MarkAccepted(rctx request.CTX, id string, acceptedAt int64, joinedAt int64, membershipCreated bool) (*model.AccessControlBypass, error)
 	HasActive(rctx request.CTX, check model.AccessControlBypassActiveCheck) (bool, error)
 	DeleteExpiredBatch(rctx request.CTX, now int64, limit int) (int64, error)
 }

@@ -1,15 +1,17 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useEffect, useMemo, useRef} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 
 import {WithTooltip} from '@mattermost/shared/components/tooltip';
+import type {AccessControlBypass} from '@mattermost/types/access_control';
 import type {ChannelBanner} from '@mattermost/types/channels';
 
+import Client4 from 'mattermost-redux/client/client4';
 import {selectShowChannelBanner} from 'mattermost-redux/selectors/entities/channel_banner';
-import {getChannelBanner} from 'mattermost-redux/selectors/entities/channels';
+import {getChannel, getChannelBanner} from 'mattermost-redux/selectors/entities/channels';
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {getContrastingSimpleColor} from 'mattermost-redux/utils/theme_utils';
 
@@ -33,6 +35,8 @@ type Props = {
 }
 
 export default function ChannelBanner({channelId}: Props) {
+    const intl = useIntl();
+    const channel = useSelector((state: GlobalState) => getChannel(state, channelId));
     const channelBannerInfo = useSelector((state: GlobalState) => getChannelBanner(state, channelId));
     const license = useSelector(getLicense);
     const licenseEnabled = isMinimumEnterpriseAdvancedLicense(license);
@@ -40,13 +44,52 @@ export default function ChannelBanner({channelId}: Props) {
     const showNativeBanner = licenseEnabled && channelBannerConfigured;
 
     const classificationBanner = useChannelClassificationBanner(channelId);
+    const [temporaryAccessBypass, setTemporaryAccessBypass] = useState<AccessControlBypass | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        async function loadTemporaryAccess() {
+            if (!channelId) {
+                setTemporaryAccessBypass(null);
+                return;
+            }
+            try {
+                const result = await Client4.getMyAccessControlBypasses();
+                if (cancelled) {
+                    return;
+                }
+                const matching = result.bypasses.find((bypass) => {
+                    if (bypass.resource_type === 'channel' && bypass.resource_id === channelId) {
+                        return true;
+                    }
+                    return Boolean(channel?.team_id && bypass.resource_type === 'team' && bypass.resource_id === channel.team_id);
+                });
+                setTemporaryAccessBypass(matching || null);
+            } catch {
+                setTemporaryAccessBypass(null);
+            }
+        }
+        loadTemporaryAccess();
+        return () => {
+            cancelled = true;
+        };
+    }, [channel?.team_id, channelId]);
 
     // Classification property value takes priority over native banner_info
-    const effectiveBanner: ChannelBanner | undefined = classificationBanner.hasClassification ?
-        classificationBanner.classificationBanner :
-        channelBannerInfo;
+    const temporaryAccessBanner: ChannelBanner | undefined = temporaryAccessBypass ? {
+        enabled: true,
+        text: intl.formatMessage(
+            {id: 'access_control_bypass_banner.text', defaultMessage: 'Temporary access until {expiresAt}'},
+            {expiresAt: new Date(temporaryAccessBypass.expires_at).toLocaleString()},
+        ),
+        background_color: '#1c58d9',
+    } : undefined;
 
-    const showBanner = classificationBanner.hasClassification || showNativeBanner;
+    const effectiveBanner: ChannelBanner | undefined = temporaryAccessBanner || (classificationBanner.hasClassification ?
+        classificationBanner.classificationBanner :
+        channelBannerInfo);
+
+    const showBanner = Boolean(temporaryAccessBanner) || classificationBanner.hasClassification || showNativeBanner;
 
     const textContainerRef = useRef<HTMLSpanElement>(null);
     const [tooltipNeeded, setTooltipNeeded] = React.useState<boolean>(false);
@@ -62,7 +105,6 @@ export default function ChannelBanner({channelId}: Props) {
         setTooltipNeeded(isOverflowingHorizontally || isOverflowingVertically);
     }, [effectiveBanner?.text]);
 
-    const intl = useIntl();
     const channelBannerTextAriaLabel = intl.formatMessage({id: 'channel_banner.aria_label', defaultMessage: 'Channel banner text'});
 
     const content = (

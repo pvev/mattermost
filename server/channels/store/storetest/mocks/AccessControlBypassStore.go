@@ -72,6 +72,25 @@ func (_m *AccessControlBypassStore) HasActive(rctx request.CTX, check model.Acce
 	return r0, r1
 }
 
+func (_m *AccessControlBypassStore) MarkAccepted(rctx request.CTX, id string, acceptedAt int64, joinedAt int64, membershipCreated bool) (*model.AccessControlBypass, error) {
+	ret := _m.Called(rctx, id, acceptedAt, joinedAt, membershipCreated)
+
+	var r0 *model.AccessControlBypass
+	var r1 error
+	if rf, ok := ret.Get(0).(func(request.CTX, string, int64, int64, bool) *model.AccessControlBypass); ok {
+		r0 = rf(rctx, id, acceptedAt, joinedAt, membershipCreated)
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).(*model.AccessControlBypass)
+	}
+	if rf, ok := ret.Get(1).(func(request.CTX, string, int64, int64, bool) error); ok {
+		r1 = rf(rctx, id, acceptedAt, joinedAt, membershipCreated)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 func (_m *AccessControlBypassStore) Revoke(rctx request.CTX, id string, deleteAt int64, deletedBy string) (*model.AccessControlBypass, error) {
 	ret := _m.Called(rctx, id, deleteAt, deletedBy)
 

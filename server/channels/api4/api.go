@@ -163,10 +163,10 @@ type Routes struct {
 
 	AuditLogs *mux.Router // 'api/v4/audit_logs'
 
-	AccessControlPolicies *mux.Router // 'api/v4/access_control_policies'
-	AccessControlPolicy   *mux.Router // 'api/v4/access_control_policies/{policy_id:[A-Za-z0-9]+}'
-	AccessControlBypasses *mux.Router // 'api/v4/access_control/bypasses'
-	AccessControlBypass   *mux.Router // 'api/v4/access_control/bypasses/{bypass_id:[A-Za-z0-9]+}'
+	AccessControlPolicies          *mux.Router // 'api/v4/access_control_policies'
+	AccessControlPolicy            *mux.Router // 'api/v4/access_control_policies/{policy_id:[A-Za-z0-9]+}'
+	AccessControlTemporaryAccesses *mux.Router // 'api/v4/access_control/temporary_access'
+	AccessControlTemporaryAccess   *mux.Router // 'api/v4/access_control/temporary_access/{temporary_access_id:[A-Za-z0-9]+}'
 
 	ContentFlagging *mux.Router // 'api/v4/content_flagging'
 
@@ -330,8 +330,8 @@ func Init(srv *app.Server) (*API, error) {
 
 	api.BaseRoutes.AccessControlPolicies = api.BaseRoutes.APIRoot.PathPrefix("/access_control_policies").Subrouter()
 	api.BaseRoutes.AccessControlPolicy = api.BaseRoutes.APIRoot.PathPrefix("/access_control_policies/{policy_id:[A-Za-z0-9]+}").Subrouter()
-	api.BaseRoutes.AccessControlBypasses = api.BaseRoutes.APIRoot.PathPrefix("/access_control/bypasses").Subrouter()
-	api.BaseRoutes.AccessControlBypass = api.BaseRoutes.APIRoot.PathPrefix("/access_control/bypasses/{bypass_id:[A-Za-z0-9]+}").Subrouter()
+	api.BaseRoutes.AccessControlTemporaryAccesses = api.BaseRoutes.APIRoot.PathPrefix("/access_control/temporary_access").Subrouter()
+	api.BaseRoutes.AccessControlTemporaryAccess = api.BaseRoutes.APIRoot.PathPrefix("/access_control/temporary_access/{temporary_access_id:[A-Za-z0-9]+}").Subrouter()
 
 	api.BaseRoutes.ContentFlagging = api.BaseRoutes.APIRoot.PathPrefix("/content_flagging").Subrouter()
 
@@ -495,8 +495,8 @@ func InitLocal(srv *app.Server) *API {
 
 	api.BaseRoutes.AccessControlPolicies = api.BaseRoutes.APIRoot.PathPrefix("/access_control_policies").Subrouter()
 	api.BaseRoutes.AccessControlPolicy = api.BaseRoutes.APIRoot.PathPrefix("/access_control_policies/{policy_id:[A-Za-z0-9]+}").Subrouter()
-	api.BaseRoutes.AccessControlBypasses = api.BaseRoutes.APIRoot.PathPrefix("/access_control/bypasses").Subrouter()
-	api.BaseRoutes.AccessControlBypass = api.BaseRoutes.APIRoot.PathPrefix("/access_control/bypasses/{bypass_id:[A-Za-z0-9]+}").Subrouter()
+	api.BaseRoutes.AccessControlTemporaryAccesses = api.BaseRoutes.APIRoot.PathPrefix("/access_control/temporary_access").Subrouter()
+	api.BaseRoutes.AccessControlTemporaryAccess = api.BaseRoutes.APIRoot.PathPrefix("/access_control/temporary_access/{temporary_access_id:[A-Za-z0-9]+}").Subrouter()
 
 	api.InitUserLocal()
 	api.InitTeamLocal()

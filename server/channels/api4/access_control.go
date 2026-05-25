@@ -30,11 +30,11 @@ func (api *API) InitAccessControlPolicy() {
 	api.BaseRoutes.AccessControlPolicies.Handle("", api.APISessionRequired(createAccessControlPolicy)).Methods(http.MethodPut)
 	api.BaseRoutes.AccessControlPolicies.Handle("/search", api.APISessionRequired(searchAccessControlPolicies)).Methods(http.MethodPost)
 	api.BaseRoutes.AccessControlPolicies.Handle("/activate", api.APISessionRequired(setActiveStatus)).Methods(http.MethodPut)
-	api.BaseRoutes.AccessControlBypasses.Handle("", api.APISessionRequired(createAccessControlBypasses)).Methods(http.MethodPost)
-	api.BaseRoutes.AccessControlBypasses.Handle("", api.APISessionRequired(searchAccessControlBypasses)).Methods(http.MethodGet)
-	api.BaseRoutes.AccessControlBypasses.Handle("/me", api.APISessionRequired(getMyAccessControlBypasses)).Methods(http.MethodGet)
-	api.BaseRoutes.AccessControlBypass.Handle("/accept", api.APISessionRequired(acceptAccessControlBypass)).Methods(http.MethodPost)
-	api.BaseRoutes.AccessControlBypass.Handle("", api.APISessionRequired(revokeAccessControlBypass)).Methods(http.MethodDelete)
+	api.BaseRoutes.AccessControlTemporaryAccesses.Handle("", api.APISessionRequired(createAccessControlTemporaryAccesses)).Methods(http.MethodPost)
+	api.BaseRoutes.AccessControlTemporaryAccesses.Handle("", api.APISessionRequired(searchAccessControlTemporaryAccesses)).Methods(http.MethodGet)
+	api.BaseRoutes.AccessControlTemporaryAccesses.Handle("/me", api.APISessionRequired(getMyAccessControlTemporaryAccesses)).Methods(http.MethodGet)
+	api.BaseRoutes.AccessControlTemporaryAccess.Handle("/accept", api.APISessionRequired(acceptAccessControlTemporaryAccess)).Methods(http.MethodPost)
+	api.BaseRoutes.AccessControlTemporaryAccess.Handle("", api.APISessionRequired(revokeAccessControlTemporaryAccess)).Methods(http.MethodDelete)
 
 	api.BaseRoutes.AccessControlPolicies.Handle("/cel/check", api.APISessionRequired(checkExpression)).Methods(http.MethodPost)
 	api.BaseRoutes.AccessControlPolicies.Handle("/cel/test", api.APISessionRequired(testExpression)).Methods(http.MethodPost)
@@ -176,37 +176,37 @@ func createAccessControlPolicy(c *Context, w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func createAccessControlBypasses(c *Context, w http.ResponseWriter, r *http.Request) {
+func createAccessControlTemporaryAccesses(c *Context, w http.ResponseWriter, r *http.Request) {
 	if !c.App.SessionHasPermissionTo(*c.AppContext.Session(), model.PermissionManageSystem) {
 		c.SetPermissionError(model.PermissionManageSystem)
 		return
 	}
 
-	var req model.AccessControlBypassCreateRequest
+	var req model.AccessControlTemporaryAccessCreateRequest
 	if jsonErr := json.NewDecoder(r.Body).Decode(&req); jsonErr != nil {
-		c.SetInvalidParamWithErr("bypass", jsonErr)
+		c.SetInvalidParamWithErr("temporaryAccess", jsonErr)
 		return
 	}
 
-	auditRec := c.MakeAuditRecord(model.AuditEventCreateAccessControlBypass, model.AuditStatusFail)
+	auditRec := c.MakeAuditRecord(model.AuditEventCreateAccessControlTemporaryAccess, model.AuditStatusFail)
 	defer c.LogAuditRec(auditRec)
 	model.AddEventParameterToAuditRec(auditRec, "subject_count", len(req.Subjects))
 	model.AddEventParameterToAuditRec(auditRec, "resource_count", len(req.Resources))
 	model.AddEventParameterToAuditRec(auditRec, "action_count", len(req.Actions))
 
-	bypasses, appErr := c.App.CreateAccessControlBypasses(c.AppContext, req, c.AppContext.Session().UserId)
+	temporaryAccesses, appErr := c.App.CreateAccessControlTemporaryAccesses(c.AppContext, req, c.AppContext.Session().UserId)
 	if appErr != nil {
 		c.Err = appErr
 		return
 	}
 
 	auditRec.Success()
-	auditRec.AddEventObjectType("access_control_bypass")
-	model.AddEventParameterToAuditRec(auditRec, "created_count", len(bypasses))
+	auditRec.AddEventObjectType("access_control_temporary_access")
+	model.AddEventParameterToAuditRec(auditRec, "created_count", len(temporaryAccesses))
 
-	js, err := json.Marshal(model.AccessControlBypassCreateResponse{Bypasses: bypasses})
+	js, err := json.Marshal(model.AccessControlTemporaryAccessCreateResponse{TemporaryAccesses: temporaryAccesses})
 	if err != nil {
-		c.Err = model.NewAppError("createAccessControlBypasses", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
+		c.Err = model.NewAppError("createAccessControlTemporaryAccesses", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
 		return
 	}
 	if _, err := w.Write(js); err != nil {
@@ -214,7 +214,7 @@ func createAccessControlBypasses(c *Context, w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func searchAccessControlBypasses(c *Context, w http.ResponseWriter, r *http.Request) {
+func searchAccessControlTemporaryAccesses(c *Context, w http.ResponseWriter, r *http.Request) {
 	if !c.App.SessionHasPermissionTo(*c.AppContext.Session(), model.PermissionManageSystem) {
 		c.SetPermissionError(model.PermissionManageSystem)
 		return
@@ -223,7 +223,7 @@ func searchAccessControlBypasses(c *Context, w http.ResponseWriter, r *http.Requ
 	query := r.URL.Query()
 	page, _ := strconv.Atoi(query.Get("page"))
 	perPage, _ := strconv.Atoi(query.Get("per_page"))
-	opts := model.AccessControlBypassSearch{
+	opts := model.AccessControlTemporaryAccessSearch{
 		SubjectType:  query.Get("subject_type"),
 		SubjectID:    query.Get("subject_id"),
 		ResourceType: query.Get("resource_type"),
@@ -235,15 +235,15 @@ func searchAccessControlBypasses(c *Context, w http.ResponseWriter, r *http.Requ
 		PerPage:      perPage,
 	}
 
-	bypasses, total, appErr := c.App.SearchAccessControlBypasses(c.AppContext, opts)
+	temporaryAccesses, total, appErr := c.App.SearchAccessControlTemporaryAccesses(c.AppContext, opts)
 	if appErr != nil {
 		c.Err = appErr
 		return
 	}
 
-	js, err := json.Marshal(model.AccessControlBypassesWithCount{Bypasses: bypasses, Total: total})
+	js, err := json.Marshal(model.AccessControlTemporaryAccessesWithCount{TemporaryAccesses: temporaryAccesses, Total: total})
 	if err != nil {
-		c.Err = model.NewAppError("searchAccessControlBypasses", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
+		c.Err = model.NewAppError("searchAccessControlTemporaryAccesses", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
 		return
 	}
 	if _, err := w.Write(js); err != nil {
@@ -251,35 +251,35 @@ func searchAccessControlBypasses(c *Context, w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func revokeAccessControlBypass(c *Context, w http.ResponseWriter, r *http.Request) {
+func revokeAccessControlTemporaryAccess(c *Context, w http.ResponseWriter, r *http.Request) {
 	if !c.App.SessionHasPermissionTo(*c.AppContext.Session(), model.PermissionManageSystem) {
 		c.SetPermissionError(model.PermissionManageSystem)
 		return
 	}
 
-	bypassID := mux.Vars(r)["bypass_id"]
-	if bypassID == "" || !model.IsValidId(bypassID) {
-		c.SetInvalidParam("bypass_id")
+	temporaryAccessID := mux.Vars(r)["temporary_access_id"]
+	if temporaryAccessID == "" || !model.IsValidId(temporaryAccessID) {
+		c.SetInvalidParam("temporary_access_id")
 		return
 	}
 
-	auditRec := c.MakeAuditRecord(model.AuditEventRevokeAccessControlBypass, model.AuditStatusFail)
+	auditRec := c.MakeAuditRecord(model.AuditEventRevokeAccessControlTemporaryAccess, model.AuditStatusFail)
 	defer c.LogAuditRec(auditRec)
-	model.AddEventParameterToAuditRec(auditRec, "id", bypassID)
+	model.AddEventParameterToAuditRec(auditRec, "id", temporaryAccessID)
 
-	bypass, appErr := c.App.RevokeAccessControlBypass(c.AppContext, bypassID, c.AppContext.Session().UserId)
+	temporaryAccess, appErr := c.App.RevokeAccessControlTemporaryAccess(c.AppContext, temporaryAccessID, c.AppContext.Session().UserId)
 	if appErr != nil {
 		c.Err = appErr
 		return
 	}
 
 	auditRec.Success()
-	auditRec.AddEventObjectType("access_control_bypass")
-	auditRec.AddEventResultState(bypass)
+	auditRec.AddEventObjectType("access_control_temporary_access")
+	auditRec.AddEventResultState(temporaryAccess)
 
-	js, err := json.Marshal(bypass)
+	js, err := json.Marshal(temporaryAccess)
 	if err != nil {
-		c.Err = model.NewAppError("revokeAccessControlBypass", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
+		c.Err = model.NewAppError("revokeAccessControlTemporaryAccess", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
 		return
 	}
 	if _, err := w.Write(js); err != nil {
@@ -287,16 +287,16 @@ func revokeAccessControlBypass(c *Context, w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func getMyAccessControlBypasses(c *Context, w http.ResponseWriter, r *http.Request) {
-	bypasses, appErr := c.App.GetActiveAccessControlBypassesForUser(c.AppContext, c.AppContext.Session().UserId)
+func getMyAccessControlTemporaryAccesses(c *Context, w http.ResponseWriter, r *http.Request) {
+	temporaryAccesses, appErr := c.App.GetActiveAccessControlTemporaryAccessesForUser(c.AppContext, c.AppContext.Session().UserId)
 	if appErr != nil {
 		c.Err = appErr
 		return
 	}
 
-	js, err := json.Marshal(model.AccessControlBypassesWithCount{Bypasses: bypasses, Total: int64(len(bypasses))})
+	js, err := json.Marshal(model.AccessControlTemporaryAccessesWithCount{TemporaryAccesses: temporaryAccesses, Total: int64(len(temporaryAccesses))})
 	if err != nil {
-		c.Err = model.NewAppError("getMyAccessControlBypasses", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
+		c.Err = model.NewAppError("getMyAccessControlTemporaryAccesses", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
 		return
 	}
 	if _, err := w.Write(js); err != nil {
@@ -304,22 +304,22 @@ func getMyAccessControlBypasses(c *Context, w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func acceptAccessControlBypass(c *Context, w http.ResponseWriter, r *http.Request) {
-	bypassID := mux.Vars(r)["bypass_id"]
-	if bypassID == "" || !model.IsValidId(bypassID) {
-		c.SetInvalidParam("bypass_id")
+func acceptAccessControlTemporaryAccess(c *Context, w http.ResponseWriter, r *http.Request) {
+	temporaryAccessID := mux.Vars(r)["temporary_access_id"]
+	if temporaryAccessID == "" || !model.IsValidId(temporaryAccessID) {
+		c.SetInvalidParam("temporary_access_id")
 		return
 	}
 
-	bypass, appErr := c.App.AcceptAccessControlBypass(c.AppContext, bypassID, c.AppContext.Session().UserId)
+	temporaryAccess, appErr := c.App.AcceptAccessControlTemporaryAccess(c.AppContext, temporaryAccessID, c.AppContext.Session().UserId)
 	if appErr != nil {
 		c.Err = appErr
 		return
 	}
 
-	js, err := json.Marshal(bypass)
+	js, err := json.Marshal(temporaryAccess)
 	if err != nil {
-		c.Err = model.NewAppError("acceptAccessControlBypass", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
+		c.Err = model.NewAppError("acceptAccessControlTemporaryAccess", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(err)
 		return
 	}
 	if _, err := w.Write(js); err != nil {

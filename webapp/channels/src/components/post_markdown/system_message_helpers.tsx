@@ -119,6 +119,14 @@ function renderAddGuestToChannelMessage(post: Post, hideGuestTags: boolean): Rea
     );
 }
 
+function renderAccessControlTemporaryAccessMessage(post: Post): ReactNode {
+    return renderFormattedText(post.message, {
+        atMentions: true,
+        mentionHighlight: false,
+        singleline: true,
+    }, post);
+}
+
 function renderRemoveFromChannelMessage(post: Post): ReactNode {
     const removedUsername = renderUsername(post.props.removedUsername);
 
@@ -436,6 +444,7 @@ const systemMessageRenderers = {
     [Posts.POST_TYPES.LEAVE_CHANNEL]: renderLeaveChannelMessage,
     [Posts.POST_TYPES.ADD_TO_CHANNEL]: renderAddToChannelMessage,
     [Posts.POST_TYPES.EPHEMERAL_ADD_TO_CHANNEL]: renderAddToChannelMessage,
+    [Posts.POST_TYPES.TEMPORARY_ACCESS]: renderAccessControlTemporaryAccessMessage,
     [Posts.POST_TYPES.REMOVE_FROM_CHANNEL]: renderRemoveFromChannelMessage,
     [Posts.POST_TYPES.JOIN_TEAM]: renderJoinTeamMessage,
     [Posts.POST_TYPES.LEAVE_TEAM]: renderLeaveTeamMessage,

@@ -97,7 +97,7 @@ type Store interface {
 	PropertyField() PropertyFieldStore
 	PropertyValue() PropertyValueStore
 	AccessControlPolicy() AccessControlPolicyStore
-	AccessControlBypass() AccessControlBypassStore
+	AccessControlTemporaryAccess() AccessControlTemporaryAccessStore
 	Attributes() AttributesStore
 	AutoTranslation() AutoTranslationStore
 	GetSchemaDefinition() (*model.SupportPacketDatabaseSchema, error)
@@ -1220,14 +1220,15 @@ type AccessControlPolicyStore interface {
 	GetActionsForPolicies(rctx request.CTX, policyIDs []string) (map[string]map[string]bool, error)
 }
 
-type AccessControlBypassStore interface {
-	Save(rctx request.CTX, bypasses []*model.AccessControlBypass) ([]*model.AccessControlBypass, error)
-	Get(rctx request.CTX, id string) (*model.AccessControlBypass, error)
-	Search(rctx request.CTX, opts model.AccessControlBypassSearch) ([]*model.AccessControlBypass, int64, error)
-	Revoke(rctx request.CTX, id string, deleteAt int64, deletedBy string) (*model.AccessControlBypass, error)
-	MarkAccepted(rctx request.CTX, id string, acceptedAt int64, joinedAt int64, membershipCreated bool) (*model.AccessControlBypass, error)
-	HasActive(rctx request.CTX, check model.AccessControlBypassActiveCheck) (bool, error)
-	GetExpiredBatch(rctx request.CTX, now int64, limit int) ([]*model.AccessControlBypass, error)
+type AccessControlTemporaryAccessStore interface {
+	Save(rctx request.CTX, temporaryAccesses []*model.AccessControlTemporaryAccess) ([]*model.AccessControlTemporaryAccess, error)
+	Get(rctx request.CTX, id string) (*model.AccessControlTemporaryAccess, error)
+	Search(rctx request.CTX, opts model.AccessControlTemporaryAccessSearch) ([]*model.AccessControlTemporaryAccess, int64, error)
+	Revoke(rctx request.CTX, id string, deleteAt int64, deletedBy string) (*model.AccessControlTemporaryAccess, error)
+	MarkAccepted(rctx request.CTX, id string, acceptedAt int64, joinedAt int64, membershipCreated bool) (*model.AccessControlTemporaryAccess, error)
+	MarkJoined(rctx request.CTX, id string, joinedAt int64, membershipCreated bool, teamMembershipCreated bool) (*model.AccessControlTemporaryAccess, error)
+	HasActive(rctx request.CTX, check model.AccessControlTemporaryAccessActiveCheck) (bool, error)
+	GetExpiredBatch(rctx request.CTX, now int64, limit int) ([]*model.AccessControlTemporaryAccess, error)
 	DeleteByIDs(rctx request.CTX, ids []string) (int64, error)
 	DeleteExpiredBatch(rctx request.CTX, now int64, limit int) (int64, error)
 }

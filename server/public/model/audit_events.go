@@ -13,14 +13,14 @@ const (
 	AuditEventUpdateActiveStatus        = "updateActiveStatus"        // update active/inactive status of access control policy
 	AuditEventSetActiveStatus           = "setActiveStatus"           // set active/inactive status of multiple access control policies
 
-	AuditEventCreateTeamAccessPolicy    = "createTeamAccessPolicy"    // create team-scoped access control policy
-	AuditEventUpdateTeamAccessPolicy    = "updateTeamAccessPolicy"    // update team-scoped access control policy
-	AuditEventDeleteTeamAccessPolicy    = "deleteTeamAccessPolicy"    // delete team-scoped access control policy
-	AuditEventAssignTeamAccessPolicy    = "assignTeamAccessPolicy"    // assign channels to team-scoped access control policy
-	AuditEventUnassignTeamAccessPolicy  = "unassignTeamAccessPolicy"  // remove channels from team-scoped access control policy
-	AuditEventTriggerTeamPolicySync     = "triggerTeamPolicySync"     // trigger sync for team-scoped access control policies
-	AuditEventCreateAccessControlBypass = "createAccessControlBypass" // create temporary access control bypass
-	AuditEventRevokeAccessControlBypass = "revokeAccessControlBypass" // revoke temporary access control bypass
+	AuditEventCreateTeamAccessPolicy             = "createTeamAccessPolicy"             // create team-scoped access control policy
+	AuditEventUpdateTeamAccessPolicy             = "updateTeamAccessPolicy"             // update team-scoped access control policy
+	AuditEventDeleteTeamAccessPolicy             = "deleteTeamAccessPolicy"             // delete team-scoped access control policy
+	AuditEventAssignTeamAccessPolicy             = "assignTeamAccessPolicy"             // assign channels to team-scoped access control policy
+	AuditEventUnassignTeamAccessPolicy           = "unassignTeamAccessPolicy"           // remove channels from team-scoped access control policy
+	AuditEventTriggerTeamPolicySync              = "triggerTeamPolicySync"              // trigger sync for team-scoped access control policies
+	AuditEventCreateAccessControlTemporaryAccess = "createAccessControlTemporaryAccess" // create temporary access
+	AuditEventRevokeAccessControlTemporaryAccess = "revokeAccessControlTemporaryAccess" // revoke temporary access
 )
 
 // Audit & Certificates

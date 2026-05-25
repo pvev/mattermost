@@ -39,7 +39,6 @@ import (
 	"github.com/mattermost/mattermost/server/v8/channels/app/users"
 	"github.com/mattermost/mattermost/server/v8/channels/audit"
 	"github.com/mattermost/mattermost/server/v8/channels/jobs"
-	"github.com/mattermost/mattermost/server/v8/channels/jobs/access_control_bypass_expiration"
 	"github.com/mattermost/mattermost/server/v8/channels/jobs/active_users"
 	"github.com/mattermost/mattermost/server/v8/channels/jobs/cleanup_desktop_tokens"
 	"github.com/mattermost/mattermost/server/v8/channels/jobs/cleanup_expired_access_tokens"
@@ -67,6 +66,7 @@ import (
 	"github.com/mattermost/mattermost/server/v8/channels/jobs/refresh_materialized_views"
 	"github.com/mattermost/mattermost/server/v8/channels/jobs/resend_invitation_email"
 	"github.com/mattermost/mattermost/server/v8/channels/jobs/s3_path_migration"
+	"github.com/mattermost/mattermost/server/v8/channels/jobs/temporary_access_expiration"
 	"github.com/mattermost/mattermost/server/v8/channels/store"
 	"github.com/mattermost/mattermost/server/v8/channels/utils"
 	"github.com/mattermost/mattermost/server/v8/config"
@@ -1609,9 +1609,9 @@ func (s *Server) initJobs() {
 	)
 
 	s.Jobs.RegisterJobType(
-		model.JobTypeAccessControlBypassExpiration,
-		access_control_bypass_expiration.MakeWorker(s.Jobs, New(ServerConnector(s.Channels()))),
-		access_control_bypass_expiration.MakeScheduler(s.Jobs),
+		model.JobTypeAccessControlTemporaryAccessExpiration,
+		temporary_access_expiration.MakeWorker(s.Jobs, New(ServerConnector(s.Channels()))),
+		temporary_access_expiration.MakeScheduler(s.Jobs),
 	)
 
 	s.Jobs.RegisterJobType(

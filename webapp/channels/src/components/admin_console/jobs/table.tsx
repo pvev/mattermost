@@ -37,6 +37,7 @@ export type Props = {
     jobData?: any;
     onRowClick?: (job: Job) => void;
     perPage?: number;
+    showInactiveJobs?: boolean;
     actions: {
         getJobsByType: (jobType: JobType) => void;
         cancelJob: (jobId: string) => Promise<ActionResult>;
@@ -120,14 +121,20 @@ class JobTable extends React.PureComponent<Props, State> {
         const {perPage} = this.props;
         const {currentPage} = this.state;
 
-        let paginatedJobs = this.props.jobs;
+        const jobs = this.props.showInactiveJobs === false ? this.props.jobs.filter((job) => (
+            job.status === 'pending' ||
+            job.status === 'in_progress' ||
+            job.status === 'cancel_requested'
+        )) : this.props.jobs;
+
+        let paginatedJobs = jobs;
         let startIndex = 0;
-        let endIndex = this.props.jobs.length;
+        let endIndex = jobs.length;
 
         if (perPage) {
             startIndex = currentPage * perPage;
-            endIndex = Math.min(startIndex + perPage, this.props.jobs.length);
-            paginatedJobs = this.props.jobs.slice(startIndex, endIndex);
+            endIndex = Math.min(startIndex + perPage, jobs.length);
+            paginatedJobs = jobs.slice(startIndex, endIndex);
         }
 
         const showFilesColumn = this.props.jobType === JobTypes.MESSAGE_EXPORT && this.props.downloadExportResults;
@@ -169,7 +176,7 @@ class JobTable extends React.PureComponent<Props, State> {
 
             if (perPage) {
                 const firstPage = startIndex <= 0;
-                const lastPage = endIndex >= this.props.jobs.length;
+                const lastPage = endIndex >= jobs.length;
 
                 footer = (
                     <div className='DataGrid_footer'>
@@ -180,7 +187,7 @@ class JobTable extends React.PureComponent<Props, State> {
                                 values={{
                                     startCount: startIndex + 1,
                                     endCount: endIndex,
-                                    total: this.props.jobs.length,
+                                    total: jobs.length,
                                 }}
                             />
                             <button
@@ -279,7 +286,7 @@ class JobTable extends React.PureComponent<Props, State> {
                                 {items}
                             </tbody>
                         </table>
-                        {perPage && this.props.jobs.length > 0 && (
+                        {perPage && jobs.length > 0 && (
                             renderFooter()
                         )}
                     </div>

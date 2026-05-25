@@ -4775,7 +4775,7 @@ components:
           type: integer
           format: int64
           description: The time in milliseconds the policy was deleted.
-    AccessControlBypassSubject:
+    AccessControlTemporaryAccessSubject:
       type: object
       properties:
         type:
@@ -4784,7 +4784,7 @@ components:
         id:
           type: string
           description: The subject ID.
-    AccessControlBypassResource:
+    AccessControlTemporaryAccessResource:
       type: object
       properties:
         type:
@@ -4794,7 +4794,7 @@ components:
         id:
           type: string
           description: The resource ID.
-    AccessControlBypass:
+    AccessControlTemporaryAccess:
       type: object
       properties:
         id:
@@ -4837,17 +4837,17 @@ components:
           type: string
         deleted_by:
           type: string
-    AccessControlBypassCreateRequest:
+    AccessControlTemporaryAccessCreateRequest:
       type: object
       properties:
         subjects:
           type: array
           items:
-            $ref: "#/components/schemas/AccessControlBypassSubject"
+            $ref: "#/components/schemas/AccessControlTemporaryAccessSubject"
         resources:
           type: array
           items:
-            $ref: "#/components/schemas/AccessControlBypassResource"
+            $ref: "#/components/schemas/AccessControlTemporaryAccessResource"
         actions:
           type: array
           items:
@@ -4860,20 +4860,20 @@ components:
         invite_mode:
           type: string
           enum: [none, prompt]
-    AccessControlBypassCreateResponse:
+    AccessControlTemporaryAccessCreateResponse:
       type: object
       properties:
-        bypasses:
+        temporary_accesses:
           type: array
           items:
-            $ref: "#/components/schemas/AccessControlBypass"
-    AccessControlBypassesWithCount:
+            $ref: "#/components/schemas/AccessControlTemporaryAccess"
+    AccessControlTemporaryAccessesWithCount:
       type: object
       properties:
-        bypasses:
+        temporary_accesses:
           type: array
           items:
-            $ref: "#/components/schemas/AccessControlBypass"
+            $ref: "#/components/schemas/AccessControlTemporaryAccess"
         total:
           type: integer
           format: int64

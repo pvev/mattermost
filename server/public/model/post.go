@@ -26,41 +26,42 @@ import (
 type PostContextKey string
 
 const (
-	PostSystemMessagePrefix       = "system_"
-	PostTypeDefault               = ""
-	PostTypeMessageAttachment     = "slack_attachment"
-	PostTypeSystemGeneric         = "system_generic"
-	PostTypeJoinLeave             = "system_join_leave" // Deprecated, use PostJoinChannel or PostLeaveChannel instead
-	PostTypeJoinChannel           = "system_join_channel"
-	PostTypeGuestJoinChannel      = "system_guest_join_channel"
-	PostTypeLeaveChannel          = "system_leave_channel"
-	PostTypeJoinTeam              = "system_join_team"
-	PostTypeLeaveTeam             = "system_leave_team"
-	PostTypeAutoResponder         = "system_auto_responder"
-	PostTypeAutotranslationChange = "system_autotranslation"
-	PostTypeAddRemove             = "system_add_remove" // Deprecated, use PostAddToChannel or PostRemoveFromChannel instead
-	PostTypeAddToChannel          = "system_add_to_channel"
-	PostTypeAddGuestToChannel     = "system_add_guest_to_chan"
-	PostTypeRemoveFromChannel     = "system_remove_from_channel"
-	PostTypeMoveChannel           = "system_move_channel"
-	PostTypeAddToTeam             = "system_add_to_team"
-	PostTypeRemoveFromTeam        = "system_remove_from_team"
-	PostTypeHeaderChange          = "system_header_change"
-	PostTypeDisplaynameChange     = "system_displayname_change"
-	PostTypeConvertChannel        = "system_convert_channel"
-	PostTypePurposeChange         = "system_purpose_change"
-	PostTypeChannelDeleted        = "system_channel_deleted"
-	PostTypeChannelRestored       = "system_channel_restored"
-	PostTypeEphemeral             = "system_ephemeral"
-	PostTypeChangeChannelPrivacy  = "system_change_chan_privacy"
-	PostTypeWrangler              = "system_wrangler"
-	PostTypeGMConvertedToChannel  = "system_gm_to_channel"
-	PostTypeAddBotTeamsChannels   = "add_bot_teams_channels"
-	PostTypeMe                    = "me"
-	PostCustomTypePrefix          = "custom_"
-	PostTypeReminder              = "reminder"
-	PostTypeBurnOnRead            = "burn_on_read"
-	PostTypeCard                  = "card"
+	PostSystemMessagePrefix              = "system_"
+	PostTypeDefault                      = ""
+	PostTypeMessageAttachment            = "slack_attachment"
+	PostTypeSystemGeneric                = "system_generic"
+	PostTypeJoinLeave                    = "system_join_leave" // Deprecated, use PostJoinChannel or PostLeaveChannel instead
+	PostTypeJoinChannel                  = "system_join_channel"
+	PostTypeGuestJoinChannel             = "system_guest_join_channel"
+	PostTypeLeaveChannel                 = "system_leave_channel"
+	PostTypeJoinTeam                     = "system_join_team"
+	PostTypeLeaveTeam                    = "system_leave_team"
+	PostTypeAutoResponder                = "system_auto_responder"
+	PostTypeAutotranslationChange        = "system_autotranslation"
+	PostTypeAddRemove                    = "system_add_remove" // Deprecated, use PostAddToChannel or PostRemoveFromChannel instead
+	PostTypeAddToChannel                 = "system_add_to_channel"
+	PostTypeAddGuestToChannel            = "system_add_guest_to_chan"
+	PostTypeAccessControlTemporaryAccess = "system_temp_access"
+	PostTypeRemoveFromChannel            = "system_remove_from_channel"
+	PostTypeMoveChannel                  = "system_move_channel"
+	PostTypeAddToTeam                    = "system_add_to_team"
+	PostTypeRemoveFromTeam               = "system_remove_from_team"
+	PostTypeHeaderChange                 = "system_header_change"
+	PostTypeDisplaynameChange            = "system_displayname_change"
+	PostTypeConvertChannel               = "system_convert_channel"
+	PostTypePurposeChange                = "system_purpose_change"
+	PostTypeChannelDeleted               = "system_channel_deleted"
+	PostTypeChannelRestored              = "system_channel_restored"
+	PostTypeEphemeral                    = "system_ephemeral"
+	PostTypeChangeChannelPrivacy         = "system_change_chan_privacy"
+	PostTypeWrangler                     = "system_wrangler"
+	PostTypeGMConvertedToChannel         = "system_gm_to_channel"
+	PostTypeAddBotTeamsChannels          = "add_bot_teams_channels"
+	PostTypeMe                           = "me"
+	PostCustomTypePrefix                 = "custom_"
+	PostTypeReminder                     = "reminder"
+	PostTypeBurnOnRead                   = "burn_on_read"
+	PostTypeCard                         = "card"
 	// PostTypeSharedChannelState is a system post for share/unshare events; the client translates using props.
 	// Name must fit Posts.Type varchar(26) (see store migrations).
 	PostTypeSharedChannelState = "system_shared_chan_state"
@@ -528,6 +529,7 @@ func (o *Post) IsValid(maxPostSize int) *AppError {
 		PostTypeLeaveTeam,
 		PostTypeAddToChannel,
 		PostTypeAddGuestToChannel,
+		PostTypeAccessControlTemporaryAccess,
 		PostTypeRemoveFromChannel,
 		PostTypeMoveChannel,
 		PostTypeAddToTeam,

@@ -4,6 +4,7 @@
 import type {ChannelBookmarkWithFileInfo, UpdateChannelBookmarkResponse} from '@mattermost/types/channel_bookmarks';
 import type {ChannelCategory} from '@mattermost/types/channel_categories';
 import type {Channel, ChannelMembership, ChannelType} from '@mattermost/types/channels';
+import type {AccessControlTemporaryAccess} from '@mattermost/types/access_control';
 import type {Limits, Subscription} from '@mattermost/types/cloud';
 import type {ClientConfig, ClientLicense} from '@mattermost/types/config';
 import type {Draft} from '@mattermost/types/drafts';
@@ -266,6 +267,15 @@ export type ChannelBookmarkSorted = BaseWebSocketMessage<WebSocketEvents.Channel
 
 export type ChannelAccessControlUpdated = BaseWebSocketMessage<WebSocketEvents.ChannelAccessControlUpdated, {
     channel: JsonEncodedValue<Channel>;
+}>;
+
+export type AccessControlTemporaryAccessPrompt = BaseWebSocketMessage<WebSocketEvents.AccessControlTemporaryAccessPrompt, {
+    temporary_access: AccessControlTemporaryAccess;
+    temporary_accesses: AccessControlTemporaryAccess[];
+}>;
+
+export type AccessControlTemporaryAccessExpired = BaseWebSocketMessage<WebSocketEvents.AccessControlTemporaryAccessExpired, {
+    temporary_access: AccessControlTemporaryAccess;
 }>;
 
 // Team and team member messages

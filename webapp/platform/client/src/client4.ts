@@ -3,7 +3,7 @@
 
 /* eslint-disable max-lines */
 
-import type {AccessControlPolicy, CELExpressionError, AccessControlTestResult, AccessControlPoliciesResult, AccessControlPolicyChannelsResult, AccessControlVisualAST, AccessControlAttributes, AccessControlPolicyActiveUpdate, AccessControlBypassCreateRequest, AccessControlBypassCreateResponse, AccessControlBypassSearch, AccessControlBypassesResult, AccessControlBypass, PolicySimulationResponse, PolicySimulationByUsersParams} from '@mattermost/types/access_control';
+import type {AccessControlPolicy, CELExpressionError, AccessControlTestResult, AccessControlPoliciesResult, AccessControlPolicyChannelsResult, AccessControlVisualAST, AccessControlAttributes, AccessControlPolicyActiveUpdate, AccessControlTemporaryAccessCreateRequest, AccessControlTemporaryAccessCreateResponse, AccessControlTemporaryAccessSearch, AccessControlTemporaryAccessesResult, AccessControlTemporaryAccess, PolicySimulationResponse, PolicySimulationByUsersParams} from '@mattermost/types/access_control';
 import type {ClusterInfo, AnalyticsRow, SchemaMigration, LogFilterQuery} from '@mattermost/types/admin';
 import type {Agent, LLMService} from '@mattermost/types/agents';
 import type {AppBinding, AppCallRequest, AppCallResponse} from '@mattermost/types/apps';
@@ -4904,14 +4904,14 @@ export default class Client4 {
         );
     };
 
-    createAccessControlBypasses = (request: AccessControlBypassCreateRequest) => {
-        return this.doFetch<AccessControlBypassCreateResponse>(
-            `${this.getBaseRoute()}/access_control/bypasses`,
+    createAccessControlTemporaryAccesses = (request: AccessControlTemporaryAccessCreateRequest) => {
+        return this.doFetch<AccessControlTemporaryAccessCreateResponse>(
+            `${this.getBaseRoute()}/access_control/temporary_access`,
             {method: 'post', body: JSON.stringify(request)},
         );
     };
 
-    searchAccessControlBypasses = (opts: AccessControlBypassSearch = {}) => {
+    searchAccessControlTemporaryAccesses = (opts: AccessControlTemporaryAccessSearch = {}) => {
         const params = new URLSearchParams();
         Object.entries(opts).forEach(([key, value]) => {
             if (value !== undefined && value !== '') {
@@ -4919,29 +4919,29 @@ export default class Client4 {
             }
         });
         const query = params.toString();
-        return this.doFetch<AccessControlBypassesResult>(
-            `${this.getBaseRoute()}/access_control/bypasses${query ? `?${query}` : ''}`,
+        return this.doFetch<AccessControlTemporaryAccessesResult>(
+            `${this.getBaseRoute()}/access_control/temporary_access${query ? `?${query}` : ''}`,
             {method: 'get'},
         );
     };
 
-    revokeAccessControlBypass = (id: string) => {
-        return this.doFetch<AccessControlBypass>(
-            `${this.getBaseRoute()}/access_control/bypasses/${id}`,
+    revokeAccessControlTemporaryAccess = (id: string) => {
+        return this.doFetch<AccessControlTemporaryAccess>(
+            `${this.getBaseRoute()}/access_control/temporary_access/${id}`,
             {method: 'delete'},
         );
     };
 
-    getMyAccessControlBypasses = () => {
-        return this.doFetch<AccessControlBypassesResult>(
-            `${this.getBaseRoute()}/access_control/bypasses/me`,
+    getMyAccessControlTemporaryAccesses = () => {
+        return this.doFetch<AccessControlTemporaryAccessesResult>(
+            `${this.getBaseRoute()}/access_control/temporary_access/me`,
             {method: 'get'},
         );
     };
 
-    acceptAccessControlBypass = (id: string) => {
-        return this.doFetch<AccessControlBypass>(
-            `${this.getBaseRoute()}/access_control/bypasses/${id}/accept`,
+    acceptAccessControlTemporaryAccess = (id: string) => {
+        return this.doFetch<AccessControlTemporaryAccess>(
+            `${this.getBaseRoute()}/access_control/temporary_access/${id}/accept`,
             {method: 'post'},
         );
     };

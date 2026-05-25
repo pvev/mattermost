@@ -9,7 +9,7 @@ import {batchActions} from 'redux-batched-actions';
 import type {WebSocketMessage, WebSocketMessages} from '@mattermost/client';
 import {WebSocketEvents} from '@mattermost/client';
 import {AlertCircleOutlineIcon, InformationOutlineIcon} from '@mattermost/compass-icons/components';
-import type {AccessControlBypass} from '@mattermost/types/access_control';
+import type {AccessControlTemporaryAccess, AccessControlTemporaryAccessesResult} from '@mattermost/types/access_control';
 import type {ChannelBookmarkWithFileInfo, UpdateChannelBookmarkResponse} from '@mattermost/types/channel_bookmarks';
 import type {Channel, ChannelMembership} from '@mattermost/types/channels';
 import type {Draft} from '@mattermost/types/drafts';
@@ -165,7 +165,8 @@ import {
 import {EntityType, invalidateAccessControlAttributesCache} from 'components/common/hooks/useAccessControlAttributes';
 import DialogRouter from 'components/dialog_router';
 import InfoToast from 'components/info_toast/info_toast';
-import AccessControlBypassInviteModal from 'components/access_control_bypass_invite_modal';
+import AccessControlTemporaryAccessExpiredModal from 'components/access_control_temporary_access_expired_modal';
+import AccessControlTemporaryAccessInviteModal from 'components/access_control_temporary_access_invite_modal';
 import RemovedFromChannelModal from 'components/removed_from_channel_modal';
 
 import WebSocketClient from 'client/web_websocket_client';
@@ -185,6 +186,11 @@ const dispatch = store.dispatch;
 const getState = store.getState;
 
 const MAX_WEBSOCKET_FAILS = 7;
+// Polling fallback intentionally disabled while we verify direct websocket prompt delivery.
+// const TEMPORARY_ACCESS_PROMPT_POLL_INTERVAL = 15000;
+
+// let accessControlTemporaryAccessPromptPoll: ReturnType<typeof setInterval> | null = null;
+const promptedAccessControlTemporaryAccessIds = new Set<string>();
 
 const pluginEventHandlers: Record<string, Record<string, (msg: WebSocketMessages.Unknown) => void>> = {};
 
@@ -238,10 +244,12 @@ export function initialize() {
     WebSocketClient.addCloseListener(handleClose);
 
     WebSocketClient.initialize(connUrl, undefined, true);
+    // startAccessControlTemporaryAccessPromptPolling();
 }
 
 export function close() {
     WebSocketClient.close();
+    // stopAccessControlTemporaryAccessPromptPolling();
 
     WebSocketClient.removeMessageListener(handleEvent);
     WebSocketClient.removeFirstConnectListener(handleFirstConnect);
@@ -370,7 +378,27 @@ export function reconnect() {
 
     dispatch(resetWsErrorCount());
     dispatch(clearErrors());
+    promptPendingAccessControlTemporaryAccesses();
 }
+
+// function startAccessControlTemporaryAccessPromptPolling() {
+//     if (accessControlTemporaryAccessPromptPoll) {
+//         return;
+//     }
+//
+//     accessControlTemporaryAccessPromptPoll = setInterval(() => {
+//         promptPendingAccessControlTemporaryAccesses();
+//     }, TEMPORARY_ACCESS_PROMPT_POLL_INTERVAL);
+// }
+//
+// function stopAccessControlTemporaryAccessPromptPolling() {
+//     if (!accessControlTemporaryAccessPromptPoll) {
+//         return;
+//     }
+//
+//     clearInterval(accessControlTemporaryAccessPromptPoll);
+//     accessControlTemporaryAccessPromptPoll = null;
+// }
 
 function syncThreads(teamId: string, userId: string) {
     const state = getState();
@@ -411,6 +439,8 @@ function handleFirstConnect() {
         },
         clearErrors(),
     ]));
+    // startAccessControlTemporaryAccessPromptPolling();
+    promptPendingAccessControlTemporaryAccesses();
 }
 
 function handleClose(failCount: number) {
@@ -554,8 +584,12 @@ export function handleEvent(msg: WebSocketMessage) {
         dispatch(handleChannelAccessControlUpdatedEvent(msg));
         break;
 
-    case WebSocketEvents.AccessControlBypassPrompt:
-        handleAccessControlBypassPromptEvent(msg);
+    case WebSocketEvents.AccessControlTemporaryAccessPrompt:
+        handleAccessControlTemporaryAccessPromptEvent(msg);
+        break;
+
+    case WebSocketEvents.AccessControlTemporaryAccessExpired:
+        handleAccessControlTemporaryAccessExpiredEvent(msg);
         break;
 
     case WebSocketEvents.DirectAdded:
@@ -819,28 +853,93 @@ function handleChannelConvertedEvent(msg: WebSocketMessages.ChannelConverted) {
     }
 }
 
-function handleAccessControlBypassPromptEvent(msg: WebSocketMessage) {
-    const rawBypass = msg.data?.bypass;
-    let bypass: AccessControlBypass | null = null;
-    if (typeof rawBypass === 'string') {
+function getMyAccessControlTemporaryAccesses() {
+    return Client4.getMyAccessControlTemporaryAccesses();
+}
+
+function openAccessControlTemporaryAccessPrompt(temporaryAccesses: AccessControlTemporaryAccess[]) {
+    const pendingTemporaryAccesses = temporaryAccesses.filter((temporaryAccess) => !promptedAccessControlTemporaryAccessIds.has(temporaryAccess.id));
+    if (pendingTemporaryAccesses.length === 0) {
+        return;
+    }
+    pendingTemporaryAccesses.forEach((temporaryAccess) => promptedAccessControlTemporaryAccessIds.add(temporaryAccess.id));
+
+    dispatch(openModal({
+        modalId: ModalIdentifiers.TEMPORARY_ACCESS_INVITE,
+        dialogType: AccessControlTemporaryAccessInviteModal,
+        dialogProps: {temporaryAccesses: pendingTemporaryAccesses},
+    }));
+}
+
+function parseAccessControlTemporaryAccessValue(rawTemporaryAccess: unknown): AccessControlTemporaryAccess | null {
+    if (typeof rawTemporaryAccess === 'string') {
         try {
-            bypass = JSON.parse(rawBypass);
+            return JSON.parse(rawTemporaryAccess);
         } catch {
-            return;
+            return null;
         }
-    } else if (rawBypass && typeof rawBypass === 'object') {
-        bypass = rawBypass as AccessControlBypass;
+    }
+    if (rawTemporaryAccess && typeof rawTemporaryAccess === 'object') {
+        return rawTemporaryAccess as AccessControlTemporaryAccess;
+    }
+    return null;
+}
+
+function parseAccessControlTemporaryAccessesFromEvent(msg: WebSocketMessage): AccessControlTemporaryAccess[] {
+    const data = msg.data as {temporary_access?: unknown; temporary_accesses?: unknown};
+    const rawTemporaryAccesses = data.temporary_accesses;
+    if (typeof rawTemporaryAccesses === 'string') {
+        try {
+            const parsed = JSON.parse(rawTemporaryAccesses);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+    if (Array.isArray(rawTemporaryAccesses)) {
+        return rawTemporaryAccesses as AccessControlTemporaryAccess[];
     }
 
-    if (!bypass) {
+    const temporaryAccess = parseAccessControlTemporaryAccessValue(data.temporary_access);
+    return temporaryAccess ? [temporaryAccess] : [];
+}
+
+function openAccessControlTemporaryAccessExpired(temporaryAccess: AccessControlTemporaryAccess) {
+    dispatch(openModal({
+        modalId: ModalIdentifiers.TEMPORARY_ACCESS_EXPIRED,
+        dialogType: AccessControlTemporaryAccessExpiredModal,
+        dialogProps: {temporaryAccess},
+    }));
+}
+
+async function promptPendingAccessControlTemporaryAccesses() {
+    try {
+        const result = await getMyAccessControlTemporaryAccesses();
+        const temporaryAccesses = result.temporary_accesses?.filter((candidate) => (
+            candidate.invite_mode === 'prompt' &&
+            !promptedAccessControlTemporaryAccessIds.has(candidate.id) &&
+            !candidate.accepted_at &&
+            candidate.delete_at === 0 &&
+            candidate.expires_at > Date.now()
+        )) ?? [];
+        openAccessControlTemporaryAccessPrompt(temporaryAccesses);
+    } catch {
+        // Ignore prompt catch-up failures; normal websocket delivery still handles live prompts.
+    }
+}
+
+function handleAccessControlTemporaryAccessPromptEvent(msg: WebSocketMessage) {
+    openAccessControlTemporaryAccessPrompt(parseAccessControlTemporaryAccessesFromEvent(msg));
+}
+
+function handleAccessControlTemporaryAccessExpiredEvent(msg: WebSocketMessage) {
+    const data = msg.data as {temporary_access?: unknown};
+    const temporaryAccess = parseAccessControlTemporaryAccessValue(data.temporary_access);
+    if (!temporaryAccess) {
         return;
     }
 
-    dispatch(openModal({
-        modalId: ModalIdentifiers.ABAC_BYPASS_INVITE,
-        dialogType: AccessControlBypassInviteModal,
-        dialogProps: {bypass},
-    }));
+    openAccessControlTemporaryAccessExpired(temporaryAccess);
 }
 
 export function handleChannelUpdatedEvent(msg: WebSocketMessages.ChannelUpdated): ThunkActionFunc<void> {

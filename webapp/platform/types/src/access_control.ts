@@ -211,17 +211,17 @@ export type AccessControlPolicyActiveUpdate = {
     active: boolean;
 }
 
-export type AccessControlBypassSubject = {
+export type AccessControlTemporaryAccessSubject = {
     type: 'user';
     id: string;
 }
 
-export type AccessControlBypassResource = {
+export type AccessControlTemporaryAccessResource = {
     type: 'team' | 'channel';
     id: string;
 }
 
-export type AccessControlBypass = {
+export type AccessControlTemporaryAccess = {
     id: string;
     subject_type: string;
     subject_id: string;
@@ -233,6 +233,7 @@ export type AccessControlBypass = {
     accepted_at?: number;
     joined_at?: number;
     membership_created?: boolean;
+    team_membership_created?: boolean;
     create_at: number;
     update_at: number;
     expires_at: number;
@@ -241,20 +242,20 @@ export type AccessControlBypass = {
     deleted_by?: string;
 }
 
-export type AccessControlBypassCreateRequest = {
-    subjects: AccessControlBypassSubject[];
-    resources: AccessControlBypassResource[];
+export type AccessControlTemporaryAccessCreateRequest = {
+    subjects: AccessControlTemporaryAccessSubject[];
+    resources: AccessControlTemporaryAccessResource[];
     actions: string[];
     expires_at: number;
     reason: string;
     invite_mode?: 'none' | 'prompt';
 }
 
-export type AccessControlBypassCreateResponse = {
-    bypasses: AccessControlBypass[];
+export type AccessControlTemporaryAccessCreateResponse = {
+    temporary_accesses: AccessControlTemporaryAccess[];
 }
 
-export type AccessControlBypassSearch = {
+export type AccessControlTemporaryAccessSearch = {
     subject_type?: string;
     subject_id?: string;
     resource_type?: string;
@@ -266,8 +267,8 @@ export type AccessControlBypassSearch = {
     per_page?: number;
 }
 
-export type AccessControlBypassesResult = {
-    bypasses: AccessControlBypass[];
+export type AccessControlTemporaryAccessesResult = {
+    temporary_accesses: AccessControlTemporaryAccess[];
     total: number;
 }
 

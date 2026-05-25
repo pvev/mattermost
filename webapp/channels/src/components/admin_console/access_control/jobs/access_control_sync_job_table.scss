@@ -65,6 +65,20 @@
         }
     }
 
+    &__checkbox {
+        display: flex;
+        align-items: center;
+        margin: 0 0 8px;
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+        cursor: pointer;
+        gap: 6px;
+        white-space: nowrap;
+
+        input {
+            margin: 0;
+        }
+    }
+
     .DataGrid_footer {
         border-bottom: 0;
         color: rgba(var(--sys-center-channel-color-rgb), 0.56);

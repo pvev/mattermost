@@ -20,20 +20,20 @@ type Store struct {
 	mock.Mock
 }
 
-// AccessControlBypass provides a mock function with no fields
-func (_m *Store) AccessControlBypass() store.AccessControlBypassStore {
+// AccessControlTemporaryAccess provides a mock function with no fields
+func (_m *Store) AccessControlTemporaryAccess() store.AccessControlTemporaryAccessStore {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
-		panic("no return value specified for AccessControlBypass")
+		panic("no return value specified for AccessControlTemporaryAccess")
 	}
 
-	var r0 store.AccessControlBypassStore
-	if rf, ok := ret.Get(0).(func() store.AccessControlBypassStore); ok {
+	var r0 store.AccessControlTemporaryAccessStore
+	if rf, ok := ret.Get(0).(func() store.AccessControlTemporaryAccessStore); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(store.AccessControlBypassStore)
+			r0 = ret.Get(0).(store.AccessControlTemporaryAccessStore)
 		}
 	}
 

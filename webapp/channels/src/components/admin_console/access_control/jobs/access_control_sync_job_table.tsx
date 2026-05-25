@@ -29,6 +29,7 @@ export default function AccessControlSyncJobTable(props: Props): JSX.Element {
     const [selectedJob, setSelectedJob] = useState<Job | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showInactiveJobRuns, setShowInactiveJobRuns] = useState(false);
 
     useEffect(() => {
         // Load jobs when component mounts
@@ -118,6 +119,17 @@ export default function AccessControlSyncJobTable(props: Props): JSX.Element {
                     </span>
                 </Button>
             </div>
+            <label className='AccessControlSyncJobTable__checkbox'>
+                <input
+                    type='checkbox'
+                    checked={showInactiveJobRuns}
+                    onChange={(e) => setShowInactiveJobRuns(e.target.checked)}
+                />
+                <FormattedMessage
+                    id='admin.access_control.sync_jobs.show_inactive'
+                    defaultMessage='Show inactive job runs'
+                />
+            </label>
             <JobsTable
                 perPage={5}
                 jobType={JobTypes.ACCESS_CONTROL_SYNC}
@@ -130,6 +142,7 @@ export default function AccessControlSyncJobTable(props: Props): JSX.Element {
                 disabled={false}
                 createJobHelpText={<></>}
                 onRowClick={handleRowClick}
+                showInactiveJobs={showInactiveJobRuns}
             />
             {showModal && selectedJob && (
                 <JobDetailsModal

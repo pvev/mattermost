@@ -350,7 +350,8 @@ export const ModalIdentifiers = {
     TEAM_MEMBERS: 'team_members',
     TEST_RESULTS: 'test_results',
     ADD_USER_TO_CHANNEL: 'add_user_to_channel',
-    ABAC_BYPASS_INVITE: 'abac_bypass_invite',
+    TEMPORARY_ACCESS_INVITE: 'temporary_access_invite',
+    TEMPORARY_ACCESS_EXPIRED: 'temporary_access_expired',
     ADD_USER_TO_ROLE: 'add_user_to_role',
     ADD_USER_TO_TEAM: 'add_user_to_team',
     CREATE_DM_CHANNEL: 'create_dm_channel',
@@ -728,6 +729,7 @@ export const PostTypes = {
     JOIN_CHANNEL: 'system_join_channel',
     LEAVE_CHANNEL: 'system_leave_channel',
     ADD_TO_CHANNEL: 'system_add_to_channel',
+    TEMPORARY_ACCESS: 'system_temp_access',
     REMOVE_FROM_CHANNEL: 'system_remove_from_channel',
     ADD_REMOVE: 'system_add_remove',
     JOIN_TEAM: 'system_join_team',
@@ -846,6 +848,7 @@ export const JobTypes = {
     LDAP_SYNC: 'ldap_sync',
     MESSAGE_EXPORT: 'message_export',
     ACCESS_CONTROL_SYNC: 'access_control_sync',
+    TEMPORARY_ACCESS_EXPIRATION: 'temporary_access_expiration',
 } as const;
 
 export const JobStatuses = {

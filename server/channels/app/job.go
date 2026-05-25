@@ -265,6 +265,8 @@ func (a *App) SessionHasPermissionToCreateJob(session model.Session, job *model.
 		}
 
 		return false, model.PermissionManageSystem
+	case model.JobTypeAccessControlTemporaryAccessExpiration:
+		return a.SessionHasPermissionTo(session, model.PermissionManageSystem), model.PermissionManageSystem
 	}
 
 	return false, nil
@@ -299,6 +301,8 @@ func (a *App) SessionHasPermissionToManageJob(session model.Session, job *model.
 		model.JobTypeCleanupExpiredAccessTokens:
 		permission = model.PermissionManageJobs
 	case model.JobTypeAccessControlSync:
+		permission = model.PermissionManageSystem
+	case model.JobTypeAccessControlTemporaryAccessExpiration:
 		permission = model.PermissionManageSystem
 	}
 
@@ -337,6 +341,8 @@ func (a *App) SessionHasPermissionToReadJob(session model.Session, jobType strin
 		model.JobTypeCleanupExpiredAccessTokens:
 		return a.SessionHasPermissionTo(session, model.PermissionReadJobs), model.PermissionReadJobs
 	case model.JobTypeAccessControlSync:
+		return a.SessionHasPermissionTo(session, model.PermissionManageSystem), model.PermissionManageSystem
+	case model.JobTypeAccessControlTemporaryAccessExpiration:
 		return a.SessionHasPermissionTo(session, model.PermissionManageSystem), model.PermissionManageSystem
 	}
 

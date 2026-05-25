@@ -3,7 +3,7 @@
 
 import {batchActions} from 'redux-batched-actions';
 
-import type {AccessControlBypass, AccessControlBypassCreateRequest, AccessControlBypassCreateResponse, AccessControlBypassSearch, AccessControlBypassesResult, AccessControlPoliciesResult, AccessControlPolicy, AccessControlPolicyActiveUpdate, AccessControlTestResult, PolicySimulationResponse, PolicySimulationByUsersParams} from '@mattermost/types/access_control';
+import type {AccessControlTemporaryAccess, AccessControlTemporaryAccessCreateRequest, AccessControlTemporaryAccessCreateResponse, AccessControlTemporaryAccessSearch, AccessControlTemporaryAccessesResult, AccessControlPoliciesResult, AccessControlPolicy, AccessControlPolicyActiveUpdate, AccessControlTestResult, PolicySimulationResponse, PolicySimulationByUsersParams} from '@mattermost/types/access_control';
 import type {ChannelSearchOpts, ChannelsWithTotalCount} from '@mattermost/types/channels';
 import type {ServerError} from '@mattermost/types/errors';
 
@@ -12,6 +12,18 @@ import {Client4} from 'mattermost-redux/client';
 import type {ActionFuncAsync} from 'mattermost-redux/types/actions';
 
 import {bindClientFunc, forceLogoutIfNecessary} from './helpers';
+
+function createAccessControlTemporaryAccessesRequest(request: AccessControlTemporaryAccessCreateRequest) {
+    return Client4.createAccessControlTemporaryAccesses(request);
+}
+
+function searchAccessControlTemporaryAccessesRequest(opts: AccessControlTemporaryAccessSearch) {
+    return Client4.searchAccessControlTemporaryAccesses(opts);
+}
+
+function revokeAccessControlTemporaryAccessRequest(id: string) {
+    return Client4.revokeAccessControlTemporaryAccess(id);
+}
 
 export function getAccessControlPolicy(id: string, channelId?: string, teamId?: string) {
     return bindClientFunc({
@@ -143,11 +155,11 @@ export function unassignChannelsFromAccessControlPolicy(policyId: string, channe
     });
 }
 
-export function createAccessControlBypasses(request: AccessControlBypassCreateRequest): ActionFuncAsync<AccessControlBypassCreateResponse> {
+export function createAccessControlTemporaryAccesses(request: AccessControlTemporaryAccessCreateRequest): ActionFuncAsync<AccessControlTemporaryAccessCreateResponse> {
     return async (dispatch, getState) => {
         let data;
         try {
-            data = await Client4.createAccessControlBypasses(request);
+            data = await createAccessControlTemporaryAccessesRequest(request);
         } catch (error) {
             forceLogoutIfNecessary(error as ServerError, dispatch, getState);
             return {error};
@@ -156,11 +168,11 @@ export function createAccessControlBypasses(request: AccessControlBypassCreateRe
     };
 }
 
-export function searchAccessControlBypasses(opts: AccessControlBypassSearch = {}): ActionFuncAsync<AccessControlBypassesResult> {
+export function searchAccessControlTemporaryAccesses(opts: AccessControlTemporaryAccessSearch = {}): ActionFuncAsync<AccessControlTemporaryAccessesResult> {
     return async (dispatch, getState) => {
         let data;
         try {
-            data = await Client4.searchAccessControlBypasses(opts);
+            data = await searchAccessControlTemporaryAccessesRequest(opts);
         } catch (error) {
             forceLogoutIfNecessary(error as ServerError, dispatch, getState);
             return {error};
@@ -169,11 +181,11 @@ export function searchAccessControlBypasses(opts: AccessControlBypassSearch = {}
     };
 }
 
-export function revokeAccessControlBypass(id: string): ActionFuncAsync<AccessControlBypass> {
+export function revokeAccessControlTemporaryAccess(id: string): ActionFuncAsync<AccessControlTemporaryAccess> {
     return async (dispatch, getState) => {
         let data;
         try {
-            data = await Client4.revokeAccessControlBypass(id);
+            data = await revokeAccessControlTemporaryAccessRequest(id);
         } catch (error) {
             forceLogoutIfNecessary(error as ServerError, dispatch, getState);
             return {error};

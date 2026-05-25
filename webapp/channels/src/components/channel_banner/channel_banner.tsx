@@ -6,10 +6,10 @@ import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 
 import {WithTooltip} from '@mattermost/shared/components/tooltip';
-import type {AccessControlBypass} from '@mattermost/types/access_control';
+import type {AccessControlTemporaryAccess} from '@mattermost/types/access_control';
 import type {ChannelBanner} from '@mattermost/types/channels';
 
-import Client4 from 'mattermost-redux/client/client4';
+import {Client4} from 'mattermost-redux/client';
 import {selectShowChannelBanner} from 'mattermost-redux/selectors/entities/channel_banner';
 import {getChannel, getChannelBanner} from 'mattermost-redux/selectors/entities/channels';
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
@@ -18,6 +18,7 @@ import {getContrastingSimpleColor} from 'mattermost-redux/utils/theme_utils';
 import useChannelClassificationBanner from 'components/common/hooks/useChannelClassificationBanner';
 import Markdown from 'components/markdown';
 
+import {useBurnOnReadTimer} from 'hooks/useBurnOnReadTimer';
 import {isMinimumEnterpriseAdvancedLicense} from 'utils/license_utils';
 import type {TextFormattingOptions} from 'utils/text_formatting';
 
@@ -29,6 +30,30 @@ const markdownRenderingOptions: Partial<TextFormattingOptions> = {
     singleline: true,
     mentionHighlight: false,
 };
+
+function getMyAccessControlTemporaryAccesses() {
+    return Client4.getMyAccessControlTemporaryAccesses();
+}
+
+function formatTemporaryAccessTimeLeft(remainingMs: number): string {
+    const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    const parts: string[] = [];
+    if (days > 0) {
+        parts.push(`${days}d`);
+    }
+    if (days > 0 || hours > 0) {
+        parts.push(`${hours}h`);
+    }
+    parts.push(`${minutes.toString().padStart(2, '0')}m`);
+    parts.push(`${seconds.toString().padStart(2, '0')}s`);
+
+    return parts.join(' ');
+}
 
 type Props = {
     channelId: string;
@@ -44,29 +69,31 @@ export default function ChannelBanner({channelId}: Props) {
     const showNativeBanner = licenseEnabled && channelBannerConfigured;
 
     const classificationBanner = useChannelClassificationBanner(channelId);
-    const [temporaryAccessBypass, setTemporaryAccessBypass] = useState<AccessControlBypass | null>(null);
+    const [temporaryAccess, setTemporaryAccess] = useState<AccessControlTemporaryAccess | null>(null);
+    const temporaryAccessTimer = useBurnOnReadTimer({expireAt: temporaryAccess?.expires_at || null});
+    const temporaryAccessTimeLeft = formatTemporaryAccessTimeLeft(temporaryAccessTimer.remainingMs);
 
     useEffect(() => {
         let cancelled = false;
         async function loadTemporaryAccess() {
             if (!channelId) {
-                setTemporaryAccessBypass(null);
+                setTemporaryAccess(null);
                 return;
             }
             try {
-                const result = await Client4.getMyAccessControlBypasses();
+                const result = await getMyAccessControlTemporaryAccesses();
                 if (cancelled) {
                     return;
                 }
-                const matching = result.bypasses.find((bypass) => {
-                    if (bypass.resource_type === 'channel' && bypass.resource_id === channelId) {
+                const matching = result.temporary_accesses.find((temporaryAccess) => {
+                    if (temporaryAccess.resource_type === 'channel' && temporaryAccess.resource_id === channelId) {
                         return true;
                     }
-                    return Boolean(channel?.team_id && bypass.resource_type === 'team' && bypass.resource_id === channel.team_id);
+                    return Boolean(channel?.team_id && temporaryAccess.resource_type === 'team' && temporaryAccess.resource_id === channel.team_id);
                 });
-                setTemporaryAccessBypass(matching || null);
+                setTemporaryAccess(matching || null);
             } catch {
-                setTemporaryAccessBypass(null);
+                setTemporaryAccess(null);
             }
         }
         loadTemporaryAccess();
@@ -76,11 +103,14 @@ export default function ChannelBanner({channelId}: Props) {
     }, [channel?.team_id, channelId]);
 
     // Classification property value takes priority over native banner_info
-    const temporaryAccessBanner: ChannelBanner | undefined = temporaryAccessBypass ? {
+    const temporaryAccessBanner: ChannelBanner | undefined = temporaryAccess ? {
         enabled: true,
         text: intl.formatMessage(
-            {id: 'access_control_bypass_banner.text', defaultMessage: 'Temporary access until {expiresAt}'},
-            {expiresAt: new Date(temporaryAccessBypass.expires_at).toLocaleString()},
+            {id: 'access_control_temporary_access_banner.text', defaultMessage: 'Temporary access until {expiresAt}. Time left: {timeLeft}'},
+            {
+                expiresAt: new Date(temporaryAccess.expires_at).toLocaleString(),
+                timeLeft: temporaryAccessTimeLeft,
+            },
         ),
         background_color: '#1c58d9',
     } : undefined;

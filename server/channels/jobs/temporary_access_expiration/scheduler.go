@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-package access_control_bypass_expiration
+package temporary_access_expiration
 
 import (
 	"time"
@@ -16,5 +16,5 @@ func MakeScheduler(jobServer *jobs.JobServer) *jobs.PeriodicScheduler {
 	isEnabled := func(cfg *model.Config) bool {
 		return cfg.FeatureFlags.AttributeBasedAccessControl
 	}
-	return jobs.NewPeriodicScheduler(jobServer, model.JobTypeAccessControlBypassExpiration, schedFreq, isEnabled)
+	return jobs.NewPeriodicScheduler(jobServer, model.JobTypeAccessControlTemporaryAccessExpiration, schedFreq, isEnabled)
 }

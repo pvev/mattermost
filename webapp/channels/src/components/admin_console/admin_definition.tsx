@@ -45,7 +45,7 @@ import {ID_PATH_PATTERN} from 'utils/path';
 import {getSiteURL} from 'utils/url';
 
 import PolicyList from './access_control';
-import AccessControlBypasses from './access_control/bypasses';
+import AccessControlTemporaryAccesses, {AccessControlTemporaryAccessCreatePage} from './access_control/temporary_access';
 import AccessControlPolicyJobs from './access_control/jobs';
 import PolicyDetails from './access_control/policy_details';
 import * as DefinitionConstants from './admin_definition_constants';
@@ -672,16 +672,6 @@ const AdminDefinition: AdminDefinitionType = {
                     name: defineMessage({id: 'admin.accesscontrol.title', defaultMessage: 'Attribute-Based Access'}),
                     sections: [
                         {
-                            key: 'admin.accesscontrol.bypasses',
-                            settings: [
-                                {
-                                    type: 'custom',
-                                    component: AccessControlBypasses,
-                                    key: 'AccessControlBypasses',
-                                },
-                            ],
-                        },
-                        {
                             key: 'admin.accesscontrol.settings',
                             settings: [
                                 {
@@ -699,6 +689,48 @@ const AdminDefinition: AdminDefinitionType = {
                                             </a>
                                         ),
                                     },
+                                },
+                            ],
+                        },
+                    ],
+                },
+                restrictedIndicator: getRestrictedIndicator(false, LicenseSkus.EnterpriseAdvanced),
+            },
+            temporary_access_create: {
+                url: 'system_attributes/temporary_access/create',
+                isHidden: it.any(
+                    it.configIsFalse('AccessControlSettings', 'EnableAttributeBasedAccessControl'),
+                    it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
+                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
+                    it.configIsFalse('FeatureFlags', 'AttributeBasedAccessControl'),
+                ),
+                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
+                schema: {
+                    id: 'TemporaryAccess',
+                    component: AccessControlTemporaryAccessCreatePage,
+                },
+            },
+            temporary_access: {
+                url: 'system_attributes/temporary_access',
+                title: defineMessage({id: 'admin.sidebar.temporaryAccess', defaultMessage: 'Temporary Access'}),
+                isHidden: it.any(
+                    it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
+                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
+                    it.configIsFalse('FeatureFlags', 'AttributeBasedAccessControl'),
+                    it.configIsFalse('AccessControlSettings', 'EnableAttributeBasedAccessControl'),
+                ),
+                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
+                schema: {
+                    id: 'TemporaryAccess',
+                    name: defineMessage({id: 'admin.temporary_access.page_title', defaultMessage: 'Temporary Access'}),
+                    sections: [
+                        {
+                            key: 'admin.temporary_access.grants',
+                            settings: [
+                                {
+                                    type: 'custom',
+                                    component: AccessControlTemporaryAccesses,
+                                    key: 'AccessControlTemporaryAccesses',
                                 },
                             ],
                         },

@@ -195,29 +195,29 @@
           $ref: "#/components/responses/InternalServerError"
         "501":
           $ref: "#/components/responses/NotImplemented"
-  /api/v4/access_control/bypasses:
+  /api/v4/access_control/temporary_access:
     post:
       tags:
         - access control
-      summary: Create temporary access control bypasses
+      summary: Create temporary access
       description: |
-        Creates temporary ABAC-only bypasses for selected subjects and resources.
+        Creates temporary access grants for selected subjects and resources without changing subject attributes.
         ##### Permissions
         Must have the `manage_system` permission.
-      operationId: CreateAccessControlBypasses
+      operationId: CreateAccessControlTemporaryAccesses
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AccessControlBypassCreateRequest"
+              $ref: "#/components/schemas/AccessControlTemporaryAccessCreateRequest"
       responses:
         "200":
-          description: Access control bypasses created successfully.
+          description: Access control temporary access grants created successfully.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AccessControlBypassCreateResponse"
+                $ref: "#/components/schemas/AccessControlTemporaryAccessCreateResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -229,12 +229,12 @@
     get:
       tags:
         - access control
-      summary: Search temporary access control bypasses
+      summary: Search temporary access
       description: |
-        Searches temporary ABAC-only bypasses.
+        Searches temporary access grants.
         ##### Permissions
         Must have the `manage_system` permission.
-      operationId: SearchAccessControlBypasses
+      operationId: SearchAccessControlTemporaryAccesses
       parameters:
         - name: status
           in: query
@@ -251,40 +251,40 @@
             type: integer
       responses:
         "200":
-          description: Access control bypass search results.
+          description: Access control temporary access search results.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AccessControlBypassesWithCount"
+                $ref: "#/components/schemas/AccessControlTemporaryAccessesWithCount"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /api/v4/access_control/bypasses/{bypass_id}:
+  /api/v4/access_control/temporary_access/{temporary_access_id}:
     delete:
       tags:
         - access control
-      summary: Revoke a temporary access control bypass
+      summary: Revoke temporary access
       description: |
-        Revokes a temporary ABAC-only bypass early.
+        Revokes temporary access early.
         ##### Permissions
         Must have the `manage_system` permission.
-      operationId: RevokeAccessControlBypass
+      operationId: RevokeAccessControlTemporaryAccess
       parameters:
-        - name: bypass_id
+        - name: temporary_access_id
           in: path
           required: true
           schema:
             type: string
       responses:
         "200":
-          description: Access control bypass revoked successfully.
+          description: Access control temporary access revoked successfully.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AccessControlBypass"
+                $ref: "#/components/schemas/AccessControlTemporaryAccess"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -295,44 +295,44 @@
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /api/v4/access_control/bypasses/me:
+  /api/v4/access_control/temporary_access/me:
     get:
       tags:
         - access control
-      summary: Get my active access control bypasses
-      description: Returns active temporary ABAC bypasses for the current user.
-      operationId: GetMyAccessControlBypasses
+      summary: Get my active temporary accesses
+      description: Returns active temporary ABAC temporary access grants for the current user.
+      operationId: GetMyAccessControlTemporaryAccesses
       responses:
         "200":
-          description: Active bypasses for the current user.
+          description: Active temporary access grants for the current user.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AccessControlBypassesWithCount"
+                $ref: "#/components/schemas/AccessControlTemporaryAccessesWithCount"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /api/v4/access_control/bypasses/{bypass_id}/accept:
+  /api/v4/access_control/temporary_access/{temporary_access_id}/accept:
     post:
       tags:
         - access control
-      summary: Accept a temporary access control bypass invitation
-      description: Accepts a prompt-mode temporary ABAC bypass and joins the user to the target resource when needed.
-      operationId: AcceptAccessControlBypass
+      summary: Acknowledge a temporary access notification
+      description: Acknowledges a prompt-mode temporary access notification.
+      operationId: AcceptAccessControlTemporaryAccess
       parameters:
-        - name: bypass_id
+        - name: temporary_access_id
           in: path
           required: true
           schema:
             type: string
       responses:
         "200":
-          description: Access control bypass accepted successfully.
+          description: Access control temporary access accepted successfully.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AccessControlBypass"
+                $ref: "#/components/schemas/AccessControlTemporaryAccess"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":

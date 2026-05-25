@@ -84,7 +84,8 @@ export const enum WebSocketEvents {
     ChannelBookmarkDeleted = 'channel_bookmark_deleted',
     ChannelBookmarkSorted = 'channel_bookmark_sorted',
     ChannelAccessControlUpdated = 'channel_access_control_updated',
-    AccessControlBypassPrompt = 'access_control_bypass_prompt',
+    AccessControlTemporaryAccessPrompt = 'access_control_temporary_access_prompt',
+    AccessControlTemporaryAccessExpired = 'access_control_temporary_access_expired',
     PresenceIndicator = 'presence',
     PostedNotifyAck = 'posted_notify_ack', // This isn't currently used by the web app
     ScheduledPostCreated = 'scheduled_post_created',

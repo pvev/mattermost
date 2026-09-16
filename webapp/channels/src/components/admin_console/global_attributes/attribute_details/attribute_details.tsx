@@ -1463,6 +1463,8 @@ function AttributeDetails({disabled = false}: Props): JSX.Element {
                         channelResource={channelResource}
                         onChannelResourceChange={handleChannelResourceChange}
                         ordered={fieldType === 'rank'}
+                        channelFieldId={persistedLinkedFieldsRef.current.channel?.id}
+                        attributeDisplayName={displayName}
                     />
                 </div>
             </div>

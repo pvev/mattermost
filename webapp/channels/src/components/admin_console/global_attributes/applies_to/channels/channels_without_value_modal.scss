@@ -1,0 +1,50 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+.ChannelsWithoutValueModal {
+    &__filters {
+        display: flex;
+        margin-bottom: 12px;
+        gap: 8px;
+
+        button {
+            padding: 4px 8px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+
+            &.active {
+                font-weight: 600;
+            }
+        }
+    }
+
+    &__table {
+        width: 100%;
+
+        th,
+        td {
+            padding: 8px 4px;
+            text-align: left;
+        }
+
+        a {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+    }
+
+    &__empty,
+    &__error {
+        padding: 24px 0;
+        text-align: center;
+    }
+
+    &__pagination {
+        display: flex;
+        width: 100%;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+}

@@ -10,8 +10,21 @@ import {renderWithContext, screen, userEvent} from 'tests/react_testing_utils';
 import ChannelsResourceRow from './channels_resource_row';
 import type {ChannelResourceConfig} from './types';
 import {DEFAULT_CHANNEL_RESOURCE_CONFIG} from './types';
+import useChannelMissingValues from './use_channel_missing_values';
+
+// Isolates this suite from the MM-70717 missing-values fetch -- it is covered
+// by use_channel_missing_values.test.ts and channels_resource_settings.test.tsx.
+// Idle/empty by default so every existing assertion here (in particular
+// "toggles required") behaves exactly as before that feature landed.
+jest.mock('./use_channel_missing_values');
+
+const mockUseChannelMissingValues = jest.mocked(useChannelMissingValues);
 
 describe('ChannelsResourceRow', () => {
+    beforeEach(() => {
+        mockUseChannelMissingValues.mockReturnValue({loading: false, failed: false, summary: null, reload: jest.fn()});
+    });
+
     const renderRow = (overrides: Partial<ChannelResourceConfig> = {}, props: {disabled?: boolean; ordered?: boolean} = {}) => {
         const onChange = jest.fn();
         const onRemove = jest.fn();

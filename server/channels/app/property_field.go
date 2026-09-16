@@ -26,6 +26,42 @@ func propertyFieldOptionsEqual(a, b any) bool {
 	return reflect.DeepEqual(a, b)
 }
 
+// checkRequiredAttributeTransition blocks flipping a channel attribute to
+// required while active, local channels still lack a value. Edge-triggered on
+// false->true only: required can legitimately be true while channels are
+// non-compliant (it is hard-enforced at channel creation only, and an
+// unarchived channel can re-enter the population without a value -- see
+// MM-70717), so a level-triggered check would trap admins on unrelated edits
+// to an already-required field.
+func (a *App) checkRequiredAttributeTransition(rctx request.CTX, callerName, groupID string, prev, next *model.PropertyField) *model.AppError {
+	if !a.Config().FeatureFlags.ChannelAttributes || !model.MinimumEnterpriseAdvancedLicense(a.License()) {
+		return nil
+	}
+
+	if next.ObjectType != model.PropertyFieldObjectTypeChannel {
+		return nil
+	}
+
+	if model.IsPropertyFieldRequired(prev) || !model.IsPropertyFieldRequired(next) {
+		return nil
+	}
+
+	accessControlGroup, err := a.Srv().propertyService.GetPropertyGroup(model.AccessControlPropertyGroupName)
+	if err != nil || accessControlGroup.ID != groupID {
+		return nil
+	}
+
+	exists, storeErr := a.Srv().Store().Channel().ExistsChannelMissingPropertyValue(groupID, next.ID)
+	if storeErr != nil {
+		return model.NewAppError(callerName, "app.channel.missing_property_values.app_error", nil, "", http.StatusInternalServerError).Wrap(storeErr)
+	}
+	if exists {
+		return model.NewAppError(callerName, "api.property_field.required.channels_missing_values.app_error", nil, "", http.StatusConflict)
+	}
+
+	return nil
+}
+
 func propertyFieldBroadcastParams(rctx request.CTX, field *model.PropertyField) (teamID, channelID string, ok bool) {
 	switch field.TargetType {
 	case "team":
@@ -107,6 +143,20 @@ func (a *App) CreatePropertyField(rctx request.CTX, field *model.PropertyField, 
 	field.Name = strings.TrimSpace(field.Name)
 
 	if appErr := a.rankPropertyFieldGate("CreatePropertyField", field); appErr != nil {
+		return nil, appErr
+	}
+
+	// Same edge-triggered gate as UpdatePropertyFields, with prev=nil so a
+	// create-with-required=true is treated as the false->true transition it
+	// actually is. Without this, an API/plugin caller could bypass the
+	// toggle path entirely by creating the field already required -- the
+	// webapp create form never exposes Required precisely to prevent this,
+	// but nothing enforced it server-side. field.ID is still empty here
+	// (assigned by the store on save), which is fine: no active channel can
+	// ever hold a value for a field ID that doesn't exist yet, so the
+	// missing-value check still answers correctly ("blocked whenever any
+	// active local channel exists").
+	if appErr := a.checkRequiredAttributeTransition(rctx, "CreatePropertyField", field.GroupID, nil, field); appErr != nil {
 		return nil, appErr
 	}
 
@@ -373,6 +423,10 @@ func (a *App) UpdatePropertyFields(rctx request.CTX, groupID string, fields []*m
 				"cannot update protected field",
 				http.StatusForbidden,
 			)
+		}
+
+		if appErr := a.checkRequiredAttributeTransition(rctx, "UpdatePropertyFields", groupID, existing, f); appErr != nil {
+			return nil, nil, appErr
 		}
 	}
 

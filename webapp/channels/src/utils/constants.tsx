@@ -504,6 +504,8 @@ export const ModalIdentifiers = {
     CHANNEL_RESOURCE_REMOVE: 'channel_resource_remove',
     GLOBAL_ATTRIBUTE_FIELD_DELETE: 'global_attribute_field_delete',
     GLOBAL_ATTRIBUTE_REMOVE_APPLIES_TO: 'global_attribute_remove_applies_to',
+    GLOBAL_ATTRIBUTE_CHANNELS_WITHOUT_VALUE: 'global_attribute_channels_without_value',
+    GLOBAL_ATTRIBUTE_NOTIFY_CHANNEL_ADMINS: 'global_attribute_notify_channel_admins',
     ATTRIBUTE_MODAL_LDAP: 'attribute_modal_ldap',
     ATTRIBUTE_MODAL_SAML: 'attribute_modal_saml',
     RANKED_SCHEMA_MODAL: 'ranked_schema_modal',

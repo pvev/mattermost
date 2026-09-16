@@ -87,10 +87,20 @@ export type SetupResult = {
 /**
  * Creates the full classification setup: template field + channel linked field.
  * Returns the created fields and the resolved levels (with server-assigned IDs).
+ *
+ * `required` seeds `attrs.required` on the channel field at creation time. This
+ * is deliberately not "create optional, then flip Required on" -- MM-70717's
+ * required-attribute gate blocks that PATCH transition while any active channel
+ * lacks a value, which on a shared e2e server is effectively always true for a
+ * brand-new field. Seeding it at creation is unaffected by that gate (creation
+ * is intentionally ungated -- see checkRequiredAttributeTransition's doc
+ * comment in server/channels/app/property_field.go) and matches a real server
+ * that already had the field marked required before this test ever ran.
  */
 export async function setupClassificationWithChannelField(
     adminClient: Client4,
     levels: Array<{name: string; color: string; rank: number}> = TEST_LEVELS,
+    required = false,
 ): Promise<SetupResult> {
     await deleteClassificationFieldsIfExist(adminClient);
 
@@ -119,6 +129,7 @@ export async function setupClassificationWithChannelField(
         linked_field_id: templateField.id,
         permission_field: 'admin',
         permission_values: 'admin',
+        ...(required ? {attrs: {required: true}} : {}),
     } as Parameters<Client4['createPropertyField']>[2]);
 
     // Resolve levels with server-assigned IDs

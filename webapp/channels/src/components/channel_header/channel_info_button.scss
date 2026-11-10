@@ -1,0 +1,11 @@
+.channelInfoButton__missingValuesDot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--error-text);
+    box-shadow: 0 0 0 2px var(--center-channel-bg);
+    pointer-events: none;
+}

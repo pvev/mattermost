@@ -16,6 +16,7 @@ import {asGraphFieldRef} from 'components/property_fields/graph';
 import AssignmentGraphPicker from 'components/property_fields/hierarchical_value_menu/assignment_picker';
 
 import AttributeChip, {AttributeChipRemoveButton} from './attribute_chip';
+import MissingValuePill from './missing_value_pill';
 import type {ChannelAttributeValue} from './set_channel_attribute_value';
 
 type Option = {label: string; value: string; color?: string};
@@ -79,6 +80,13 @@ type Props = {
     onSubmit: (value: ChannelAttributeValue) => void;
     onCancel: () => void;
     saving: boolean;
+
+    // The row is a required attribute with no value yet: the empty state reads as
+    // something to fill in rather than as "Not set".
+    missing?: boolean;
+
+    // Opens the option menu each time it changes to a non-zero value.
+    openSignal?: number;
 };
 
 /**
@@ -90,7 +98,7 @@ type Props = {
  * multiselect share the borderless inline chip chrome used by the graph
  * picker in Channel Info — no boxed input trigger, no Clear menu item.
  */
-const ChannelAttributeRowEditor = ({field, rawValue, displayValue, color, onSubmit, onCancel, saving}: Props) => {
+const ChannelAttributeRowEditor = ({field, rawValue, displayValue, color, onSubmit, onCancel, saving, missing = false, openSignal = 0}: Props) => {
     const {formatMessage} = useIntl();
 
     const label = getPropertyFieldLabel(field);
@@ -150,6 +158,12 @@ const ChannelAttributeRowEditor = ({field, rawValue, displayValue, color, onSubm
         document.addEventListener('pointerdown', handlePointerDown);
         return () => document.removeEventListener('pointerdown', handlePointerDown);
     }, [menuOpen, menuButtonId, menuId]);
+
+    useEffect(() => {
+        if (openSignal > 0) {
+            setMenuOpen(true);
+        }
+    }, [openSignal]);
 
     const handlePick = useCallback((optionId: string) => {
         if (isMultiselect) {
@@ -220,7 +234,10 @@ const ChannelAttributeRowEditor = ({field, rawValue, displayValue, color, onSubm
                 menuId={`channelAttributeEdit-${field.name}`}
                 buttonId={`channelInfoAttributeEdit-${field.name}`}
                 buttonDataTestId={`channelInfoAttributeEdit-${field.name}`}
-                placeholder={formatMessage({
+                placeholder={missing ? formatMessage({
+                    id: 'channel_attributes.info.select_a_value',
+                    defaultMessage: 'Select a value',
+                }) : formatMessage({
                     id: 'channel_attributes.info.not_set',
                     defaultMessage: 'Not set',
                 })}
@@ -231,7 +248,9 @@ const ChannelAttributeRowEditor = ({field, rawValue, displayValue, color, onSubm
         );
     }
 
-    const emptyPlaceholder = (
+    const emptyPlaceholder = missing ? (
+        <MissingValuePill field={field}/>
+    ) : (
         <span
             className='ChannelInfoAttributes__empty'
             data-testid={`channelInfoAttributeUnset-${field.name}`}

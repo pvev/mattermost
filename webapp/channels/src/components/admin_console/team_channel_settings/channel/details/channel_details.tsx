@@ -7,7 +7,7 @@ import {FormattedMessage} from 'react-intl';
 
 import type {AccessControlPolicy, AccessControlPolicyRule} from '@mattermost/types/access_control';
 import {getMembershipRule, buildRulesWithMembership, getAutoAddFromRules, autoAddModeForToggle} from '@mattermost/types/access_control';
-import type {Channel, ChannelModeration as ChannelPermissions, ChannelModerationPatch} from '@mattermost/types/channels';
+import type {Channel, ChannelModeration as ChannelPermissions, ChannelModerationPatch, ChannelPropertyValuePatchItems} from '@mattermost/types/channels';
 import {SyncableType} from '@mattermost/types/groups';
 import type {SyncablePatch, Group} from '@mattermost/types/groups';
 import type {JobTypeBase} from '@mattermost/types/jobs';
@@ -60,6 +60,7 @@ export interface ChannelDetailsProps {
     channelGroupsEnabled: boolean;
     abacSupported: boolean;
     channelAttributesEnabled?: boolean;
+    channelAttributesRequiredEnabled?: boolean;
     isDisabled?: boolean;
     actions: ChannelDetailsActions;
 }
@@ -133,7 +134,7 @@ export type ChannelDetailsActions = {
     getTeam: (teamId: string) => Promise<ActionResult>;
     getChannelModerations: (channelId: string) => Promise<ActionResult>;
     patchChannel: (channelId: string, patch: Partial<Channel>) => Promise<ActionResult>;
-    updateChannelPrivacy: (channelId: string, privacy: string) => Promise<ActionResult>;
+    updateChannelPrivacy: (channelId: string, privacy: string, propertyValues?: ChannelPropertyValuePatchItems) => Promise<ActionResult>;
     patchGroupSyncable: (groupID: string, syncableID: string, syncableType: SyncableType, patch: Partial<SyncablePatch>) => Promise<ActionResult>;
     patchChannelModerations: (channelID: string, patch: ChannelModerationPatch[]) => Promise<ActionResult>;
     loadScheme: (schemeID: string) => Promise<ActionResult>;
@@ -437,6 +438,15 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
         this.processGroupsChange(groups);
     };
 
+    // Values the confirmation dialog collected for the privacy change. They are
+    // not state: they only have to survive from the confirm click to handleSubmit.
+    private privacyPropertyValues: ChannelPropertyValuePatchItems | undefined;
+
+    private handleConvertConfirm = (values?: ChannelPropertyValuePatchItems) => {
+        this.privacyPropertyValues = values;
+        this.handleSubmit();
+    };
+
     private hideConvertConfirmModal = () => {
         this.setState({showConvertConfirmModal: false});
     };
@@ -501,7 +511,10 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
             this.setState({showConvertAndRemoveConfirmModal: true});
             return;
         }
-        if (isPrivacyChanging && usersToRemoveCount === 0 && !serverError) {
+
+        // With required attributes the dialog is what collects their values, so
+        // a retry after a refused conversion has to go through it again.
+        if (isPrivacyChanging && usersToRemoveCount === 0 && (!serverError || this.props.channelAttributesRequiredEnabled)) {
             this.setState({showConvertConfirmModal: true});
             return;
         }
@@ -571,7 +584,17 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
 
         let privacyChangePromise;
         if (isPrivacyChanging) {
-            privacyChangePromise = actions.updateChannelPrivacy(channel.id, isPublic ? Constants.OPEN_CHANNEL : Constants.PRIVATE_CHANNEL);
+            const privacy = isPublic ? Constants.OPEN_CHANNEL : Constants.PRIVATE_CHANNEL;
+
+            // The page's own pending attribute values were saved above, so only
+            // what the dialog asked for travels with the privacy change.
+            const privacyPropertyValues = this.privacyPropertyValues;
+            this.privacyPropertyValues = undefined;
+            if (!isPublic && privacyPropertyValues) {
+                privacyChangePromise = actions.updateChannelPrivacy(channel.id, privacy, privacyPropertyValues);
+            } else {
+                privacyChangePromise = actions.updateChannelPrivacy(channel.id, privacy);
+            }
         }
 
         const patchChannelSyncable = groups.
@@ -1353,6 +1376,7 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
             policyToggled,
             accessControlPolicies,
             missingRequiredChannelAttributes,
+            channelAttributeValues,
         } = this.state;
         const {channel, team} = this.props;
 
@@ -1369,9 +1393,11 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
                 <ConvertConfirmModal
                     show={showConvertConfirmModal}
                     onCancel={this.hideConvertConfirmModal}
-                    onConfirm={this.handleSubmit}
+                    onConfirm={this.handleConvertConfirm}
                     displayName={channel.display_name || ''}
                     toPublic={isPublic}
+                    channelId={channel.id}
+                    pendingValues={channelAttributeValues}
                 />
 
                 {this.props.channelModerationEnabled &&
@@ -1397,10 +1423,12 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
                 <ConvertAndRemoveConfirmModal
                     show={showConvertAndRemoveConfirmModal}
                     onCancel={this.hideConvertAndRemoveConfirmModal}
-                    onConfirm={this.handleSubmit}
+                    onConfirm={this.handleConvertConfirm}
                     displayName={channel.display_name || ''}
                     toPublic={isPublic}
                     removeAmount={usersToRemoveCount}
+                    channelId={channel.id}
+                    pendingValues={channelAttributeValues}
                 />
 
                 <ChannelAccessRulesConfirmModal

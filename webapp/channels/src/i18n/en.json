@@ -16667,6 +16667,10 @@
     "defaultMessage": "No, cancel",
     "description": "Cancel button of the admin console confirmation modal for converting a channel between public and private."
   },
+  "admin.team_channel_settings.convertConfirmModal.missingRequiredAttributes": {
+    "defaultMessage": "This channel has no value for these required attributes:",
+    "description": "Shown in the confirmation dialog for converting a public channel to a private one (System Console channel page and Channel Settings > Info), above the fields to fill in for required channel attributes the channel has no value for yet."
+  },
   "admin.team_channel_settings.convertConfirmModal.toPrivateConfirm": {
     "defaultMessage": "Yes, convert to private channel",
     "description": "Confirm button of the admin console modal that converts a channel to private."

@@ -4422,6 +4422,27 @@ func (a *App) ConvertGroupMessageToChannel(rctx request.CTX, convertedByUserId s
 	toUpdate.Name = gmConversionRequest.Name
 	toUpdate.DisplayName = gmConversionRequest.DisplayName
 
+	// The converter becomes the channel's admin, so the values are checked as for
+	// a channel about to be created in the chosen team.
+	resolution, appErr := a.resolveRequiredChannelAttributes(rctx, convertedByUserId, toUpdate, true, gmConversionRequest.PropertyValues)
+	if appErr != nil {
+		return nil, appErr
+	}
+	if len(resolution.Missing) > 0 {
+		return nil, model.NewAppError("ConvertGroupMessageToChannel", "api.channel.create_channel.missing_required_attributes.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	// Only a value write can fail after the role change, so the converter's role
+	// is only remembered when there is something to write.
+	converterWasAdmin := false
+	if len(resolution.ValuesToWrite) > 0 {
+		converter, memberErr := a.GetChannelMember(rctx, gmConversionRequest.ChannelID, convertedByUserId)
+		if memberErr != nil {
+			return nil, memberErr
+		}
+		converterWasAdmin = converter.SchemeAdmin
+	}
+
 	updatedChannel, appErr := a.UpdateChannel(rctx, toUpdate)
 	if appErr != nil {
 		return nil, appErr
@@ -4429,25 +4450,95 @@ func (a *App) ConvertGroupMessageToChannel(rctx request.CTX, convertedByUserId s
 
 	a.Srv().Platform().InvalidateCacheForChannel(originalChannel)
 
+	// the user conversion the GM becomes the channel admin.
+	_, promoted, appErr := a.updateChannelMemberSchemeRoles(rctx, gmConversionRequest.ChannelID, convertedByUserId, false, true, true)
+	if appErr != nil {
+		if !a.requiredChannelAttributesEnabled() {
+			// As before required attributes existed: the channel stays converted.
+			if finishErr := a.finishGroupMessageConversion(rctx, convertedByUserId, gmConversionRequest); finishErr != nil {
+				return nil, finishErr
+			}
+			return nil, appErr
+		}
+		a.revertConvertedGroupMessage(rctx, originalChannel, updatedChannel, nil, appErr)
+		return nil, appErr
+	}
+
+	// The value write is refused on a group message, so it follows the type change.
+	appErr = a.writeChannelAttributeValues(rctx, updatedChannel, convertedByUserId, resolution.ValuesToWrite)
+	if appErr != nil {
+		a.revertConvertedGroupMessage(rctx, originalChannel, updatedChannel, &channelRoleRestore{userID: convertedByUserId, wasAdmin: converterWasAdmin}, appErr)
+		return nil, appErr
+	}
+
+	if promoted {
+		// Only now, so the message doesn't list a value that was just written.
+		a.queueNewChannelAdminMissingAttributesNoticeByID(rctx, convertedByUserId, gmConversionRequest.ChannelID)
+	}
+
+	if appErr := a.finishGroupMessageConversion(rctx, convertedByUserId, gmConversionRequest); appErr != nil {
+		return nil, appErr
+	}
+
+	return updatedChannel, nil
+}
+
+// finishGroupMessageConversion puts the converted channel in its members'
+// sidebars and posts the conversion message.
+func (a *App) finishGroupMessageConversion(rctx request.CTX, convertedByUserId string, gmConversionRequest *model.GroupMessageConversionRequestBody) *model.AppError {
 	users, appErr := a.GetUsersInChannelPage(&model.UserGetOptions{
 		InChannelId: gmConversionRequest.ChannelID,
 		Page:        0,
 		PerPage:     model.ChannelGroupMaxUsers,
 	}, false)
 	if appErr != nil {
-		return nil, appErr
+		return appErr
 	}
 
 	_ = a.setSidebarCategoriesForConvertedGroupMessage(rctx, gmConversionRequest, users)
 	_ = a.postMessageForConvertGroupMessageToChannel(rctx, gmConversionRequest.ChannelID, convertedByUserId, users)
 
-	// the user conversion the GM becomes the channel admin.
-	_, appErr = a.UpdateChannelMemberSchemeRoles(rctx, gmConversionRequest.ChannelID, convertedByUserId, false, true, true)
-	if appErr != nil {
-		return nil, appErr
+	return nil
+}
+
+// channelRoleRestore is the admin role a member had before a conversion changed it.
+type channelRoleRestore struct {
+	userID   string
+	wasAdmin bool
+}
+
+// revertConvertedGroupMessage puts a channel that was just converted back to the
+// group message it was after a step that had to follow the conversion failed,
+// and the converter back to their role when roles is set (it is nil when the
+// role was never changed). The revert is best effort: if it fails too, both
+// errors are logged so the half-converted channel is findable.
+func (a *App) revertConvertedGroupMessage(rctx request.CTX, original, converted *model.Channel, roles *channelRoleRestore, cause *model.AppError) {
+	toRestore := converted.DeepCopy()
+	toRestore.Type = original.Type
+	toRestore.TeamId = original.TeamId
+	toRestore.Name = original.Name
+	toRestore.DisplayName = original.DisplayName
+
+	var revertErr *model.AppError
+	if _, revertErr = a.UpdateChannel(rctx, toRestore); revertErr == nil {
+		a.Srv().Platform().InvalidateCacheForChannel(original)
+		if roles != nil {
+			_, _, revertErr = a.updateChannelMemberSchemeRoles(rctx, original.Id, roles.userID, false, true, roles.wasAdmin)
+		}
 	}
 
-	return updatedChannel, nil
+	if revertErr != nil {
+		rctx.Logger().Error("Failed to revert a group message conversion that did not complete",
+			mlog.String("channel_id", original.Id),
+			mlog.NamedErr("conversion_error", cause),
+			mlog.NamedErr("revert_error", revertErr),
+		)
+		return
+	}
+	rctx.Logger().Error("A group message conversion did not complete and was reverted",
+		mlog.String("channel_id", original.Id),
+		mlog.Err(cause),
+	)
 }
 
 func (a *App) setSidebarCategoriesForConvertedGroupMessage(rctx request.CTX, gmConversionRequest *model.GroupMessageConversionRequestBody, channelUsers []*model.User) *model.AppError {

@@ -6,6 +6,7 @@ package app
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -468,5 +469,296 @@ func TestCanSetChannelAttributeOnPendingChannel(t *testing.T) {
 	t.Run("sysadmin tier is not settable by a caller without manage_system", func(t *testing.T) {
 		rctx := th.Context.WithSession(&model.Session{Roles: model.SystemUserRoleId})
 		require.False(t, th.App.CanSetChannelAttributeOnPendingChannel(rctx, &model.PropertyField{PermissionValues: &sysadmin}))
+	})
+}
+
+func TestConvertGroupMessageToChannelRequiredAttributes(t *testing.T) {
+	mainHelper.Parallel(t)
+
+	// newGM returns a group message of th.BasicUser and two other members of
+	// th.BasicTeam, and a context for th.BasicUser as a plain team member.
+	newGM := func(t *testing.T, th *TestHelper) (*model.Channel, *model.Team, request.CTX) {
+		t.Helper()
+		other1 := th.CreateUser(t)
+		other2 := th.CreateUser(t)
+		th.LinkUserToTeam(t, other1, th.BasicTeam)
+		th.LinkUserToTeam(t, other2, th.BasicTeam)
+		gm := th.CreateGroupChannel(t, other1, other2)
+		return gm, th.BasicTeam, requiredAttributesSessionCtx(th, th.BasicUser, model.SystemUserRoleId)
+	}
+
+	conversion := func(gm *model.Channel, team *model.Team, items ...model.PropertyValuePatchItem) *model.GroupMessageConversionRequestBody {
+		id := model.NewId()
+		return &model.GroupMessageConversionRequestBody{
+			ChannelID:      gm.Id,
+			TeamID:         team.Id,
+			Name:           "converted-" + id,
+			DisplayName:    "Converted " + id,
+			PropertyValues: items,
+		}
+	}
+
+	memberIDsOf := func(t *testing.T, th *TestHelper, channel *model.Channel) []string {
+		t.Helper()
+		members, appErr := th.App.GetChannelMembersPage(th.Context, channel.Id, 0, 100)
+		require.Nil(t, appErr)
+		ids := make([]string, 0, len(members))
+		for _, member := range members {
+			ids = append(ids, member.UserId)
+		}
+		return ids
+	}
+
+	storedValues := func(t *testing.T, th *TestHelper, field *model.PropertyField, channel *model.Channel) []*model.PropertyValue {
+		t.Helper()
+		stored, err := th.App.Srv().Store().PropertyValue().SearchPropertyValues(th.Context, model.PropertyValueSearchOpts{
+			GroupID:    field.GroupID,
+			TargetType: model.PropertyValueTargetTypeChannel,
+			TargetIDs:  []string{channel.Id},
+			PerPage:    10,
+		})
+		require.NoError(t, err)
+		return stored
+	}
+
+	conversionPosts := func(t *testing.T, th *TestHelper, channel *model.Channel) int {
+		t.Helper()
+		postList, err := th.App.Srv().Store().Post().GetPosts(th.Context, model.GetPostsOptions{ChannelId: channel.Id, Page: 0, PerPage: 50}, false, map[string]bool{})
+		require.NoError(t, err)
+		count := 0
+		for _, post := range postList.Posts {
+			if post.Type == model.PostTypeGMConvertedToChannel {
+				count++
+			}
+		}
+		return count
+	}
+
+	inChannelsCategory := func(t *testing.T, th *TestHelper, userID, teamID, channelID string) bool {
+		t.Helper()
+		categories, appErr := th.App.GetSidebarCategories(th.Context, userID, teamID)
+		require.Nil(t, appErr)
+		for _, category := range categories.Categories {
+			// A group message always shows in the direct messages category.
+			if category.Type == model.SidebarCategoryChannels && slices.Contains(category.Channels, channelID) {
+				return true
+			}
+		}
+		return false
+	}
+
+	requireStillGM := func(t *testing.T, th *TestHelper, original *model.Channel, members []string) {
+		t.Helper()
+		current, appErr := th.App.GetChannel(th.Context, original.Id)
+		require.Nil(t, appErr)
+		assert.Equal(t, model.ChannelTypeGroup, current.Type)
+		assert.Equal(t, original.TeamId, current.TeamId)
+		assert.Equal(t, original.Name, current.Name)
+		assert.Equal(t, original.DisplayName, current.DisplayName)
+		assert.ElementsMatch(t, members, memberIDsOf(t, th, current))
+	}
+
+	t.Run("a required attribute the converter can set and didn't send is refused, and nothing changes", func(t *testing.T) {
+		th := setupMissingAttributes(t)
+		gm, team, ctx := newGM(t, th)
+		members := memberIDsOf(t, th, gm)
+		createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+		converted, appErr := th.App.ConvertGroupMessageToChannel(ctx, th.BasicUser.Id, conversion(gm, team))
+		assert.Nil(t, converted)
+		requireResolveError(t, appErr, "api.channel.create_channel.missing_required_attributes.app_error", http.StatusBadRequest)
+
+		requireStillGM(t, th, gm, members)
+		member, appErr := th.App.GetChannelMember(th.Context, gm.Id, th.BasicUser.Id)
+		require.Nil(t, appErr)
+		assert.False(t, member.SchemeAdmin)
+		assert.Zero(t, conversionPosts(t, th, gm))
+	})
+
+	t.Run("an empty value for a required attribute is refused like a missing one", func(t *testing.T) {
+		th := setupMissingAttributes(t)
+		gm, team, ctx := newGM(t, th)
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+		_, appErr := th.App.ConvertGroupMessageToChannel(ctx, th.BasicUser.Id, conversion(gm, team,
+			model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"   "`)}))
+		requireResolveError(t, appErr, "api.channel.create_channel.missing_required_attributes.app_error", http.StatusBadRequest)
+
+		current, appErr := th.App.GetChannel(th.Context, gm.Id)
+		require.Nil(t, appErr)
+		assert.Equal(t, model.ChannelTypeGroup, current.Type)
+	})
+
+	t.Run("an invalid value item is refused and nothing changes", func(t *testing.T) {
+		th := setupMissingAttributes(t)
+		gm, team, ctx := newGM(t, th)
+		members := memberIDsOf(t, th, gm)
+
+		_, appErr := th.App.ConvertGroupMessageToChannel(ctx, th.BasicUser.Id, conversion(gm, team,
+			model.PropertyValuePatchItem{FieldID: model.NewId(), Value: json.RawMessage(`"x"`)}))
+		requireResolveError(t, appErr, "api.channel.create_channel.invalid_attribute.app_error", http.StatusBadRequest)
+
+		requireStillGM(t, th, gm, members)
+	})
+
+	t.Run("sent values are stored, the converter becomes channel admin and the sidebar and post follow", func(t *testing.T) {
+		th := setupMissingAttributes(t)
+		bot, appErr := th.App.GetSystemBot(th.Context)
+		require.Nil(t, appErr)
+		gm, team, ctx := newGM(t, th)
+		// Only a channel admin may write this one, so the write has to follow the promotion.
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+		converted, appErr := th.App.ConvertGroupMessageToChannel(ctx, th.BasicUser.Id, conversion(gm, team,
+			model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)}))
+		require.Nil(t, appErr)
+		assert.Equal(t, model.ChannelTypePrivate, converted.Type)
+		assert.Equal(t, team.Id, converted.TeamId)
+
+		current, appErr := th.App.GetChannel(th.Context, gm.Id)
+		require.Nil(t, appErr)
+		assert.Equal(t, model.ChannelTypePrivate, current.Type)
+
+		member, appErr := th.App.GetChannelMember(th.Context, gm.Id, th.BasicUser.Id)
+		require.Nil(t, appErr)
+		assert.True(t, member.SchemeAdmin)
+
+		stored := storedValues(t, th, field, current)
+		require.Len(t, stored, 1)
+		assert.JSONEq(t, `"ALPHA"`, string(stored[0].Value))
+		assert.Equal(t, th.BasicUser.Id, stored[0].CreatedBy)
+
+		assert.Equal(t, 1, conversionPosts(t, th, current))
+		assert.True(t, inChannelsCategory(t, th, th.BasicUser.Id, team.Id, gm.Id))
+		// The value is already there when the new admin is checked, so nothing is reported missing.
+		requireNoMissingAttributesPost(t, th, bot.UserId, th.BasicUser.Id)
+	})
+
+	t.Run("a value write that fails leaves a group message, as it was", func(t *testing.T) {
+		th := setupMissingAttributes(t)
+		gm, team, ctx := newGM(t, th)
+		members := memberIDsOf(t, th, gm)
+		// An option that doesn't exist passes the checks made up front and is
+		// refused by the value hooks, once the channel is already private.
+		field := createMissingAttributesFieldOfType(t, th, model.PropertyFieldTypeSelect, "Program", true, model.PermissionLevelAdmin)
+
+		converted, appErr := th.App.ConvertGroupMessageToChannel(ctx, th.BasicUser.Id, conversion(gm, team,
+			model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"` + model.NewId() + `"`)}))
+		assert.Nil(t, converted)
+		require.NotNil(t, appErr)
+		assert.NotEqual(t, "api.channel.create_channel.missing_required_attributes.app_error", appErr.Id)
+		assert.NotEqual(t, "api.channel.create_channel.invalid_attribute.app_error", appErr.Id)
+
+		requireStillGM(t, th, gm, members)
+		member, appErr := th.App.GetChannelMember(th.Context, gm.Id, th.BasicUser.Id)
+		require.Nil(t, appErr)
+		assert.False(t, member.SchemeAdmin)
+		assert.True(t, member.SchemeUser)
+		assert.Empty(t, storedValues(t, th, field, gm))
+		assert.Zero(t, conversionPosts(t, th, gm))
+		assert.False(t, inChannelsCategory(t, th, th.BasicUser.Id, team.Id, gm.Id))
+	})
+
+	t.Run("a required attribute the converter can't set doesn't stop the conversion", func(t *testing.T) {
+		th := setupMissingAttributes(t)
+		bot, appErr := th.App.GetSystemBot(th.Context)
+		require.Nil(t, appErr)
+		gm, team, ctx := newGM(t, th)
+		field := createMissingAttributesField(t, th, "Sysadmin only", true, model.PermissionLevelSysadmin)
+
+		converted, appErr := th.App.ConvertGroupMessageToChannel(ctx, th.BasicUser.Id, conversion(gm, team))
+		require.Nil(t, appErr)
+		assert.Equal(t, model.ChannelTypePrivate, converted.Type)
+
+		member, appErr := th.App.GetChannelMember(th.Context, gm.Id, th.BasicUser.Id)
+		require.Nil(t, appErr)
+		assert.True(t, member.SchemeAdmin)
+		assert.Empty(t, storedValues(t, th, field, converted))
+
+		// Nor can the new channel admin set it, so there is nothing to message them about.
+		requireNoMissingAttributesPost(t, th, bot.UserId, th.BasicUser.Id)
+	})
+
+	t.Run("a system admin is asked for a system admin level attribute", func(t *testing.T) {
+		th := setupMissingAttributes(t)
+		gm, team, _ := newGM(t, th)
+		createMissingAttributesField(t, th, "Sysadmin only", true, model.PermissionLevelSysadmin)
+		ctx := requiredAttributesSessionCtx(th, th.BasicUser, model.SystemAdminRoleId)
+
+		_, appErr := th.App.ConvertGroupMessageToChannel(ctx, th.BasicUser.Id, conversion(gm, team))
+		requireResolveError(t, appErr, "api.channel.create_channel.missing_required_attributes.app_error", http.StatusBadRequest)
+	})
+
+	t.Run("with required attributes off a group message converts as it always did", func(t *testing.T) {
+		th := SetupConfig(t, setupMissingAttributesConfig).InitBasic(t)
+		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
+		gm, team, ctx := newGM(t, th)
+		// A field can only be marked required while enforcement is on, so it is
+		// seeded under the flag that a server turns off afterwards.
+		th.App.UpdateConfig(func(cfg *model.Config) { cfg.FeatureFlags.ChannelAttributesRequired = true })
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+		th.App.UpdateConfig(func(cfg *model.Config) { cfg.FeatureFlags.ChannelAttributesRequired = false })
+
+		t.Run("values are refused as creation refuses them", func(t *testing.T) {
+			_, appErr := th.App.ConvertGroupMessageToChannel(ctx, th.BasicUser.Id, conversion(gm, team,
+				model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)}))
+			requireResolveError(t, appErr, "api.channel.create_channel.attributes_feature_disabled.app_error", http.StatusBadRequest)
+
+			current, appErr := th.App.GetChannel(th.Context, gm.Id)
+			require.Nil(t, appErr)
+			assert.Equal(t, model.ChannelTypeGroup, current.Type)
+		})
+
+		t.Run("without values nothing is asked", func(t *testing.T) {
+			converted, appErr := th.App.ConvertGroupMessageToChannel(ctx, th.BasicUser.Id, conversion(gm, team))
+			require.Nil(t, appErr)
+			assert.Equal(t, model.ChannelTypePrivate, converted.Type)
+
+			member, appErr := th.App.GetChannelMember(th.Context, gm.Id, th.BasicUser.Id)
+			require.Nil(t, appErr)
+			assert.True(t, member.SchemeAdmin)
+			assert.Equal(t, 1, conversionPosts(t, th, converted))
+			assert.True(t, inChannelsCategory(t, th, th.BasicUser.Id, team.Id, gm.Id))
+		})
+	})
+
+	// A guest can't be made channel admin, so the role step fails after the type change.
+	t.Run("a failed role change reverts the conversion only with required attributes on", func(t *testing.T) {
+		newGuestGM := func(t *testing.T, th *TestHelper) (*model.Channel, *model.User) {
+			t.Helper()
+			guest := th.CreateGuest(t)
+			th.LinkUserToTeam(t, guest, th.BasicTeam)
+			other := th.CreateUser(t)
+			th.LinkUserToTeam(t, other, th.BasicTeam)
+			gm, appErr := th.App.CreateGroupChannel(th.Context, []string{guest.Id, other.Id, th.BasicUser.Id}, th.BasicUser.Id)
+			require.Nil(t, appErr)
+			return gm, guest
+		}
+
+		t.Run("on", func(t *testing.T) {
+			th := setupMissingAttributes(t)
+			gm, guest := newGuestGM(t, th)
+
+			_, appErr := th.App.ConvertGroupMessageToChannel(requiredAttributesSessionCtx(th, guest, model.SystemGuestRoleId), guest.Id, conversion(gm, th.BasicTeam))
+			require.NotNil(t, appErr)
+
+			requireStillGM(t, th, gm, memberIDsOf(t, th, gm))
+			assert.Zero(t, conversionPosts(t, th, gm))
+		})
+
+		t.Run("off", func(t *testing.T) {
+			th := SetupConfig(t, func(cfg *model.Config) {
+				cfg.FeatureFlags.ChannelAttributesRequired = false
+			}).InitBasic(t)
+			gm, guest := newGuestGM(t, th)
+
+			_, appErr := th.App.ConvertGroupMessageToChannel(requiredAttributesSessionCtx(th, guest, model.SystemGuestRoleId), guest.Id, conversion(gm, th.BasicTeam))
+			require.NotNil(t, appErr)
+
+			current, appErr := th.App.GetChannel(th.Context, gm.Id)
+			require.Nil(t, appErr)
+			assert.Equal(t, model.ChannelTypePrivate, current.Type)
+			assert.Equal(t, 1, conversionPosts(t, th, current))
+		})
 	})
 }

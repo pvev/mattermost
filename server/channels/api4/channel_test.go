@@ -749,6 +749,143 @@ func TestCreateChannelWithPropertyValues(t *testing.T) {
 	})
 }
 
+func TestConvertGroupMessageToChannel(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := SetupConfig(t, func(cfg *model.Config) {
+		cfg.FeatureFlags.ChannelAttributes = true
+		cfg.FeatureFlags.ChannelAttributesRequired = true
+	}).InitBasic(t)
+	th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
+
+	group, appErr := th.App.GetPropertyGroup(th.Context, model.AccessControlPropertyGroupName)
+	require.Nil(t, appErr)
+
+	memberLevel := model.PermissionLevelMember
+	adminLevel := model.PermissionLevelAdmin
+
+	// Seeded through the property service, which refuses a field created already
+	// required while an active channel lacks a value. One field lives for one subtest.
+	createRequiredField := func(t *testing.T) *model.PropertyField {
+		t.Helper()
+		field, err := th.App.Srv().PropertyService().CreatePropertyField(th.Context, &model.PropertyField{
+			Name:              "f_" + model.NewId(),
+			Type:              model.PropertyFieldTypeText,
+			GroupID:           group.ID,
+			ObjectType:        "channel",
+			TargetType:        "system",
+			PermissionField:   &memberLevel,
+			PermissionValues:  &adminLevel,
+			PermissionOptions: &memberLevel,
+			Attrs:             model.StringInterface{model.PropertyFieldAttrRequired: true},
+		})
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			require.Nil(t, th.App.DeletePropertyField(th.Context, group.ID, field.ID, true, ""))
+		})
+		return field
+	}
+
+	newGM := func(t *testing.T) *model.Channel {
+		t.Helper()
+		other := th.CreateUser(t)
+		th.LinkUserToTeam(t, other, th.BasicTeam)
+		gm, gmErr := th.App.CreateGroupChannel(th.Context, []string{th.BasicUser.Id, th.BasicUser2.Id, other.Id}, th.BasicUser.Id)
+		require.Nil(t, gmErr)
+		return gm
+	}
+
+	convert := func(client *model.Client4, gm *model.Channel, items ...model.PropertyValuePatchItem) (*model.Channel, error) {
+		id := model.NewId()
+		resp, err := client.DoAPIPostJSON(context.Background(), "/channels/"+gm.Id+"/convert_to_channel", &model.GroupMessageConversionRequestBody{
+			ChannelID:      gm.Id,
+			TeamID:         th.BasicTeam.Id,
+			Name:           "converted-" + id,
+			DisplayName:    "Converted " + id,
+			PropertyValues: items,
+		})
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		var channel model.Channel
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&channel))
+		return &channel, nil
+	}
+
+	requireChannelType := func(t *testing.T, channelID string, channelType model.ChannelType) {
+		t.Helper()
+		channel, chErr := th.App.GetChannel(th.Context, channelID)
+		require.Nil(t, chErr)
+		require.Equal(t, channelType, channel.Type)
+	}
+
+	th.LoginBasic(t)
+
+	t.Run("converts a group message when no attribute is required", func(t *testing.T) {
+		gm := newGM(t)
+
+		channel, err := convert(th.Client, gm)
+		require.NoError(t, err)
+		require.Equal(t, model.ChannelTypePrivate, channel.Type)
+		requireChannelType(t, gm.Id, model.ChannelTypePrivate)
+	})
+
+	t.Run("a required attribute with no value is refused and the group message stays one", func(t *testing.T) {
+		field := createRequiredField(t)
+		gm := newGM(t)
+
+		_, err := convert(th.Client, gm)
+		require.Error(t, err)
+		CheckErrorID(t, err, "api.channel.create_channel.missing_required_attributes.app_error")
+		require.NotContains(t, err.Error(), field.Name)
+		requireChannelType(t, gm.Id, model.ChannelTypeGroup)
+	})
+
+	t.Run("sent values are stored with the converted channel", func(t *testing.T) {
+		field := createRequiredField(t)
+		gm := newGM(t)
+
+		channel, err := convert(th.Client, gm, model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)})
+		require.NoError(t, err)
+		require.Equal(t, model.ChannelTypePrivate, channel.Type)
+
+		values, valuesErr := th.App.SearchPropertyValues(th.Context, group.ID, model.PropertyValueSearchOpts{
+			TargetType: model.PropertyValueTargetTypeChannel,
+			TargetIDs:  []string{gm.Id},
+			PerPage:    20,
+		})
+		require.Nil(t, valuesErr)
+		require.Len(t, values, 1)
+		require.Equal(t, field.ID, values[0].FieldID)
+		require.JSONEq(t, `"ALPHA"`, string(values[0].Value))
+	})
+
+	t.Run("a value for an unknown attribute is refused and the group message stays one", func(t *testing.T) {
+		gm := newGM(t)
+
+		_, err := convert(th.Client, gm, model.PropertyValuePatchItem{FieldID: model.NewId(), Value: json.RawMessage(`"x"`)})
+		require.Error(t, err)
+		CheckErrorID(t, err, "api.channel.create_channel.invalid_attribute.app_error")
+		requireChannelType(t, gm.Id, model.ChannelTypeGroup)
+	})
+
+	t.Run("values are refused when required attributes are off", func(t *testing.T) {
+		field := createRequiredField(t)
+		gm := newGM(t)
+		th.App.UpdateConfig(func(cfg *model.Config) { cfg.FeatureFlags.ChannelAttributesRequired = false })
+		defer th.App.UpdateConfig(func(cfg *model.Config) { cfg.FeatureFlags.ChannelAttributesRequired = true })
+
+		_, err := convert(th.Client, gm, model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)})
+		require.Error(t, err)
+		CheckErrorID(t, err, "api.channel.create_channel.attributes_feature_disabled.app_error")
+		requireChannelType(t, gm.Id, model.ChannelTypeGroup)
+
+		channel, err := convert(th.Client, gm)
+		require.NoError(t, err)
+		require.Equal(t, model.ChannelTypePrivate, channel.Type)
+	})
+}
+
 func TestCreateChannelRejectsSpaceType(t *testing.T) {
 	mainHelper.Parallel(t)
 

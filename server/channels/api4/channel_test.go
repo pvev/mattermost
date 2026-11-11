@@ -4484,7 +4484,11 @@ func TestPermanentDeleteChannel(t *testing.T) {
 
 func TestUpdateChannelPrivacy(t *testing.T) {
 	mainHelper.Parallel(t)
-	th := Setup(t).InitBasic(t)
+	th := SetupConfig(t, func(cfg *model.Config) {
+		cfg.FeatureFlags.ChannelAttributes = true
+		cfg.FeatureFlags.ChannelAttributesRequired = true
+	}).InitBasic(t)
+	th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 
 	defaultChannel, appErr := th.App.GetChannelByName(th.Context, model.DefaultChannelName, th.BasicTeam.Id, false)
 	require.Nil(t, appErr)
@@ -4574,6 +4578,166 @@ func TestUpdateChannelPrivacy(t *testing.T) {
 		require.NoError(t, err)
 		_, _, err = th.Client.UpdateChannelPrivacy(context.Background(), publicChannel.Id, model.ChannelTypePrivate)
 		require.NoError(t, err)
+	})
+
+	t.Run("Required channel attributes", func(t *testing.T) {
+		group, appErr := th.App.GetPropertyGroup(th.Context, model.AccessControlPropertyGroupName)
+		require.Nil(t, appErr)
+
+		memberLevel := model.PermissionLevelMember
+		adminLevel := model.PermissionLevelAdmin
+
+		// Seeded through the property service, which refuses a field created
+		// already required while an active channel lacks a value.
+		createRequiredField := func(t *testing.T) *model.PropertyField {
+			t.Helper()
+			field, err := th.App.Srv().PropertyService().CreatePropertyField(th.Context, &model.PropertyField{
+				Name:              "f_" + model.NewId(),
+				Type:              model.PropertyFieldTypeText,
+				GroupID:           group.ID,
+				ObjectType:        "channel",
+				TargetType:        "system",
+				PermissionField:   &memberLevel,
+				PermissionValues:  &adminLevel,
+				PermissionOptions: &memberLevel,
+				Attrs:             model.StringInterface{model.PropertyFieldAttrRequired: true},
+			})
+			require.NoError(t, err)
+			t.Cleanup(func() {
+				require.Nil(t, th.App.DeletePropertyField(th.Context, group.ID, field.ID, true, ""))
+			})
+			return field
+		}
+
+		requireChannelType := func(t *testing.T, channelID string, channelType model.ChannelType) {
+			t.Helper()
+			channel, chErr := th.App.GetChannel(th.Context, channelID)
+			require.Nil(t, chErr)
+			require.Equal(t, channelType, channel.Type)
+		}
+
+		storedValues := func(t *testing.T, field *model.PropertyField, channelID string) []*model.PropertyValue {
+			t.Helper()
+			stored, err := th.App.Srv().Store().PropertyValue().SearchPropertyValues(th.Context, model.PropertyValueSearchOpts{
+				GroupID:    field.GroupID,
+				TargetType: model.PropertyValueTargetTypeChannel,
+				TargetIDs:  []string{channelID},
+				PerPage:    10,
+			})
+			require.NoError(t, err)
+			return stored
+		}
+
+		th.LoginBasic(t)
+
+		run := func(t *testing.T, client *model.Client4) {
+			t.Run("a channel with no required attribute becomes private as before", func(t *testing.T) {
+				channel := th.CreatePublicChannel(t)
+
+				updated, _, err := client.UpdateChannelPrivacy(context.Background(), channel.Id, model.ChannelTypePrivate)
+				require.NoError(t, err)
+				require.Equal(t, model.ChannelTypePrivate, updated.Type)
+				requireChannelType(t, channel.Id, model.ChannelTypePrivate)
+			})
+
+			t.Run("a required attribute with no value is refused and the channel stays public", func(t *testing.T) {
+				channel := th.CreatePublicChannel(t)
+				field := createRequiredField(t)
+
+				_, resp, err := client.UpdateChannelPrivacy(context.Background(), channel.Id, model.ChannelTypePrivate)
+				require.Error(t, err)
+				CheckBadRequestStatus(t, resp)
+				CheckErrorID(t, err, "api.channel.create_channel.missing_required_attributes.app_error")
+				require.NotContains(t, err.Error(), field.Name)
+				requireChannelType(t, channel.Id, model.ChannelTypeOpen)
+				require.Empty(t, storedValues(t, field, channel.Id))
+			})
+
+			t.Run("sent values are stored and the channel becomes private", func(t *testing.T) {
+				channel := th.CreatePublicChannel(t)
+				field := createRequiredField(t)
+
+				updated, _, err := client.UpdateChannelPrivacyWithPropertyValues(context.Background(), channel.Id, model.ChannelTypePrivate,
+					[]model.PropertyValuePatchItem{{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)}})
+				require.NoError(t, err)
+				require.Equal(t, model.ChannelTypePrivate, updated.Type)
+				requireChannelType(t, channel.Id, model.ChannelTypePrivate)
+
+				stored := storedValues(t, field, channel.Id)
+				require.Len(t, stored, 1)
+				require.JSONEq(t, `"ALPHA"`, string(stored[0].Value))
+			})
+
+			t.Run("a channel that already has the value is not asked again", func(t *testing.T) {
+				channel := th.CreatePublicChannel(t)
+				field := createRequiredField(t)
+				_, err := th.App.Srv().Store().PropertyValue().Create(&model.PropertyValue{
+					GroupID:    field.GroupID,
+					FieldID:    field.ID,
+					TargetID:   channel.Id,
+					TargetType: model.PropertyValueTargetTypeChannel,
+					Value:      json.RawMessage(`"ALPHA"`),
+				})
+				require.NoError(t, err)
+
+				_, _, err = client.UpdateChannelPrivacy(context.Background(), channel.Id, model.ChannelTypePrivate)
+				require.NoError(t, err)
+				requireChannelType(t, channel.Id, model.ChannelTypePrivate)
+			})
+
+			t.Run("an unknown field is refused and the channel stays public", func(t *testing.T) {
+				channel := th.CreatePublicChannel(t)
+				createRequiredField(t)
+
+				_, resp, err := client.UpdateChannelPrivacyWithPropertyValues(context.Background(), channel.Id, model.ChannelTypePrivate,
+					[]model.PropertyValuePatchItem{{FieldID: model.NewId(), Value: json.RawMessage(`"ALPHA"`)}})
+				require.Error(t, err)
+				CheckBadRequestStatus(t, resp)
+				CheckErrorID(t, err, "api.channel.create_channel.invalid_attribute.app_error")
+				requireChannelType(t, channel.Id, model.ChannelTypeOpen)
+			})
+
+			t.Run("values sent with a change to public are ignored", func(t *testing.T) {
+				channel := th.CreatePrivateChannel(t)
+				field := createRequiredField(t)
+
+				updated, _, err := client.UpdateChannelPrivacyWithPropertyValues(context.Background(), channel.Id, model.ChannelTypeOpen,
+					[]model.PropertyValuePatchItem{{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)}})
+				require.NoError(t, err)
+				require.Equal(t, model.ChannelTypeOpen, updated.Type)
+				require.Empty(t, storedValues(t, field, channel.Id))
+			})
+
+			t.Run("the old request body still works", func(t *testing.T) {
+				channel := th.CreatePublicChannel(t)
+
+				resp, err := client.DoAPIPut(context.Background(), "/channels/"+channel.Id+"/privacy", `{"privacy":"P"}`)
+				require.NoError(t, err)
+				defer resp.Body.Close()
+				requireChannelType(t, channel.Id, model.ChannelTypePrivate)
+			})
+		}
+
+		th.TestForSystemAdminAndLocal(t, run)
+
+		t.Run("with required attributes off, values are refused and nothing else changes", func(t *testing.T) {
+			channel := th.CreatePublicChannel(t)
+			field := createRequiredField(t)
+			th.App.UpdateConfig(func(cfg *model.Config) { cfg.FeatureFlags.ChannelAttributesRequired = false })
+			t.Cleanup(func() {
+				th.App.UpdateConfig(func(cfg *model.Config) { cfg.FeatureFlags.ChannelAttributesRequired = true })
+			})
+			_, resp, err := th.SystemAdminClient.UpdateChannelPrivacyWithPropertyValues(context.Background(), channel.Id, model.ChannelTypePrivate,
+				[]model.PropertyValuePatchItem{{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)}})
+			require.Error(t, err)
+			CheckBadRequestStatus(t, resp)
+			CheckErrorID(t, err, "api.channel.create_channel.attributes_feature_disabled.app_error")
+			requireChannelType(t, channel.Id, model.ChannelTypeOpen)
+
+			_, _, err = th.SystemAdminClient.UpdateChannelPrivacy(context.Background(), channel.Id, model.ChannelTypePrivate)
+			require.NoError(t, err)
+			requireChannelType(t, channel.Id, model.ChannelTypePrivate)
+		})
 	})
 }
 

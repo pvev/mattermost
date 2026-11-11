@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
 	"github.com/mattermost/mattermost/server/public/shared/request"
 )
 
@@ -128,13 +129,24 @@ func (a *App) resolveRequiredChannelAttributes(rctx request.CTX, userID string, 
 		return nil, appErr
 	}
 
+	// The write decision is asked for the sent items and again for each required
+	// field, so it is answered once per field.
+	decided := make(map[string]bool, len(fields))
 	canSetValue := func(field *model.PropertyField) bool {
-		return a.decidePropertyFieldPermission(rctx, userID, field, model.PropertyActionValueWrite, channel.Id).Allowed
-	}
-	if pending {
-		canSetValue = func(field *model.PropertyField) bool {
-			return a.CanSetChannelAttributeOnPendingChannel(rctx, field)
+		if allowed, ok := decided[field.ID]; ok {
+			return allowed
 		}
+		var allowed bool
+		if pending {
+			// The value hook refuses a person's write of these fields whatever the
+			// tier says, and on a conversion that refusal would only come after the
+			// channel changed.
+			allowed = !channelAttributeWriteRefusedForPerson(field) && a.CanSetChannelAttributeOnPendingChannel(rctx, field)
+		} else {
+			allowed = a.channelAttributeActionAllowed(rctx, userID, field, model.PropertyActionValueWrite, channel.Id)
+		}
+		decided[field.ID] = allowed
+		return allowed
 	}
 
 	values, appErr := a.ChannelAttributeValuesFromItems(groupID, fields, items, canSetValue)
@@ -164,7 +176,7 @@ func (a *App) resolveRequiredChannelAttributes(rctx request.CTX, userID string, 
 		// A field with no editor anywhere can't be asked for, so it never blocks.
 		settable := channelAttributeHasEditor(field) && canSetValue(field)
 		if settable && !pending {
-			settable = a.decidePropertyFieldPermission(rctx, userID, field, model.PropertyActionValueRead, channel.Id).Allowed
+			settable = a.channelAttributeActionAllowed(rctx, userID, field, model.PropertyActionValueRead, channel.Id)
 		}
 		if settable {
 			resolution.Missing = append(resolution.Missing, field)
@@ -173,6 +185,61 @@ func (a *App) resolveRequiredChannelAttributes(rctx request.CTX, userID string, 
 		}
 	}
 	return resolution, nil
+}
+
+// channelAttributeActionAllowed answers decidePropertyFieldPermission for a
+// person, and for local mode, whose callers have no user ID: the property
+// access hook lets them do anything except write a value of a synced,
+// owner-managed or protected field, which is judged like any other caller's.
+func (a *App) channelAttributeActionAllowed(rctx request.CTX, userID string, field *model.PropertyField, action, channelID string) bool {
+	if userID == model.CallerIDLocalAdmin &&
+		(action != model.PropertyActionValueWrite || !channelAttributeWriteRefusedForPerson(field)) {
+		return true
+	}
+	return a.decidePropertyFieldPermission(rctx, userID, field, action, channelID).Allowed
+}
+
+// channelAttributeWriteRefusedForPerson reports whether the property access hook
+// refuses a person's write of this field's values: synced, owner-managed and
+// protected fields are not edited by people.
+func channelAttributeWriteRefusedForPerson(field *model.PropertyField) bool {
+	return model.IsPropertyFieldSynced(field) || model.HasPropertyFieldOwners(field) || model.IsPropertyFieldProtected(field)
+}
+
+// requiredChannelAttributeActorID is who a person's request is made by when
+// resolving required attributes: the local admin in local mode, else the
+// session user, else fallback.
+func requiredChannelAttributeActorID(rctx request.CTX, fallback string) string {
+	session := rctx.Session()
+	if session.IsUnrestricted() {
+		return model.CallerIDLocalAdmin
+	}
+	if session.UserId != "" {
+		return session.UserId
+	}
+	return fallback
+}
+
+// notifyChannelAdminsOfMissingRequiredAttributes tells the channel's current
+// admins, in the background, which required attributes they can still set after
+// an action that a person without access to those attributes took. Nothing
+// starts when required attributes are off or the channel takes no attributes.
+func (a *App) notifyChannelAdminsOfMissingRequiredAttributes(rctx request.CTX, channel *model.Channel) {
+	if !a.requiredChannelAttributesEnabled() || !channelCanMissRequiredAttributes(channel) {
+		return
+	}
+
+	a.Srv().Go(func() {
+		admins, err := a.Srv().Store().Channel().GetChannelAdminsInfoByChannelIds([]string{channel.Id})
+		if err != nil {
+			rctx.Logger().Warn("Failed to load the channel admins to notify of missing required channel attributes",
+				mlog.String("channel_id", channel.Id), mlog.Err(err))
+			return
+		}
+		for _, admin := range admins[channel.Id] {
+			a.NotifyNewChannelAdminOfMissingRequiredAttributes(rctx, admin.Id, []*model.Channel{channel})
+		}
+	})
 }
 
 // writeChannelAttributeValues writes validated values onto channel on behalf of

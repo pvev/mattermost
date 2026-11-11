@@ -947,9 +947,53 @@ func (a *App) UpdateChannelScheme(rctx request.CTX, channel *model.Channel) (*mo
 	return a.UpdateChannel(rctx, oldChannel)
 }
 
-func (a *App) UpdateChannelPrivacy(rctx request.CTX, oldChannel *model.Channel, user *model.User) (*model.Channel, *model.AppError) {
+// UpdateChannelPrivacyOptions are what a person's privacy change carries beyond
+// the channel itself. The zero value is a machine path: no values, nothing asked.
+type UpdateChannelPrivacyOptions struct {
+	// PropertyValues are channel attribute values to store before the channel
+	// becomes private.
+	PropertyValues []model.PropertyValuePatchItem
+	// ByPerson marks a request made by a person, who is asked for the required
+	// attribute values the channel lacks when it becomes private.
+	ByPerson bool
+	// WasPrivate is true when the stored channel is already private, so the
+	// request changes nothing a required attribute could gate. The handlers set
+	// the new type on the channel before calling, so the stored one is passed.
+	WasPrivate bool
+}
+
+// UpdateChannelPrivacy saves the type that oldChannel already carries. When a
+// person makes a public channel private, the required attributes they can set
+// must have a value, supplied in opts, first: they are stored before the channel
+// changes, so a missing or invalid value leaves it public. Values already
+// written are kept if a later step fails; they are valid for the channel either
+// way, so that is harmless.
+func (a *App) UpdateChannelPrivacy(rctx request.CTX, oldChannel *model.Channel, user *model.User, opts UpdateChannelPrivacyOptions) (*model.Channel, *model.AppError) {
 	if oldChannel.IsSpace() {
 		return nil, model.NewAppError("UpdateChannelPrivacy", "app.channel.update_channel_privacy.space.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	var skipped []*model.PropertyField
+	if opts.ByPerson && !opts.WasPrivate && oldChannel.Type == model.ChannelTypePrivate {
+		// Local mode has no user, and its values are stamped with none, as the
+		// property API stamps them.
+		userID := rctx.Session().UserId
+		if userID == "" && user != nil {
+			userID = user.Id
+		}
+		actorID := requiredChannelAttributeActorID(rctx, userID)
+
+		resolution, appErr := a.resolveRequiredChannelAttributes(rctx, actorID, oldChannel, false, opts.PropertyValues)
+		if appErr != nil {
+			return nil, appErr
+		}
+		if len(resolution.Missing) > 0 {
+			return nil, model.NewAppError("UpdateChannelPrivacy", "api.channel.create_channel.missing_required_attributes.app_error", nil, "", http.StatusBadRequest)
+		}
+		if appErr = a.writeChannelAttributeValues(rctx, oldChannel, userID, resolution.ValuesToWrite); appErr != nil {
+			return nil, appErr
+		}
+		skipped = resolution.Skipped
 	}
 
 	wasDiscoverable := oldChannel.Discoverable
@@ -1003,6 +1047,10 @@ func (a *App) UpdateChannelPrivacy(rctx request.CTX, oldChannel *model.Channel, 
 	messageWs.Add("channel_id", channel.Id)
 	messageWs.Add("channel_type", string(channel.Type))
 	a.Publish(messageWs)
+
+	if len(skipped) > 0 {
+		a.notifyChannelAdminsOfMissingRequiredAttributes(rctx, channel)
+	}
 
 	return channel, nil
 }

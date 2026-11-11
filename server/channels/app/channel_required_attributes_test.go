@@ -35,6 +35,15 @@ func requireResolveError(t *testing.T, appErr *model.AppError, id string, status
 	assert.Equal(t, status, appErr.StatusCode)
 }
 
+// protectField marks field as protected, which the property access hook refuses
+// to let a person write values for.
+func protectField(t *testing.T, th *TestHelper, field *model.PropertyField) {
+	t.Helper()
+	field.Attrs[model.PropertyAttrsProtected] = true
+	_, err := th.App.Srv().Store().PropertyField().Update(field.GroupID, []*model.PropertyField{field}, nil)
+	require.NoError(t, err)
+}
+
 func TestResolveRequiredChannelAttributes(t *testing.T) {
 	mainHelper.Parallel(t)
 
@@ -187,6 +196,18 @@ func TestResolveRequiredChannelAttributes(t *testing.T) {
 			return th, &model.Channel{Type: model.ChannelTypeGroup}, user
 		}
 
+		t.Run("a required field a person can't write is skipped, not missing", func(t *testing.T) {
+			th, channel, user := newPending(t)
+			protected := createMissingAttributesField(t, th, "Protected", true, model.PermissionLevelMember)
+			protectField(t, th, protected)
+			member := createMissingAttributesField(t, th, "Member", true, model.PermissionLevelMember)
+
+			res, appErr := th.App.resolveRequiredChannelAttributes(requiredAttributesSessionCtx(th, user, model.SystemUserRoleId), user.Id, channel, true, nil)
+			require.Nil(t, appErr)
+			assert.Equal(t, []string{member.ID}, fieldIDsOf(res.Missing))
+			assert.Equal(t, []string{protected.ID}, fieldIDsOf(res.Skipped))
+		})
+
 		t.Run("every settable required field is missing, whatever the stored values", func(t *testing.T) {
 			th, channel, user := newPending(t)
 			member := createMissingAttributesField(t, th, "Member", true, model.PermissionLevelMember)
@@ -245,6 +266,17 @@ func TestResolveRequiredChannelAttributes(t *testing.T) {
 			assert.Empty(t, res.Skipped)
 			require.Len(t, res.ValuesToWrite, 1)
 			assert.Equal(t, field.ID, res.ValuesToWrite[0].FieldID)
+		})
+
+		t.Run("a value for a field a person can't write is refused up front", func(t *testing.T) {
+			th, channel, user := newPending(t)
+			protected := createMissingAttributesField(t, th, "Protected", true, model.PermissionLevelMember)
+			protectField(t, th, protected)
+
+			_, appErr := th.App.resolveRequiredChannelAttributes(requiredAttributesSessionCtx(th, user, model.SystemUserRoleId), user.Id, channel, true, []model.PropertyValuePatchItem{
+				{FieldID: protected.ID, Value: json.RawMessage(`"ALPHA"`)},
+			})
+			requireResolveError(t, appErr, "api.channel.create_channel.attribute_no_permission.app_error", http.StatusForbidden)
 		})
 
 		t.Run("a whitespace-only text value is still missing", func(t *testing.T) {
@@ -659,6 +691,32 @@ func TestConvertGroupMessageToChannelRequiredAttributes(t *testing.T) {
 		assert.False(t, inChannelsCategory(t, th, th.BasicUser.Id, team.Id, gm.Id))
 	})
 
+	t.Run("a required attribute a person can't write doesn't stop the conversion", func(t *testing.T) {
+		th := setupMissingAttributes(t)
+		gm, team, ctx := newGM(t, th)
+		field := createMissingAttributesField(t, th, "Protected", true, model.PermissionLevelMember)
+		protectField(t, th, field)
+
+		converted, appErr := th.App.ConvertGroupMessageToChannel(ctx, th.BasicUser.Id, conversion(gm, team))
+		require.Nil(t, appErr)
+		assert.Equal(t, model.ChannelTypePrivate, converted.Type)
+		assert.Empty(t, storedValues(t, th, field, converted))
+	})
+
+	t.Run("a value for an attribute a person can't write is refused before the conversion", func(t *testing.T) {
+		th := setupMissingAttributes(t)
+		gm, team, ctx := newGM(t, th)
+		members := memberIDsOf(t, th, gm)
+		field := createMissingAttributesField(t, th, "Protected", true, model.PermissionLevelMember)
+		protectField(t, th, field)
+
+		_, appErr := th.App.ConvertGroupMessageToChannel(ctx, th.BasicUser.Id, conversion(gm, team,
+			model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)}))
+		requireResolveError(t, appErr, "api.channel.create_channel.attribute_no_permission.app_error", http.StatusForbidden)
+
+		requireStillGM(t, th, gm, members)
+	})
+
 	t.Run("a required attribute the converter can't set doesn't stop the conversion", func(t *testing.T) {
 		th := setupMissingAttributes(t)
 		bot, appErr := th.App.GetSystemBot(th.Context)
@@ -759,6 +817,221 @@ func TestConvertGroupMessageToChannelRequiredAttributes(t *testing.T) {
 			require.Nil(t, appErr)
 			assert.Equal(t, model.ChannelTypePrivate, current.Type)
 			assert.Equal(t, 1, conversionPosts(t, th, current))
+		})
+	})
+}
+
+func TestUpdateChannelPrivacyRequiredAttributes(t *testing.T) {
+	mainHelper.Parallel(t)
+
+	// newPublic returns a helper, a public channel administered by admin and a
+	// plain member of it. The channel exists before any field does.
+	newPublic := func(t *testing.T) (*TestHelper, *model.Channel, *model.User, *model.User) {
+		t.Helper()
+		th := setupMissingAttributes(t)
+		team, admin := newAttributesTeamAndMember(t, th)
+		channel := administeredChannel(t, th, team, admin, model.ChannelTypeOpen, "Going private")
+		member := th.CreateUser(t)
+		th.LinkUserToTeam(t, member, team)
+		th.AddUserToChannel(t, member, channel)
+		return th, channel, admin, member
+	}
+
+	// makePrivate does what the handlers do: carry the new type on the channel.
+	makePrivate := func(th *TestHelper, ctx request.CTX, user *model.User, channel *model.Channel, opts UpdateChannelPrivacyOptions) (*model.Channel, *model.AppError) {
+		toUpdate, appErr := th.App.GetChannel(th.Context, channel.Id)
+		if appErr != nil {
+			return nil, appErr
+		}
+		toUpdate.Type = model.ChannelTypePrivate
+		return th.App.UpdateChannelPrivacy(ctx, toUpdate, user, opts)
+	}
+
+	storedValues := func(t *testing.T, th *TestHelper, field *model.PropertyField, channel *model.Channel) []*model.PropertyValue {
+		t.Helper()
+		stored, err := th.App.Srv().Store().PropertyValue().SearchPropertyValues(th.Context, model.PropertyValueSearchOpts{
+			GroupID:    field.GroupID,
+			TargetType: model.PropertyValueTargetTypeChannel,
+			TargetIDs:  []string{channel.Id},
+			PerPage:    10,
+		})
+		require.NoError(t, err)
+		return stored
+	}
+
+	requireType := func(t *testing.T, th *TestHelper, channel *model.Channel, channelType model.ChannelType) {
+		t.Helper()
+		current, appErr := th.App.GetChannel(th.Context, channel.Id)
+		require.Nil(t, appErr)
+		assert.Equal(t, channelType, current.Type)
+	}
+
+	byPerson := func(items ...model.PropertyValuePatchItem) UpdateChannelPrivacyOptions {
+		return UpdateChannelPrivacyOptions{PropertyValues: items, ByPerson: true}
+	}
+
+	t.Run("a request to make an already private channel private is not refused for a missing value", func(t *testing.T) {
+		th, channel, admin, _ := newPublic(t)
+		createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+		ctx := requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId)
+
+		// Make the channel private first, without asking for values.
+		_, appErr := makePrivate(th, ctx, admin, channel, UpdateChannelPrivacyOptions{})
+		require.Nil(t, appErr)
+
+		opts := byPerson()
+		opts.WasPrivate = true
+		_, appErr = makePrivate(th, ctx, admin, channel, opts)
+		require.Nil(t, appErr)
+		requireType(t, th, channel, model.ChannelTypePrivate)
+	})
+
+	t.Run("a required attribute the person can set and didn't send is refused, and the channel stays public", func(t *testing.T) {
+		th, channel, admin, _ := newPublic(t)
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+		updated, appErr := makePrivate(th, requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId), admin, channel, byPerson())
+		assert.Nil(t, updated)
+		requireResolveError(t, appErr, "api.channel.create_channel.missing_required_attributes.app_error", http.StatusBadRequest)
+		requireType(t, th, channel, model.ChannelTypeOpen)
+		assert.Empty(t, storedValues(t, th, field, channel))
+	})
+
+	t.Run("an empty value is refused like a missing one", func(t *testing.T) {
+		th, channel, admin, _ := newPublic(t)
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+		_, appErr := makePrivate(th, requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId), admin, channel,
+			byPerson(model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"  "`)}))
+		requireResolveError(t, appErr, "api.channel.create_channel.missing_required_attributes.app_error", http.StatusBadRequest)
+		requireType(t, th, channel, model.ChannelTypeOpen)
+	})
+
+	t.Run("sent values are stored and the channel becomes private", func(t *testing.T) {
+		th, channel, admin, _ := newPublic(t)
+		bot, appErr := th.App.GetSystemBot(th.Context)
+		require.Nil(t, appErr)
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+		updated, appErr := makePrivate(th, requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId), admin, channel,
+			byPerson(model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)}))
+		require.Nil(t, appErr)
+		assert.Equal(t, model.ChannelTypePrivate, updated.Type)
+		requireType(t, th, channel, model.ChannelTypePrivate)
+
+		stored := storedValues(t, th, field, channel)
+		require.Len(t, stored, 1)
+		assert.JSONEq(t, `"ALPHA"`, string(stored[0].Value))
+		assert.Equal(t, admin.Id, stored[0].CreatedBy)
+		requireNoMissingAttributesPost(t, th, bot.UserId, admin.Id)
+	})
+
+	t.Run("a channel that already has the value is not asked again", func(t *testing.T) {
+		th, channel, admin, _ := newPublic(t)
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+		setChannelPropertyValue(t, th, field.GroupID, field.ID, channel.Id, `"ALPHA"`)
+
+		_, appErr := makePrivate(th, requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId), admin, channel, byPerson())
+		require.Nil(t, appErr)
+		requireType(t, th, channel, model.ChannelTypePrivate)
+	})
+
+	t.Run("an invalid value item is refused and nothing changes", func(t *testing.T) {
+		th, channel, admin, _ := newPublic(t)
+		createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+		_, appErr := makePrivate(th, requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId), admin, channel,
+			byPerson(model.PropertyValuePatchItem{FieldID: model.NewId(), Value: json.RawMessage(`"ALPHA"`)}))
+		requireResolveError(t, appErr, "api.channel.create_channel.invalid_attribute.app_error", http.StatusBadRequest)
+		requireType(t, th, channel, model.ChannelTypeOpen)
+	})
+
+	t.Run("a value write that fails changes nothing", func(t *testing.T) {
+		th, channel, admin, _ := newPublic(t)
+		// An option that doesn't exist passes the checks made up front and is
+		// refused by the value hooks.
+		field := createMissingAttributesFieldOfType(t, th, model.PropertyFieldTypeSelect, "Program", true, model.PermissionLevelAdmin)
+
+		updated, appErr := makePrivate(th, requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId), admin, channel,
+			byPerson(model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"` + model.NewId() + `"`)}))
+		assert.Nil(t, updated)
+		require.NotNil(t, appErr)
+		assert.NotEqual(t, "api.channel.create_channel.missing_required_attributes.app_error", appErr.Id)
+		assert.NotEqual(t, "api.channel.create_channel.invalid_attribute.app_error", appErr.Id)
+		requireType(t, th, channel, model.ChannelTypeOpen)
+		assert.Empty(t, storedValues(t, th, field, channel))
+	})
+
+	t.Run("a required attribute the person can't set doesn't stop the change, and the channel admins are told", func(t *testing.T) {
+		th, channel, admin, member := newPublic(t)
+		bot, appErr := th.App.GetSystemBot(th.Context)
+		require.Nil(t, appErr)
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+		updated, appErr := makePrivate(th, requiredAttributesSessionCtx(th, member, model.SystemUserRoleId), member, channel, byPerson())
+		require.Nil(t, appErr)
+		assert.Equal(t, model.ChannelTypePrivate, updated.Type)
+		requireType(t, th, channel, model.ChannelTypePrivate)
+		assert.Empty(t, storedValues(t, th, field, channel))
+
+		post := requireOneMissingAttributesPost(t, th, bot.UserId, admin.Id)
+		assert.Contains(t, post.Message, "**Program**")
+		assert.ElementsMatch(t, []any{channel.Id}, post.GetProp("channel_ids"))
+		// The member who made it private can't set the value, so there is nothing to tell them.
+		requireNoMissingAttributesPost(t, th, bot.UserId, member.Id)
+	})
+
+	t.Run("a plugin or internal caller is not asked and nothing is sent", func(t *testing.T) {
+		th, channel, admin, _ := newPublic(t)
+		bot, appErr := th.App.GetSystemBot(th.Context)
+		require.Nil(t, appErr)
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+		updated, appErr := makePrivate(th, requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId), admin, channel, UpdateChannelPrivacyOptions{})
+		require.Nil(t, appErr)
+		assert.Equal(t, model.ChannelTypePrivate, updated.Type)
+		requireType(t, th, channel, model.ChannelTypePrivate)
+		assert.Empty(t, storedValues(t, th, field, channel))
+		requireNoMissingAttributesPost(t, th, bot.UserId, admin.Id)
+	})
+
+	t.Run("a local admin is asked for what it can set", func(t *testing.T) {
+		th, channel, _, _ := newPublic(t)
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+		local := th.Context.WithSession(&model.Session{Local: true})
+
+		_, appErr := makePrivate(th, local, nil, channel, byPerson())
+		requireResolveError(t, appErr, "api.channel.create_channel.missing_required_attributes.app_error", http.StatusBadRequest)
+		requireType(t, th, channel, model.ChannelTypeOpen)
+
+		_, appErr = makePrivate(th, local, nil, channel, byPerson(model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)}))
+		require.Nil(t, appErr)
+		requireType(t, th, channel, model.ChannelTypePrivate)
+		stored := storedValues(t, th, field, channel)
+		require.Len(t, stored, 1)
+		assert.JSONEq(t, `"ALPHA"`, string(stored[0].Value))
+	})
+
+	t.Run("with required attributes off", func(t *testing.T) {
+		th := SetupConfig(t, setupMissingAttributesConfig).InitBasic(t)
+		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
+		team, admin := newAttributesTeamAndMember(t, th)
+		channel := administeredChannel(t, th, team, admin, model.ChannelTypeOpen, "Going private")
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+		th.App.UpdateConfig(func(cfg *model.Config) { cfg.FeatureFlags.ChannelAttributesRequired = false })
+		ctx := requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId)
+
+		t.Run("values are refused as creation refuses them", func(t *testing.T) {
+			_, appErr := makePrivate(th, ctx, admin, channel, byPerson(model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)}))
+			requireResolveError(t, appErr, "api.channel.create_channel.attributes_feature_disabled.app_error", http.StatusBadRequest)
+			requireType(t, th, channel, model.ChannelTypeOpen)
+		})
+
+		t.Run("without values nothing is asked", func(t *testing.T) {
+			updated, appErr := makePrivate(th, ctx, admin, channel, byPerson())
+			require.Nil(t, appErr)
+			assert.Equal(t, model.ChannelTypePrivate, updated.Type)
+			requireType(t, th, channel, model.ChannelTypePrivate)
 		})
 	})
 }

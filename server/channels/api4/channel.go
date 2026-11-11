@@ -263,44 +263,19 @@ func channelAttributeValuesForCreate(c *Context, channel *model.Channel, license
 		return nil, appErr
 	}
 
-	fieldByID := make(map[string]*model.PropertyField, len(fields))
-	for _, field := range fields {
-		fieldByID[field.ID] = field
+	values, appErr := c.App.ChannelAttributeValuesFromItems(group.ID, fields, items, func(field *model.PropertyField) bool {
+		return c.App.CanSetChannelAttributeOnPendingChannel(c.AppContext, field)
+	})
+	if appErr != nil {
+		return nil, appErr
 	}
-
-	supplied := make(map[string]json.RawMessage, len(items))
-	values := make([]*model.PropertyValue, 0, len(items))
-	for _, item := range items {
-		if !model.IsValidId(item.FieldID) {
-			return nil, model.NewAppError("createChannel", "api.channel.create_channel.invalid_attribute.app_error", nil, "", http.StatusBadRequest)
-		}
-		if _, ok := supplied[item.FieldID]; ok {
-			return nil, model.NewAppError("createChannel", "api.channel.create_channel.invalid_attribute.app_error", nil, "duplicate field", http.StatusBadRequest)
-		}
-		field, ok := fieldByID[item.FieldID]
-		if !ok {
-			return nil, model.NewAppError("createChannel", "api.channel.create_channel.invalid_attribute.app_error", nil, "unknown field", http.StatusBadRequest)
-		}
-		if !app.ChannelAttributeFieldAvailable(field, channelAttributesAvailable, classificationAvailable) {
-			return nil, model.NewAppError("createChannel", "api.channel.create_channel.attributes_feature_disabled.app_error", nil, "", http.StatusBadRequest)
-		}
-		if !canSetChannelAttributeOnCreate(c, field) {
-			return nil, model.NewAppError("createChannel", "api.channel.create_channel.attribute_no_permission.app_error", nil, "", http.StatusForbidden)
-		}
-
-		// Sanitize before the emptiness test, so "  " counts as unset here exactly
-		// as it will when the value is written.
-		value := model.SanitizePropertyValue(item.Value)
-		supplied[item.FieldID] = value
-		values = append(values, &model.PropertyValue{
-			GroupID: group.ID,
-			FieldID: field.ID,
-			Value:   value,
-		})
+	supplied := make(map[string]json.RawMessage, len(values))
+	for _, value := range values {
+		supplied[value.FieldID] = value.Value
 	}
 
 	for _, field := range fields {
-		if !model.IsPropertyFieldRequired(field) || !canSetChannelAttributeOnCreate(c, field) {
+		if !model.IsPropertyFieldRequired(field) || !c.App.CanSetChannelAttributeOnPendingChannel(c.AppContext, field) {
 			continue
 		}
 		if !app.ChannelAttributeFieldAvailable(field, channelAttributesAvailable, classificationAvailable) {
@@ -318,33 +293,6 @@ func channelAttributeValuesForCreate(c *Context, channel *model.Channel, license
 		return nil, nil
 	}
 	return values, nil
-}
-
-// canSetChannelAttributeOnCreate reports whether the caller may set this
-// attribute on a channel they are about to create. The channel does not exist
-// yet, so the channel-scoped tiers are answered from what creation itself
-// guarantees: the creator is saved as a channel admin, which satisfies both
-// "admin" and "member". A tier the caller cannot satisfy is skipped rather than
-// enforced — one sysadmin-only required attribute must not make channel creation
-// impossible for everyone else.
-//
-// Unrecognised and unset tiers answer no, matching
-// SessionHasPermissionToSetPropertyFieldValues. That check is the only gate on
-// this path, so a field the property API would refuse a value for must not
-// become settable through channel creation.
-func canSetChannelAttributeOnCreate(c *Context, field *model.PropertyField) bool {
-	if field.PermissionValues == nil {
-		return false
-	}
-
-	switch *field.PermissionValues {
-	case model.PermissionLevelMember, model.PermissionLevelAdmin:
-		return true
-	case model.PermissionLevelSysadmin:
-		return c.App.SessionHasPermissionTo(*c.AppContext.Session(), model.PermissionManageSystem)
-	default:
-		return false
-	}
 }
 
 func updateChannel(c *Context, w http.ResponseWriter, r *http.Request) {

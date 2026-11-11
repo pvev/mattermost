@@ -1,0 +1,195 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+package app
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/shared/request"
+)
+
+// requiredChannelAttributeResolution is what a person has to supply, and may
+// leave, when an action puts a channel in front of required attributes.
+type requiredChannelAttributeResolution struct {
+	// ValuesToWrite are the supplied values, validated and stamped with the
+	// group, ready for writeChannelAttributeValues.
+	ValuesToWrite []*model.PropertyValue
+	// Missing are the required fields the person can set that still have no
+	// value after the supplied ones.
+	Missing []*model.PropertyField
+	// Skipped are the required fields that still have no value and that the
+	// person can't set, or that have no editor anywhere.
+	Skipped []*model.PropertyField
+}
+
+// CanSetChannelAttributeOnPendingChannel reports whether the caller of rctx may
+// set this attribute on a channel that is about to exist. The channel does not
+// exist yet, so the channel-scoped tiers are answered from what creation itself
+// guarantees: the creator is saved as a channel admin, which satisfies both
+// "admin" and "member". A tier the caller cannot satisfy is skipped rather than
+// enforced — one sysadmin-only required attribute must not make channel creation
+// impossible for everyone else.
+//
+// Unrecognised and unset tiers answer no, matching
+// SessionHasPermissionToSetPropertyFieldValues. That check is the only gate on
+// this path, so a field the property API would refuse a value for must not
+// become settable through channel creation.
+func (a *App) CanSetChannelAttributeOnPendingChannel(rctx request.CTX, field *model.PropertyField) bool {
+	if field.PermissionValues == nil {
+		return false
+	}
+
+	switch *field.PermissionValues {
+	case model.PermissionLevelMember, model.PermissionLevelAdmin:
+		return true
+	case model.PermissionLevelSysadmin:
+		return a.SessionHasPermissionTo(*rctx.Session(), model.PermissionManageSystem)
+	default:
+		return false
+	}
+}
+
+// ChannelAttributeValuesFromItems turns submitted attribute values into
+// PropertyValues of the given group, refusing an invalid ID, a duplicate, an
+// unknown or unavailable field, and a field canSet answers no for. Option
+// validity is left to the value write hooks. Errors never name an attribute:
+// which markings a server defines is itself sensitive, and the caller may not be
+// allowed to see them.
+func (a *App) ChannelAttributeValuesFromItems(groupID string, fields []*model.PropertyField, items []model.PropertyValuePatchItem, canSet func(field *model.PropertyField) bool) ([]*model.PropertyValue, *model.AppError) {
+	channelAttributesAvailable, classificationAvailable := a.channelAttributeAvailability()
+
+	fieldByID := make(map[string]*model.PropertyField, len(fields))
+	for _, field := range fields {
+		fieldByID[field.ID] = field
+	}
+
+	supplied := make(map[string]bool, len(items))
+	values := make([]*model.PropertyValue, 0, len(items))
+	for _, item := range items {
+		if !model.IsValidId(item.FieldID) {
+			return nil, model.NewAppError("ChannelAttributeValuesFromItems", "api.channel.create_channel.invalid_attribute.app_error", nil, "", http.StatusBadRequest)
+		}
+		if supplied[item.FieldID] {
+			return nil, model.NewAppError("ChannelAttributeValuesFromItems", "api.channel.create_channel.invalid_attribute.app_error", nil, "duplicate field", http.StatusBadRequest)
+		}
+		field, ok := fieldByID[item.FieldID]
+		if !ok {
+			return nil, model.NewAppError("ChannelAttributeValuesFromItems", "api.channel.create_channel.invalid_attribute.app_error", nil, "unknown field", http.StatusBadRequest)
+		}
+		if !ChannelAttributeFieldAvailable(field, channelAttributesAvailable, classificationAvailable) {
+			return nil, model.NewAppError("ChannelAttributeValuesFromItems", "api.channel.create_channel.attributes_feature_disabled.app_error", nil, "", http.StatusBadRequest)
+		}
+		if !canSet(field) {
+			return nil, model.NewAppError("ChannelAttributeValuesFromItems", "api.channel.create_channel.attribute_no_permission.app_error", nil, "", http.StatusForbidden)
+		}
+
+		supplied[item.FieldID] = true
+		values = append(values, &model.PropertyValue{
+			GroupID: groupID,
+			FieldID: field.ID,
+			// Sanitized so "  " counts as unset here exactly as it will when written.
+			Value: model.SanitizePropertyValue(item.Value),
+		})
+	}
+	return values, nil
+}
+
+// resolveRequiredChannelAttributes validates the values the person sent and
+// works out which required attributes the channel would still lack. pending is
+// true for a channel that does not exist in its final shape yet (a group message
+// being converted): nothing is read for it, every required field counts as
+// without a value, and what the person can set follows the create rule. For an
+// existing channel, the values are read from the store and a field is settable
+// when the person may both read and write its values.
+//
+// With required attributes off it returns an empty result without a query, or
+// refuses values the way channel creation does when the feature is off.
+func (a *App) resolveRequiredChannelAttributes(rctx request.CTX, userID string, channel *model.Channel, pending bool, items []model.PropertyValuePatchItem) (*requiredChannelAttributeResolution, *model.AppError) {
+	if !a.requiredChannelAttributesEnabled() {
+		if len(items) > 0 {
+			return nil, model.NewAppError("resolveRequiredChannelAttributes", "api.channel.create_channel.attributes_feature_disabled.app_error", nil, "", http.StatusBadRequest)
+		}
+		return &requiredChannelAttributeResolution{}, nil
+	}
+
+	// Archived channels still take values: unarchiving asks for them first.
+	if !pending && channel.Type != model.ChannelTypeOpen && channel.Type != model.ChannelTypePrivate {
+		if len(items) > 0 {
+			return nil, model.NewAppError("resolveRequiredChannelAttributes", "api.channel.create_channel.invalid_attribute.app_error", nil, "attributes are not assigned to this channel type", http.StatusBadRequest)
+		}
+		return &requiredChannelAttributeResolution{}, nil
+	}
+
+	groupID, fields, appErr := a.channelAttributeFields(rctxWithSessionCallerID(rctx))
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	canSetValue := func(field *model.PropertyField) bool {
+		return a.decidePropertyFieldPermission(rctx, userID, field, model.PropertyActionValueWrite, channel.Id).Allowed
+	}
+	if pending {
+		canSetValue = func(field *model.PropertyField) bool {
+			return a.CanSetChannelAttributeOnPendingChannel(rctx, field)
+		}
+	}
+
+	values, appErr := a.ChannelAttributeValuesFromItems(groupID, fields, items, canSetValue)
+	if appErr != nil {
+		return nil, appErr
+	}
+	supplied := make(map[string]json.RawMessage, len(values))
+	for _, value := range values {
+		supplied[value.FieldID] = value.Value
+	}
+
+	required := a.requiredAvailableChannelAttributeFields(fields)
+	withoutValue := required
+	if !pending {
+		withoutValue, appErr = a.missingRequiredFieldsOf(rctx, groupID, required, channel)
+		if appErr != nil {
+			return nil, appErr
+		}
+	}
+
+	resolution := &requiredChannelAttributeResolution{ValuesToWrite: values}
+	for _, field := range withoutValue {
+		if value, ok := supplied[field.ID]; ok && !model.IsEmptyPropertyValue(value) {
+			continue
+		}
+
+		// A field with no editor anywhere can't be asked for, so it never blocks.
+		settable := channelAttributeHasEditor(field) && canSetValue(field)
+		if settable && !pending {
+			settable = a.decidePropertyFieldPermission(rctx, userID, field, model.PropertyActionValueRead, channel.Id).Allowed
+		}
+		if settable {
+			resolution.Missing = append(resolution.Missing, field)
+		} else {
+			resolution.Skipped = append(resolution.Skipped, field)
+		}
+	}
+	return resolution, nil
+}
+
+// writeChannelAttributeValues writes validated values onto channel on behalf of
+// userID, through the property service so field permissions and the value
+// hooks run.
+func (a *App) writeChannelAttributeValues(rctx request.CTX, channel *model.Channel, userID string, values []*model.PropertyValue) *model.AppError {
+	if len(values) == 0 {
+		return nil
+	}
+
+	for _, value := range values {
+		value.TargetID = channel.Id
+		value.TargetType = model.PropertyValueTargetTypeChannel
+		value.CreatedBy = userID
+		value.UpdatedBy = userID
+	}
+
+	_, appErr := a.UpsertPropertyValues(rctxWithSessionCallerID(rctx), values, model.PropertyFieldObjectTypeChannel, channel.Id, "")
+	return appErr
+}

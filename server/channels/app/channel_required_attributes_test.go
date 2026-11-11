@@ -1035,3 +1035,240 @@ func TestUpdateChannelPrivacyRequiredAttributes(t *testing.T) {
 		})
 	})
 }
+
+func TestRestoreChannelRequiredAttributes(t *testing.T) {
+	mainHelper.Parallel(t)
+
+	// newArchived returns a helper, a channel administered by admin that was
+	// archived before any field existed, and a plain member of it.
+	newArchived := func(t *testing.T, channelType model.ChannelType) (*TestHelper, *model.Channel, *model.User, *model.User) {
+		t.Helper()
+		th := setupMissingAttributes(t)
+		team, admin := newAttributesTeamAndMember(t, th)
+		channel := administeredChannel(t, th, team, admin, channelType, "Coming back")
+		member := th.CreateUser(t)
+		th.LinkUserToTeam(t, member, team)
+		th.AddUserToChannel(t, member, channel)
+		require.Nil(t, th.App.DeleteChannel(th.Context, channel, admin.Id))
+		return th, channel, admin, member
+	}
+
+	restore := func(th *TestHelper, ctx request.CTX, userID string, channel *model.Channel, opts RestoreChannelOptions) (*model.Channel, *model.AppError) {
+		archived, appErr := th.App.GetChannel(th.Context, channel.Id)
+		if appErr != nil {
+			return nil, appErr
+		}
+		return th.App.RestoreChannel(ctx, archived, userID, opts)
+	}
+
+	storedValues := func(t *testing.T, th *TestHelper, field *model.PropertyField, channel *model.Channel) []*model.PropertyValue {
+		t.Helper()
+		stored, err := th.App.Srv().Store().PropertyValue().SearchPropertyValues(th.Context, model.PropertyValueSearchOpts{
+			GroupID:    field.GroupID,
+			TargetType: model.PropertyValueTargetTypeChannel,
+			TargetIDs:  []string{channel.Id},
+			PerPage:    10,
+		})
+		require.NoError(t, err)
+		return stored
+	}
+
+	requireArchived := func(t *testing.T, th *TestHelper, channel *model.Channel, archived bool) {
+		t.Helper()
+		current, appErr := th.App.GetChannel(th.Context, channel.Id)
+		require.Nil(t, appErr)
+		assert.Equal(t, archived, current.DeleteAt != 0)
+	}
+
+	byPerson := func(items ...model.PropertyValuePatchItem) RestoreChannelOptions {
+		return RestoreChannelOptions{PropertyValues: items, ByPerson: true}
+	}
+
+	for _, channelType := range []model.ChannelType{model.ChannelTypeOpen, model.ChannelTypePrivate} {
+		t.Run("a required attribute the person can set and didn't send is refused, and the "+string(channelType)+" channel stays archived", func(t *testing.T) {
+			th, channel, admin, _ := newArchived(t, channelType)
+			field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+			restored, appErr := restore(th, requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId), admin.Id, channel, byPerson())
+			assert.Nil(t, restored)
+			requireResolveError(t, appErr, "api.channel.create_channel.missing_required_attributes.app_error", http.StatusBadRequest)
+			requireArchived(t, th, channel, true)
+			assert.Empty(t, storedValues(t, th, field, channel))
+		})
+	}
+
+	t.Run("an empty value is refused like a missing one", func(t *testing.T) {
+		th, channel, admin, _ := newArchived(t, model.ChannelTypeOpen)
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+		_, appErr := restore(th, requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId), admin.Id, channel,
+			byPerson(model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"  "`)}))
+		requireResolveError(t, appErr, "api.channel.create_channel.missing_required_attributes.app_error", http.StatusBadRequest)
+		requireArchived(t, th, channel, true)
+	})
+
+	t.Run("sent values are stored and the channel is restored", func(t *testing.T) {
+		th, channel, admin, _ := newArchived(t, model.ChannelTypePrivate)
+		bot, appErr := th.App.GetSystemBot(th.Context)
+		require.Nil(t, appErr)
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+		restored, appErr := restore(th, requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId), admin.Id, channel,
+			byPerson(model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)}))
+		require.Nil(t, appErr)
+		assert.Zero(t, restored.DeleteAt)
+		requireArchived(t, th, channel, false)
+
+		stored := storedValues(t, th, field, channel)
+		require.Len(t, stored, 1)
+		assert.JSONEq(t, `"ALPHA"`, string(stored[0].Value))
+		assert.Equal(t, admin.Id, stored[0].CreatedBy)
+		requireNoMissingAttributesPost(t, th, bot.UserId, admin.Id)
+	})
+
+	t.Run("a channel that already has the value is not asked again", func(t *testing.T) {
+		th, channel, admin, _ := newArchived(t, model.ChannelTypeOpen)
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+		setChannelPropertyValue(t, th, field.GroupID, field.ID, channel.Id, `"ALPHA"`)
+
+		_, appErr := restore(th, requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId), admin.Id, channel, byPerson())
+		require.Nil(t, appErr)
+		requireArchived(t, th, channel, false)
+	})
+
+	t.Run("an unknown field is refused and the channel stays archived", func(t *testing.T) {
+		th, channel, admin, _ := newArchived(t, model.ChannelTypeOpen)
+		createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+		_, appErr := restore(th, requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId), admin.Id, channel,
+			byPerson(model.PropertyValuePatchItem{FieldID: model.NewId(), Value: json.RawMessage(`"ALPHA"`)}))
+		requireResolveError(t, appErr, "api.channel.create_channel.invalid_attribute.app_error", http.StatusBadRequest)
+		requireArchived(t, th, channel, true)
+	})
+
+	t.Run("a value write that fails leaves the channel archived", func(t *testing.T) {
+		th, channel, admin, _ := newArchived(t, model.ChannelTypeOpen)
+		// An option that doesn't exist passes the checks made up front and is
+		// refused by the value hooks.
+		field := createMissingAttributesFieldOfType(t, th, model.PropertyFieldTypeSelect, "Program", true, model.PermissionLevelAdmin)
+
+		restored, appErr := restore(th, requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId), admin.Id, channel,
+			byPerson(model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"` + model.NewId() + `"`)}))
+		assert.Nil(t, restored)
+		require.NotNil(t, appErr)
+		assert.NotEqual(t, "api.channel.create_channel.missing_required_attributes.app_error", appErr.Id)
+		assert.NotEqual(t, "api.channel.create_channel.invalid_attribute.app_error", appErr.Id)
+		requireArchived(t, th, channel, true)
+		assert.Empty(t, storedValues(t, th, field, channel))
+	})
+
+	t.Run("a required attribute the person can't set doesn't stop the restore, and the channel admins are told", func(t *testing.T) {
+		th, channel, admin, member := newArchived(t, model.ChannelTypeOpen)
+		bot, appErr := th.App.GetSystemBot(th.Context)
+		require.Nil(t, appErr)
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+		restored, appErr := restore(th, requiredAttributesSessionCtx(th, member, model.SystemUserRoleId), member.Id, channel, byPerson())
+		require.Nil(t, appErr)
+		assert.Zero(t, restored.DeleteAt)
+		requireArchived(t, th, channel, false)
+		assert.Empty(t, storedValues(t, th, field, channel))
+
+		post := requireOneMissingAttributesPost(t, th, bot.UserId, admin.Id)
+		assert.Contains(t, post.Message, "**Program**")
+		assert.ElementsMatch(t, []any{channel.Id}, post.GetProp("channel_ids"))
+		requireNoMissingAttributesPost(t, th, bot.UserId, member.Id)
+	})
+
+	t.Run("a plugin restore is not asked and nothing is sent", func(t *testing.T) {
+		th, channel, admin, _ := newArchived(t, model.ChannelTypeOpen)
+		bot, appErr := th.App.GetSystemBot(th.Context)
+		require.Nil(t, appErr)
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+		restored, appErr := restore(th, th.Context, "", channel, RestoreChannelOptions{})
+		require.Nil(t, appErr)
+		assert.Zero(t, restored.DeleteAt)
+		requireArchived(t, th, channel, false)
+		assert.Empty(t, storedValues(t, th, field, channel))
+		requireNoMissingAttributesPost(t, th, bot.UserId, admin.Id)
+	})
+
+	t.Run("a local admin is asked for what it can set", func(t *testing.T) {
+		th, channel, _, _ := newArchived(t, model.ChannelTypeOpen)
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+		local := th.Context.WithSession(&model.Session{Local: true})
+
+		_, appErr := restore(th, local, "", channel, byPerson())
+		requireResolveError(t, appErr, "api.channel.create_channel.missing_required_attributes.app_error", http.StatusBadRequest)
+		requireArchived(t, th, channel, true)
+
+		_, appErr = restore(th, local, "", channel, byPerson(model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)}))
+		require.Nil(t, appErr)
+		requireArchived(t, th, channel, false)
+		stored := storedValues(t, th, field, channel)
+		require.Len(t, stored, 1)
+		assert.JSONEq(t, `"ALPHA"`, string(stored[0].Value))
+	})
+
+	t.Run("a plugin that refuses the restore leaves the channel archived, with the values it was sent", func(t *testing.T) {
+		th, channel, admin, _ := newArchived(t, model.ChannelTypeOpen)
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+
+		tearDown, _, _ := SetAppEnvironmentWithPlugins(t, []string{
+			`
+			package main
+
+			import (
+				"github.com/mattermost/mattermost/server/public/plugin"
+				"github.com/mattermost/mattermost/server/public/model"
+			)
+
+			type MyPlugin struct {
+				plugin.MattermostPlugin
+			}
+
+			func (p *MyPlugin) ChannelWillBeRestored(c *plugin.Context, channel *model.Channel) string {
+				return "restore not permitted"
+			}
+
+			func main() {
+				plugin.ClientMain(&MyPlugin{})
+			}
+			`,
+		}, th.App, th.NewPluginAPI)
+		defer tearDown()
+
+		restored, appErr := restore(th, requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId), admin.Id, channel,
+			byPerson(model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)}))
+		assert.Nil(t, restored)
+		require.NotNil(t, appErr)
+		assert.Contains(t, appErr.Id, "rejected_by_plugin")
+		requireArchived(t, th, channel, true)
+		assert.Len(t, storedValues(t, th, field, channel), 1)
+	})
+
+	t.Run("with required attributes off", func(t *testing.T) {
+		th := SetupConfig(t, setupMissingAttributesConfig).InitBasic(t)
+		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
+		team, admin := newAttributesTeamAndMember(t, th)
+		channel := administeredChannel(t, th, team, admin, model.ChannelTypeOpen, "Coming back")
+		require.Nil(t, th.App.DeleteChannel(th.Context, channel, admin.Id))
+		field := createMissingAttributesField(t, th, "Program", true, model.PermissionLevelAdmin)
+		th.App.UpdateConfig(func(cfg *model.Config) { cfg.FeatureFlags.ChannelAttributesRequired = false })
+		ctx := requiredAttributesSessionCtx(th, admin, model.SystemUserRoleId)
+
+		t.Run("values are refused as creation refuses them", func(t *testing.T) {
+			_, appErr := restore(th, ctx, admin.Id, channel, byPerson(model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)}))
+			requireResolveError(t, appErr, "api.channel.create_channel.attributes_feature_disabled.app_error", http.StatusBadRequest)
+			requireArchived(t, th, channel, true)
+		})
+
+		t.Run("without values nothing is asked", func(t *testing.T) {
+			restored, appErr := restore(th, ctx, admin.Id, channel, byPerson())
+			require.Nil(t, appErr)
+			assert.Zero(t, restored.DeleteAt)
+			requireArchived(t, th, channel, false)
+		})
+	})
+}

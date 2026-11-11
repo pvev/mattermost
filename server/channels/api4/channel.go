@@ -5,6 +5,8 @@ package api4
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -689,6 +691,16 @@ func patchChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// decodeChannelRestoreRequest reads the optional body of a channel restore. An
+// empty body is as valid as "{}".
+func decodeChannelRestoreRequest(r *http.Request) (*model.ChannelRestoreRequest, error) {
+	var req model.ChannelRestoreRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
+		return nil, err
+	}
+	return &req, nil
+}
+
 func restoreChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 	c.RequireChannelId()
 	if c.Err != nil {
@@ -712,7 +724,16 @@ func restoreChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	channel, err = c.App.RestoreChannel(c.AppContext, channel, c.AppContext.Session().UserId)
+	req, decodeErr := decodeChannelRestoreRequest(r)
+	if decodeErr != nil {
+		c.SetInvalidParamWithErr("property_values", decodeErr)
+		return
+	}
+
+	channel, err = c.App.RestoreChannel(c.AppContext, channel, c.AppContext.Session().UserId, app.RestoreChannelOptions{
+		PropertyValues: req.PropertyValues,
+		ByPerson:       true,
+	})
 	if err != nil {
 		c.Err = err
 		return

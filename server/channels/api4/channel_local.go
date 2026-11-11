@@ -135,7 +135,16 @@ func localRestoreChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 	defer c.LogAuditRec(auditRec)
 	model.AddEventParameterToAuditRec(auditRec, "channel_id", c.Params.ChannelId)
 
-	channel, err = c.App.RestoreChannel(c.AppContext, channel, "")
+	req, decodeErr := decodeChannelRestoreRequest(r)
+	if decodeErr != nil {
+		c.SetInvalidParamWithErr("property_values", decodeErr)
+		return
+	}
+
+	channel, err = c.App.RestoreChannel(c.AppContext, channel, "", app.RestoreChannelOptions{
+		PropertyValues: req.PropertyValues,
+		ByPerson:       true,
+	})
 	if err != nil {
 		c.Err = err
 		return

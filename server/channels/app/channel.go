@@ -1092,9 +1092,42 @@ func (a *App) postChannelPrivacyMessage(rctx request.CTX, user *model.User, chan
 	return nil
 }
 
-func (a *App) RestoreChannel(rctx request.CTX, channel *model.Channel, userID string) (*model.Channel, *model.AppError) {
+// RestoreChannelOptions are what a person's unarchive carries beyond the channel
+// itself. The zero value is a machine path: no values, nothing asked.
+type RestoreChannelOptions struct {
+	// PropertyValues are channel attribute values to store before the channel
+	// is restored.
+	PropertyValues []model.PropertyValuePatchItem
+	// ByPerson marks a request made by a person, who is asked for the required
+	// attribute values the channel lacks when it comes back.
+	ByPerson bool
+}
+
+// RestoreChannel unarchives channel. When a person restores it, the required
+// attributes they can set must have a value, supplied in opts, first: they are
+// stored while the channel is still archived, so a failed write restores
+// nothing. A plugin veto after that write leaves the values on the archived
+// channel.
+func (a *App) RestoreChannel(rctx request.CTX, channel *model.Channel, userID string, opts RestoreChannelOptions) (*model.Channel, *model.AppError) {
 	if channel.DeleteAt == 0 {
 		return nil, model.NewAppError("restoreChannel", "api.channel.restore_channel.restored.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	var skipped []*model.PropertyField
+	if opts.ByPerson && !channel.IsSpace() {
+		actorID := requiredChannelAttributeActorID(rctx, userID)
+
+		resolution, appErr := a.resolveRequiredChannelAttributes(rctx, actorID, channel, false, opts.PropertyValues)
+		if appErr != nil {
+			return nil, appErr
+		}
+		if len(resolution.Missing) > 0 {
+			return nil, model.NewAppError("RestoreChannel", "api.channel.create_channel.missing_required_attributes.app_error", nil, "", http.StatusBadRequest)
+		}
+		if appErr = a.writeChannelAttributeValues(rctx, channel, userID, resolution.ValuesToWrite); appErr != nil {
+			return nil, appErr
+		}
+		skipped = resolution.Skipped
 	}
 
 	// Space backing channels are internal; plugin ChannelWillBeRestored hooks are skipped.
@@ -1123,6 +1156,10 @@ func (a *App) RestoreChannel(rctx request.CTX, channel *model.Channel, userID st
 	}
 	message.Add("channel_id", channel.Id)
 	a.Publish(message)
+
+	if len(skipped) > 0 {
+		a.notifyChannelAdminsOfMissingRequiredAttributes(rctx, channel)
+	}
 
 	var user *model.User
 	if userID != "" {

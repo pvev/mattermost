@@ -4743,7 +4743,10 @@ func TestUpdateChannelPrivacy(t *testing.T) {
 
 func TestRestoreChannel(t *testing.T) {
 	mainHelper.Parallel(t)
-	th := Setup(t).InitBasic(t)
+	th := SetupConfig(t, func(cfg *model.Config) {
+		cfg.FeatureFlags.ChannelAttributes = true
+		cfg.FeatureFlags.ChannelAttributesRequired = true
+	}).InitBasic(t)
 
 	publicChannel1 := th.CreatePublicChannel(t)
 	_, err := th.Client.DeleteChannel(context.Background(), publicChannel1.Id)
@@ -4806,6 +4809,149 @@ func TestRestoreChannel(t *testing.T) {
 		_, resp, err = client.RestoreChannel(context.Background(), privateChannel1.Id)
 		require.NoError(t, err)
 		CheckOKStatus(t, resp)
+	})
+
+	t.Run("Required channel attributes", func(t *testing.T) {
+		// The role and permission changes above leave the helper without a license.
+		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
+
+		group, appErr := th.App.GetPropertyGroup(th.Context, model.AccessControlPropertyGroupName)
+		require.Nil(t, appErr)
+
+		memberLevel := model.PermissionLevelMember
+		adminLevel := model.PermissionLevelAdmin
+
+		createRequiredField := func(t *testing.T) *model.PropertyField {
+			t.Helper()
+			field, createErr := th.App.Srv().PropertyService().CreatePropertyField(th.Context, &model.PropertyField{
+				Name:              "f_" + model.NewId(),
+				Type:              model.PropertyFieldTypeText,
+				GroupID:           group.ID,
+				ObjectType:        "channel",
+				TargetType:        "system",
+				PermissionField:   &memberLevel,
+				PermissionValues:  &adminLevel,
+				PermissionOptions: &memberLevel,
+				Attrs:             model.StringInterface{model.PropertyFieldAttrRequired: true},
+			})
+			require.NoError(t, createErr)
+			t.Cleanup(func() {
+				require.Nil(t, th.App.DeletePropertyField(th.Context, group.ID, field.ID, true, ""))
+			})
+			return field
+		}
+
+		archivedChannel := func(t *testing.T) *model.Channel {
+			t.Helper()
+			channel := th.CreatePublicChannel(t)
+			require.Nil(t, th.App.DeleteChannel(th.Context, channel, th.BasicUser.Id))
+			return channel
+		}
+
+		requireArchived := func(t *testing.T, channelID string, archived bool) {
+			t.Helper()
+			channel, chErr := th.App.GetChannel(th.Context, channelID)
+			require.Nil(t, chErr)
+			require.Equal(t, archived, channel.DeleteAt != 0)
+		}
+
+		storedValues := func(t *testing.T, field *model.PropertyField, channelID string) []*model.PropertyValue {
+			t.Helper()
+			stored, searchErr := th.App.Srv().Store().PropertyValue().SearchPropertyValues(th.Context, model.PropertyValueSearchOpts{
+				GroupID:    field.GroupID,
+				TargetType: model.PropertyValueTargetTypeChannel,
+				TargetIDs:  []string{channelID},
+				PerPage:    10,
+			})
+			require.NoError(t, searchErr)
+			return stored
+		}
+
+		th.TestForSystemAdminAndLocal(t, func(t *testing.T, client *model.Client4) {
+			t.Run("a body is optional: none, an empty object and no values all restore", func(t *testing.T) {
+				withoutBody := archivedChannel(t)
+				_, _, restoreErr := client.RestoreChannel(context.Background(), withoutBody.Id)
+				require.NoError(t, restoreErr)
+				requireArchived(t, withoutBody.Id, false)
+
+				emptyObject := archivedChannel(t)
+				_, _, restoreErr = client.RestoreChannelWithPropertyValues(context.Background(), emptyObject.Id, nil)
+				require.NoError(t, restoreErr)
+				requireArchived(t, emptyObject.Id, false)
+			})
+
+			t.Run("a required attribute with no value is refused and the channel stays archived", func(t *testing.T) {
+				channel := archivedChannel(t)
+				field := createRequiredField(t)
+
+				_, resp, restoreErr := client.RestoreChannel(context.Background(), channel.Id)
+				require.Error(t, restoreErr)
+				CheckBadRequestStatus(t, resp)
+				CheckErrorID(t, restoreErr, "api.channel.create_channel.missing_required_attributes.app_error")
+				require.NotContains(t, restoreErr.Error(), field.Name)
+				requireArchived(t, channel.Id, true)
+				require.Empty(t, storedValues(t, field, channel.Id))
+			})
+
+			t.Run("sent values are stored and the channel is restored", func(t *testing.T) {
+				channel := archivedChannel(t)
+				field := createRequiredField(t)
+
+				restored, _, restoreErr := client.RestoreChannelWithPropertyValues(context.Background(), channel.Id,
+					[]model.PropertyValuePatchItem{{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)}})
+				require.NoError(t, restoreErr)
+				require.Zero(t, restored.DeleteAt)
+				requireArchived(t, channel.Id, false)
+
+				stored := storedValues(t, field, channel.Id)
+				require.Len(t, stored, 1)
+				require.JSONEq(t, `"ALPHA"`, string(stored[0].Value))
+			})
+
+			t.Run("an unknown field is refused and the channel stays archived", func(t *testing.T) {
+				channel := archivedChannel(t)
+				createRequiredField(t)
+
+				_, resp, restoreErr := client.RestoreChannelWithPropertyValues(context.Background(), channel.Id,
+					[]model.PropertyValuePatchItem{{FieldID: model.NewId(), Value: json.RawMessage(`"ALPHA"`)}})
+				require.Error(t, restoreErr)
+				CheckBadRequestStatus(t, resp)
+				CheckErrorID(t, restoreErr, "api.channel.create_channel.invalid_attribute.app_error")
+				requireArchived(t, channel.Id, true)
+			})
+
+			t.Run("a body that is not valid JSON is refused", func(t *testing.T) {
+				channel := archivedChannel(t)
+
+				resp, doErr := client.DoAPIPost(context.Background(), "/channels/"+channel.Id+"/restore", `{"property_values":`)
+				if resp != nil {
+					defer resp.Body.Close()
+				}
+				require.Error(t, doErr)
+				require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+				requireArchived(t, channel.Id, true)
+			})
+		})
+
+		t.Run("with required attributes off, values are refused and nothing else changes", func(t *testing.T) {
+			channel := archivedChannel(t)
+			field := createRequiredField(t)
+			th.App.UpdateConfig(func(cfg *model.Config) { cfg.FeatureFlags.ChannelAttributesRequired = false })
+			t.Cleanup(func() {
+				th.App.UpdateConfig(func(cfg *model.Config) { cfg.FeatureFlags.ChannelAttributesRequired = true })
+			})
+
+			_, resp, restoreErr := th.SystemAdminClient.RestoreChannelWithPropertyValues(context.Background(), channel.Id,
+				[]model.PropertyValuePatchItem{{FieldID: field.ID, Value: json.RawMessage(`"ALPHA"`)}})
+			require.Error(t, restoreErr)
+			CheckBadRequestStatus(t, resp)
+			CheckErrorID(t, restoreErr, "api.channel.create_channel.attributes_feature_disabled.app_error")
+			requireArchived(t, channel.Id, true)
+
+			_, _, restoreErr = th.SystemAdminClient.RestoreChannel(context.Background(), channel.Id)
+			require.NoError(t, restoreErr)
+			requireArchived(t, channel.Id, false)
+		})
 	})
 }
 

@@ -388,7 +388,7 @@ describe('admin_console/team_channel_settings/channel/ChannelDetails', () => {
     });
 
     describe('required channel attributes', () => {
-        const renderDetails = (channel: Channel & {team_name: string}, overrides: Partial<typeof actions> = {}) => {
+        const renderDetails = (channel: Channel & {team_name: string}, overrides: Partial<typeof actions> = {}, requiredEnabled = true) => {
             const patchChannelAttributeValues = jest.fn().mockResolvedValue({data: []});
             const unarchiveChannel = jest.fn().mockResolvedValue({data: true});
             const patchChannel = jest.fn().mockResolvedValue({data: {}});
@@ -409,6 +409,7 @@ describe('admin_console/team_channel_settings/channel/ChannelDetails', () => {
                     channelGroupsEnabled={false}
                     abacSupported={false}
                     channelAttributesEnabled={true}
+                    channelAttributesRequiredEnabled={requiredEnabled}
                     isDisabled={false}
                 />,
             );
@@ -464,8 +465,55 @@ describe('admin_console/team_channel_settings/channel/ChannelDetails', () => {
             await userEvent.click(screen.getByRole('button', {name: 'FillRequiredAttribute'}));
             await userEvent.click(screen.getByTestId('saveSetting'));
 
-            await waitFor(() => expect(unarchiveChannel).toHaveBeenCalledWith(testChannel.id));
+            await waitFor(() => expect(unarchiveChannel).toHaveBeenCalledWith(testChannel.id, [{field_id: 'field1', value: 'value1'}]));
+
+            // The values went with the restore, so they are not written a second time.
+            expect(patchChannelAttributeValues).not.toHaveBeenCalled();
+        });
+
+        test('keeps the page\'s values and the error when the restore with values fails', async () => {
+            const unarchiveChannel = jest.fn().mockResolvedValue({error: {message: 'restore refused'}});
+            const {patchChannelAttributeValues} = renderDetails({...testChannel, delete_at: 1}, {unarchiveChannel});
+
+            await userEvent.click(screen.getByRole('button', {name: 'Unarchive Channel'}));
+            await userEvent.click(screen.getByRole('button', {name: 'EditWithRequiredNeverSet'}));
+            await userEvent.click(screen.getByRole('button', {name: 'FillRequiredAttribute'}));
+            await userEvent.click(screen.getByTestId('saveSetting'));
+
+            await waitFor(() => expect(screen.getByText('restore refused')).toBeInTheDocument());
+            expect(unarchiveChannel).toHaveBeenCalledTimes(1);
+            expect(patchChannelAttributeValues).not.toHaveBeenCalled();
+            expect(screen.getByTestId('saveSetting')).toBeEnabled();
+        });
+
+        test('retries the restore with the values after it failed', async () => {
+            const unarchiveChannel = jest.fn().
+                mockResolvedValueOnce({error: {message: 'restore refused'}}).
+                mockResolvedValueOnce({data: true});
+            const {patchChannelAttributeValues} = renderDetails({...testChannel, delete_at: 1}, {unarchiveChannel});
+
+            await userEvent.click(screen.getByRole('button', {name: 'Unarchive Channel'}));
+            await userEvent.click(screen.getByRole('button', {name: 'EditWithRequiredNeverSet'}));
+            await userEvent.click(screen.getByRole('button', {name: 'FillRequiredAttribute'}));
+            await userEvent.click(screen.getByTestId('saveSetting'));
+            await waitFor(() => expect(screen.getByText('restore refused')).toBeInTheDocument());
+
+            await userEvent.click(screen.getByTestId('saveSetting'));
+
+            await waitFor(() => expect(unarchiveChannel).toHaveBeenCalledTimes(2));
+            expect(unarchiveChannel).toHaveBeenLastCalledWith(testChannel.id, [{field_id: 'field1', value: 'value1'}]);
+            expect(patchChannelAttributeValues).not.toHaveBeenCalled();
+        });
+
+        test('restores without values and patches them after while required attributes are off', async () => {
+            const {patchChannelAttributeValues, unarchiveChannel} = renderDetails({...testChannel, delete_at: 1}, {}, false);
+
+            await userEvent.click(screen.getByRole('button', {name: 'Unarchive Channel'}));
+            await userEvent.click(screen.getByRole('button', {name: 'EditChannelAttribute'}));
+            await userEvent.click(screen.getByTestId('saveSetting'));
+
             await waitFor(() => expect(patchChannelAttributeValues).toHaveBeenCalledWith(testChannel.id, [{field_id: 'field1', value: 'value1'}]));
+            expect(unarchiveChannel).toHaveBeenCalledWith(testChannel.id);
         });
 
         test('keeps a save error visible next to the required-attributes message', async () => {

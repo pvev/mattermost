@@ -142,7 +142,7 @@ export type ChannelDetailsActions = {
     removeChannelMember: (channelId: string, userId: string) => Promise<ActionResult>;
     updateChannelMemberSchemeRoles: (channelId: string, userId: string, isSchemeUser: boolean, isSchemeAdmin: boolean) => Promise<ActionResult>;
     deleteChannel: (channelId: string) => Promise<ActionResult>;
-    unarchiveChannel: (channelId: string) => Promise<ActionResult>;
+    unarchiveChannel: (channelId: string, propertyValues?: ChannelPropertyValuePatchItems) => Promise<ActionResult>;
     getAccessControlPolicy: (channelId: string) => Promise<ActionResult>;
     searchPolicies: (term: string, type: string, after: string, limit: number) => Promise<ActionResult>;
     assignChannelToAccessControlPolicy: (policyId: string, channelId: string) => Promise<ActionResult>;
@@ -525,6 +525,10 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
         this.handleSubmit();
     };
 
+    // Set when a restore that carried values failed: the channel is still archived,
+    // so the next save must restore again rather than patch it.
+    private restoreNeedsRetry = false;
+
     private handleSubmit = async () => {
         const {groups: origGroups, channelID, actions, channel} = this.props;
 
@@ -536,6 +540,7 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
         const {groups, isSynced, isPublic, isPrivacyChanging, channelPermissions, usersToAdd, usersToRemove, rolesToUpdate, policyToggled, accessControlPolicies, accessControlPoliciesToRemove} = this.state;
         let serverError: JSX.Element | undefined;
         let saveNeeded = false;
+        let sentWithRestore = new Set<string>();
 
         if (this.channelToBeArchived()) {
             const result = await actions.deleteChannel(channel.id);
@@ -550,10 +555,29 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
                 }
             });
             return;
-        } else if (this.channelToBeRestored() && !this.state.serverError) {
-            const result = await actions.unarchiveChannel(channel.id);
+        } else if (this.channelToBeRestored() && (!this.state.serverError || this.restoreNeedsRetry)) {
+            this.restoreNeedsRetry = false;
+
+            // The server refuses to restore a channel that still lacks a required
+            // value, so the page's filled-in values travel with the restore. They
+            // are then left out of the attribute patch below, so nothing is
+            // written twice. Cleared values can't be sent that way and still go
+            // through the patch.
+            const valuesForRestore: ChannelPropertyValuePatchItems = this.props.channelAttributesRequiredEnabled ? Object.entries(this.state.channelAttributeValues).
+                filter(([, value]) => (Array.isArray(value) ? value.length > 0 : Boolean(value))).
+                map(([fieldId, value]) => ({field_id: fieldId, value})) : [];
+
+            const result = valuesForRestore.length > 0 ? await actions.unarchiveChannel(channel.id, valuesForRestore) : await actions.unarchiveChannel(channel.id);
             if ('error' in result) {
                 serverError = <FormError error={result.error.message}/>;
+                if (valuesForRestore.length > 0) {
+                    this.restoreNeedsRetry = true;
+                    this.setState({serverError, saving: false, saveNeeded: true});
+                    actions.setNavigationBlocked(true);
+                    return;
+                }
+            } else if (valuesForRestore.length > 0) {
+                sentWithRestore = new Set(valuesForRestore.map((item) => item.field_id));
             }
             this.setState({serverError, previousServerError: undefined});
         }
@@ -566,12 +590,12 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
             return;
         }
 
-        const {channelAttributeValues} = this.state;
-        if (Object.keys(channelAttributeValues).length > 0) {
-            const attributeResult = await actions.patchChannelAttributeValues(
+        const channelAttributeValuesToPatch = Object.entries(this.state.channelAttributeValues).filter(([fieldId]) => !sentWithRestore.has(fieldId));
+        if (Object.keys(this.state.channelAttributeValues).length > 0) {
+            const attributeResult = channelAttributeValuesToPatch.length > 0 ? await actions.patchChannelAttributeValues(
                 channel.id,
-                Object.entries(channelAttributeValues).map(([fieldId, value]) => ({field_id: fieldId, value})),
-            );
+                channelAttributeValuesToPatch.map(([fieldId, value]) => ({field_id: fieldId, value})),
+            ) : {data: true};
             if ('error' in attributeResult) {
                 serverError = <FormError error={attributeResult.error.message}/>;
                 saveNeeded = true;
